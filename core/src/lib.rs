@@ -7,5 +7,6 @@
 
 pub mod error;
 pub mod grid;
+pub mod potential;
 pub mod states;
 pub mod wavefunction;
