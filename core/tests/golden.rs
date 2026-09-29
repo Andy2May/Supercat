@@ -78,7 +78,8 @@ fn golden_free_gaussian_spreading() {
          rel err = {rel_err:.3e})"
     );
     println!(
-        "spreading: sigma_x(0) was 1.0 exactly, so measured growth factor = {factor:.8}",
+        "spreading: sigma_0 = 1.0 by construction (the gaussian width parameter), \
+         so growth factor sigma_x(2)/sigma_0 = {factor:.8}",
         factor = measured
     );
     assert!(
@@ -240,13 +241,15 @@ fn golden_barrier_transmission() {
 /// pure IEEE-754 accumulation, not a unitarity error (the per-step norm
 /// guard at 1e-10 never trips, and the free-spreading test above shows
 /// the physics exact to 1e-13 where no accumulation is involved). The
-/// spec tolerance is kept untouched and asserted at 5000 steps (measured
-/// ~5.8e-13); the run then continues to 1e4 steps and prints that value
-/// for the record.
+/// spec tolerance is kept untouched and asserted at 5000 steps, where the
+/// linear-extrapolation estimate is ~5.8e-13 and the measured and printed
+/// value is 6.162e-13; the run then continues to 1e4 steps and prints that
+/// value for the record.
 #[test]
 fn golden_norm_and_energy_conservation() {
     // Run A: norm conservation at the working step size. dt = 1e-3, run to
-    // t = 10 (three oscillator periods), asserting at the halfway point.
+    // t = 10 (~1.6 oscillator periods of 2*pi each with omega = 1),
+    // asserting at the halfway point.
     let (mut wf, v) = coherent_setup();
     let mut prop =
         SplitOperator::new(wf.grid(), 1e-3, 1.0, 1.0).expect("propagator parameters are valid");

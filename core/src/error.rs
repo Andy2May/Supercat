@@ -2,8 +2,13 @@
 
 /// Errors returned by the Psiforge core modules.
 ///
-/// All variants are declared here up front (including ones later milestones
-/// construct) so the enum is defined once and stays stable.
+/// Each variant encodes one validated precondition of one constructor or
+/// step routine. The set grows with the crate: variants are added when a new
+/// builder validates its own inputs (e.g. [`CoreError::InvalidSigma`] for
+/// [`states::gaussian`](crate::states::gaussian) and
+/// [`CoreError::InvalidTimeStep`] for
+/// [`SplitOperator::new`](crate::propagator::SplitOperator::new)), not
+/// promised up front.
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error(

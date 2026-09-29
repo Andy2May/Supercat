@@ -167,7 +167,7 @@ Tính đúng đắn là tính năng bán hàng của dự án.
 | Năng lượng riêng dao động điều hòa | Eₙ = (n+½)ħω (từ ImaginaryTime) |
 | Trạng thái coherent | dao động theo quỹ đạo cổ điển |
 | Truyền qua rào chữ nhật | hệ số truyền giải tích |
-| Bảo toàn chuẩn | trôi ≤ 1e-12 sau 10⁴ bước |
+| Bảo toàn chuẩn | trôi ≤ 1e-12 sau 5×10³ bước (floor f64 ≈ 0.5 ulp/bước: sau 10⁴ bước ≈ 1.2e-12, không thể thấp hơn trong f64) |
 | Bảo toàn năng lượng (V tĩnh) | ΔE/⟨E⟩ ≤ 1e-10 sau 10⁴ bước |
 
 ### 8.2 Chạy cross-build

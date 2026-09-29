@@ -28,6 +28,51 @@ psiforge/
 Currently only `core/` (the `psiforge-core` crate) exists; the other
 components arrive in later milestones.
 
+## Quickstart
+
+The physics lives in the `psiforge-core` crate. Until it is published, depend
+on it by path (or by git URL once the repository is public):
+
+```toml
+[dependencies]
+psiforge-core = { path = "core" }
+```
+
+Then build a simulation the way every Psiforge run does: a grid, a Gaussian
+initial state, a potential, and a split-operator propagator. This example
+prepares a coherent state (ground-state width `1/√2`, displaced to `x0 = 3`)
+in a harmonic potential and propagates it for 100 steps:
+
+```rust
+use psiforge_core::error::CoreError;
+use psiforge_core::grid::Grid1D;
+use psiforge_core::observables::{expectation_x, sigma_x};
+use psiforge_core::potential::harmonic;
+use psiforge_core::propagator::{Propagator, SplitOperator};
+use psiforge_core::states::gaussian;
+
+fn main() -> Result<(), CoreError> {
+    let grid = Grid1D::new(2048, -20.0, 20.0)?;
+    let mut wf = gaussian(&grid, 3.0, 0.0, std::f64::consts::FRAC_1_SQRT_2, 1.0, 1.0)?;
+    let v = harmonic(&grid, 1.0, 1.0);
+    let mut prop = SplitOperator::new(&grid, 1e-3, 1.0, 1.0)?;
+
+    for _ in 0..100 {
+        prop.step(&mut wf, &v)?;
+    }
+    println!("sigma_x = {:.6}", sigma_x(&wf));
+    println!("<x>     = {:.6}", expectation_x(&wf));
+    Ok(())
+}
+```
+
+The numbers to expect: a coherent state does not spread, so `sigma_x` stays
+at the ground-state width `1/√2 ≈ 0.7071`, and Ehrenfest's theorem is exact
+for the harmonic oscillator, so `<x>(t) = 3 cos(t)` — at `t = 0.1` that is
+about `2.985`. All quantities are unitless here (`m = ħ = 1`); see
+[`docs/units.md`](docs/units.md) for running the same code in nanometers,
+femtoseconds, and electron-volts.
+
 ## Development
 
 Requires a stable Rust toolchain.

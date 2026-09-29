@@ -51,4 +51,4 @@ every time in fs.
 Alternatively, keep the default `m = ħ = 1` and rescale the outputs: one
 dimensionless energy unit is `ħ²/(m·L²)` and one time unit is `m·L²/ħ`, which
 for the electron-nanometer case give `1 E-unit = 76.20 meV` and
-`1 T-unit = 8.639 fs`.
+`1 T-unit = 8.638 fs`.
