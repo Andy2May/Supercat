@@ -16,6 +16,8 @@ pub enum CoreError {
     NonFinite { what: &'static str, index: usize },
     #[error("mass and hbar must be positive, got m={m}, hbar={hbar}")]
     InvalidMassOrHbar { m: f64, hbar: f64 },
+    #[error("gaussian sigma must be positive and finite, got {sigma}")]
+    InvalidSigma { sigma: f64 },
     #[error("norm drifted from 1: {norm} at step {step}")]
     NormDrift { step: u64, norm: f64 },
 }
