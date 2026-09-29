@@ -6,7 +6,9 @@
 //! in later milestones.
 
 pub mod error;
+pub mod fft;
 pub mod grid;
 pub mod potential;
+pub mod propagator;
 pub mod states;
 pub mod wavefunction;

@@ -18,6 +18,8 @@ pub enum CoreError {
     InvalidMassOrHbar { m: f64, hbar: f64 },
     #[error("gaussian sigma must be positive and finite, got {sigma}")]
     InvalidSigma { sigma: f64 },
+    #[error("time step must be positive and finite, got dt={dt}")]
+    InvalidTimeStep { dt: f64 },
     #[error("norm drifted from 1: {norm} at step {step}")]
     NormDrift { step: u64, norm: f64 },
 }
