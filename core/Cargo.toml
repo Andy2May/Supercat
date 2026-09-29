@@ -1,0 +1,11 @@
+[package]
+name = "psiforge-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Quantum wave-dynamics core for Psiforge (TDSE on uniform grids)"
+
+[dependencies]
+rustfft = "6"
+num-complex = "0.4"
+thiserror = "2"
