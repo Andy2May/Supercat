@@ -135,9 +135,11 @@ impl Propagator for SplitOperator {
 
         // 5. Norm guard: g = sum |psi_i|^2 * dx must stay 1; a unitary step
         //    preserves it to rounding, so this catches unnormalized input on
-        //    the first step and any numerical breakdown later.
+        //    the first step and any numerical breakdown later. A non-finite
+        //    g (NaN/inf psi) must also fail: IEEE NaN comparisons are false,
+        //    so `(g - 1.0).abs() > tol` alone would let NaN pass silently.
         let g = psi.iter().map(|c| c.norm_sqr()).sum::<f64>() * self.dx;
-        if (g - 1.0).abs() > NORM_TOLERANCE {
+        if !g.is_finite() || (g - 1.0).abs() > NORM_TOLERANCE {
             return Err(CoreError::NormDrift {
                 step: self.step,
                 norm: g,
@@ -235,6 +237,24 @@ mod tests {
                     (norm - 4.0).abs() < 1e-9,
                     "norm^2 after doubling = {norm}, expected 4"
                 );
+            }
+            other => panic!("expected NormDrift, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn norm_guard_rejects_nan_wavefunction() {
+        // IEEE semantics make every NaN comparison false, so a plain
+        // `|g - 1| > tol` guard would let NaN slip through as Ok. Injecting
+        // NaN via the public `psi_mut()` accessor must trip NormDrift.
+        let (mut wf, v) = ho_ground_state();
+        let nan_index = N / 2;
+        wf.psi_mut()[nan_index] = Complex64::new(f64::NAN, 0.0);
+        let mut prop = SplitOperator::new(wf.grid(), 0.01, 1.0, 1.0).expect("parameters valid");
+        match prop.step(&mut wf, &v) {
+            Err(CoreError::NormDrift { step, norm }) => {
+                assert_eq!(step, 0, "first step must report step counter 0");
+                assert!(norm.is_nan(), "norm^2 must be NaN, got {norm}");
             }
             other => panic!("expected NormDrift, got {other:?}"),
         }
