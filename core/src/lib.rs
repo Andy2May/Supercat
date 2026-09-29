@@ -14,8 +14,6 @@
 //! - [`potential`] — potentials as sampled arrays with analytic builders
 //!   (harmonic, finite well, barrier, well chain), elementwise
 //!   [`add`](potential::Potential::add), and [`zeros`](potential::Potential::zeros);
-//! - [`fft`] — the [`rustfft`] wrappers (normalized round trip, thread-local
-//!   planner cache, FFT-bin wavenumbers) the propagator and observables share;
 //! - [`propagator`] — [`SplitOperator`](propagator::SplitOperator), a
 //!   second-order Strang-splitting TDSE propagator guarded by a per-step norm
 //!   check, behind the [`Propagator`](propagator::Propagator) trait;
@@ -24,6 +22,10 @@
 //!   ([`norm_in_range`](observables::norm_in_range));
 //! - [`error`] — the crate-wide [`CoreError`](error::CoreError) and the
 //!   [`Result`](error::Result) alias.
+//!
+//! The propagator and observables additionally share an internal `fft`
+//! module (private, `pub(crate)` helpers only) wrapping [`rustfft`]:
+//! normalized round trip, thread-local planner cache, FFT-bin wavenumbers.
 //!
 //! # Units
 //!
@@ -68,7 +70,7 @@
 //! ```
 
 pub mod error;
-pub mod fft;
+mod fft;
 pub mod grid;
 pub mod observables;
 pub mod potential;

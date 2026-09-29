@@ -25,10 +25,12 @@ use num_complex::Complex64;
 /// # Errors
 ///
 /// Returns [`CoreError::InvalidSigma`] unless `sigma` is finite and strictly
-/// positive. Every other parameter is validated by [`Wavefunction::new`]:
-/// non-finite `x0`/`k0` yield non-finite samples (→ [`CoreError::NonFinite`]),
-/// and non-positive `m`/`hbar` are rejected (→
-/// [`CoreError::InvalidMassOrHbar`]).
+/// positive, and [`CoreError::NonFinite`] for a non-finite `x0` or `k0`.
+/// The `x0`/`k0` checks happen up front because an infinite `x0` underflows
+/// every sample to zero (a valid but meaningless wavefunction) and would
+/// otherwise defer failure to the propagator's norm guard. Remaining
+/// parameters are validated by [`Wavefunction::new`]: non-positive `m`/`hbar`
+/// are rejected (→ [`CoreError::InvalidMassOrHbar`]).
 pub fn gaussian(
     grid: &Grid1D,
     x0: f64,
@@ -39,6 +41,18 @@ pub fn gaussian(
 ) -> Result<Wavefunction> {
     if !(sigma.is_finite() && sigma > 0.0) {
         return Err(CoreError::InvalidSigma { sigma });
+    }
+    if !x0.is_finite() {
+        return Err(CoreError::NonFinite {
+            what: "x0",
+            index: 0,
+        });
+    }
+    if !k0.is_finite() {
+        return Err(CoreError::NonFinite {
+            what: "k0",
+            index: 0,
+        });
     }
     let psi = (0..grid.n())
         .map(|i| {
@@ -168,13 +182,29 @@ mod tests {
             gaussian(&grid, X0, K0, SIGMA, 1.0, -1.0),
             Err(CoreError::InvalidMassOrHbar { .. })
         ));
-        // A non-finite x0 produces non-finite samples, caught downstream.
+        // A non-finite x0 or k0 is rejected up front by `gaussian` itself.
+        for (x0, k0) in [(f64::NAN, K0), (X0, f64::NAN)] {
+            assert!(
+                matches!(
+                    gaussian(&grid, x0, k0, SIGMA, 1.0, 1.0),
+                    Err(CoreError::NonFinite { .. })
+                ),
+                "x0 = {x0}, k0 = {k0} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_infinite_x0_at_construction_not_a_zero_wavefunction() {
+        // x0 = +inf underflows every exp(-(x - x0)^2 / (4 sigma^2)) sample
+        // to zero, so without the up-front check `gaussian` would return Ok
+        // with an all-zero wavefunction (normalize() is a no-op on zero
+        // norm) and defer failure to the first propagator step's norm
+        // guard. Construction must fail instead.
+        let grid = reference_grid();
         assert!(matches!(
-            gaussian(&grid, f64::NAN, K0, SIGMA, 1.0, 1.0),
-            Err(CoreError::NonFinite {
-                what: "wavefunction",
-                ..
-            })
+            gaussian(&grid, f64::INFINITY, K0, SIGMA, 1.0, 1.0),
+            Err(CoreError::NonFinite { what: "x0", .. })
         ));
     }
 }

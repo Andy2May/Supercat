@@ -19,8 +19,8 @@ use crate::wavefunction::Wavefunction;
 use num_complex::Complex64;
 
 /// Angular wavenumbers of the DFT bins of `grid` — the `numpy.fft.fftfreq`
-/// convention scaled by `2*pi` (identical to the crate-internal
-/// [`crate::fft`] k-grid the propagator uses):
+/// convention scaled by `2*pi` (identical to the crate-internal `fft`
+/// module's k-grid, which the propagator uses):
 ///
 /// ```text
 /// k_j = 2*pi / (n*dx) * j',   j' = j      for j <  n/2   (n even)

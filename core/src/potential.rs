@@ -83,8 +83,8 @@ fn inside_window(x: f64, center: f64, width: f64) -> bool {
     (x - center).abs() < width / 2.0
 }
 
-/// Finite square well: `V = -depth` inside the window ([`inside_window`]),
-/// `V = 0` outside.
+/// Finite square well: `V = -depth` inside the window (`|x - center| <
+/// width / 2`), `V = 0` outside.
 pub fn finite_well(grid: &Grid1D, center: f64, width: f64, depth: f64) -> Potential {
     let values = (0..grid.n())
         .map(|i| {
@@ -98,8 +98,8 @@ pub fn finite_well(grid: &Grid1D, center: f64, width: f64, depth: f64) -> Potent
     Potential { values }
 }
 
-/// Potential barrier: `V = +height` inside the window ([`inside_window`]),
-/// `V = 0` outside.
+/// Potential barrier: `V = +height` inside the window (`|x - center| <
+/// width / 2`), `V = 0` outside.
 pub fn barrier(grid: &Grid1D, center: f64, width: f64, height: f64) -> Potential {
     let values = (0..grid.n())
         .map(|i| {

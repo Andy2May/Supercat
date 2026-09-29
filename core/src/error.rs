@@ -25,7 +25,10 @@ pub enum CoreError {
     InvalidSigma { sigma: f64 },
     #[error("time step must be positive and finite, got dt={dt}")]
     InvalidTimeStep { dt: f64 },
-    #[error("norm drifted from 1: {norm} at step {step}")]
+    /// Per-step norm-guard failure: `norm` is the SQUARED norm
+    /// `‖ψ‖² = Σ |ψᵢ|²·dx` (not ‖ψ‖), so the guard target is 1 either way,
+    /// but a printed value of 4 means ‖ψ‖ = 2.
+    #[error("squared norm drifted from 1: {norm} at step {step}")]
     NormDrift { step: u64, norm: f64 },
 }
 
