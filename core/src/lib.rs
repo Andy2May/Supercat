@@ -22,7 +22,10 @@
 //!   norm check, behind the [`Propagator`](propagator::Propagator) trait;
 //! - [`observables`] — ⟨x⟩, σ_x, ⟨p⟩, σ_p, kinetic/potential/total energy,
 //!   the momentum grid, and window probabilities
-//!   ([`norm_in_range`](observables::norm_in_range));
+//!   ([`norm_in_range`](observables::norm_in_range)), plus the 2D family
+//!   ([`Moments2D`](observables::Moments2D), energies,
+//!   [`momentum_grid_2d`](observables::momentum_grid_2d), and the one-FFT
+//!   [`observables_snapshot_2d`](observables::observables_snapshot_2d));
 //! - [`error`] — the crate-wide [`CoreError`](error::CoreError) and the
 //!   [`Result`](error::Result) alias.
 //!
