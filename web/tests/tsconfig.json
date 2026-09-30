@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    // Tests are checked only, never emitted (vitest/playwright transpile
+    // themselves); noEmit is inherited from the app config but restated
+    // here to make the intent explicit.
+    "noEmit": true,
+    // The e2e specs run in Node (process.env), not the browser.
+    "types": ["node"],
+    // The inherited tsBuildInfoFile points at the app project's file;
+    // give this project its own so the two never collide.
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.tests.tsbuildinfo"
+  },
+  "include": ["**/*.ts"]
+}

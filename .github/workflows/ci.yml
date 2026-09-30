@@ -25,32 +25,40 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo install wasm-pack --version 0.13.1 --locked
       - run: wasm-pack test --node wasm
+      # This job already has wasm-pack and the wasm target, so it is also the
+      # one place per commit that builds the web glue (same command as local
+      # `npm run build:wasm`); the web job downloads the output instead of
+      # rebuilding it.
+      - run: wasm-pack build wasm --target web --out-dir ../web/src/wasm/psiforge-wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psiforge-wasm-web
+          path: web/src/wasm/psiforge-wasm
+          if-no-files-found: error
   web:
+    needs: wasm-test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
-      # The web app imports the gitignored wasm-pack output, so the web job
-      # builds it first (same wasm-pack 0.13.1 / --target web as local
-      # `npm run build:wasm`).
-      - uses: dtolnay/rust-toolchain@stable
+      # The web app imports the gitignored wasm-pack output, which the
+      # wasm-test job built once and uploaded (one wasm-pack build per
+      # commit) — no Rust toolchain needed in this job.
+      - uses: actions/download-artifact@v4
         with:
-          targets: wasm32-unknown-unknown
-      - name: Install wasm-pack 0.13.1 (prebuilt)
-        run: |
-          curl -sSL https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz | tar xz -C "$HOME"
-          echo "$HOME/wasm-pack-v0.13.1-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+          name: psiforge-wasm-web
+          path: web/src/wasm/psiforge-wasm
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run build:wasm
-      # svelte-check + tsc; must run after build:wasm because the check
-      # resolves the gitignored wasm glue .d.ts that wasm-pack emits.
+      # svelte-check + tsc; must run after the wasm package is in place
+      # because the check resolves the gitignored wasm glue .d.ts that
+      # wasm-pack emits.
       - run: npm run check
       - run: npm run build
       - run: npm run test
