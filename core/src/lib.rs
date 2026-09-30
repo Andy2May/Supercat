@@ -26,12 +26,20 @@
 //!   ([`Moments2D`](observables::Moments2D), energies,
 //!   [`momentum_grid_2d`](observables::momentum_grid_2d), and the one-FFT
 //!   [`observables_snapshot_2d`](observables::observables_snapshot_2d));
+//! - [`measurement`] — quantum measurement: deterministic Born-rule sampling
+//!   of position and momentum outcomes
+//!   ([`sample_position`](measurement::sample_position),
+//!   [`sample_momentum`](measurement::sample_momentum)) and the
+//!   finite-resolution collapses
+//!   [`collapse_position`](measurement::collapse_position) and
+//!   [`collapse_momentum`](measurement::collapse_momentum);
 //! - [`error`] — the crate-wide [`CoreError`](error::CoreError) and the
 //!   [`Result`](error::Result) alias.
 //!
-//! The propagator and observables additionally share an internal `fft`
-//! module (private, `pub(crate)` helpers only) wrapping [`rustfft`]:
-//! normalized round trip, thread-local planner cache, FFT-bin wavenumbers.
+//! The propagator, observables, and measurement modules additionally share
+//! an internal `fft` module (private, `pub(crate)` helpers only) wrapping
+//! [`rustfft`]: normalized round trip, thread-local planner cache, FFT-bin
+//! wavenumbers.
 //!
 //! # Units
 //!
@@ -78,6 +86,7 @@
 pub mod error;
 mod fft;
 pub mod grid;
+pub mod measurement;
 pub mod observables;
 pub mod potential;
 pub mod propagator;
