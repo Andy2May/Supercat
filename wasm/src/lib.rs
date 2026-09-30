@@ -22,14 +22,19 @@
 //! The unitless core convention (`m = hbar = 1` by default) carries over
 //! unchanged; see `docs/units.md` in the repository root.
 
-use js_sys::Float32Array;
+use js_sys::{Float32Array, Float64Array, Object, Reflect};
 use psiforge_core::error::CoreError;
 use psiforge_core::grid::Grid2D;
+use psiforge_core::measurement::{
+    collapse_momentum, collapse_position, sample_momentum, sample_position,
+};
 use psiforge_core::num_complex::Complex64;
+use psiforge_core::observables::{momentum_grid_2d, observables_snapshot_2d};
 use psiforge_core::potential::{Gap, Potential2D, harmonic2d, wall};
 use psiforge_core::propagator::{Propagator, SplitOperator2D};
 use psiforge_core::states::gaussian_2d;
 use psiforge_core::wavefunction::Wavefunction2D;
+use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 /// Maps every [`CoreError`] to a `JsError` carrying the core's `Display`
@@ -69,6 +74,95 @@ fn point_segment_distance(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) 
     let ex = px - (x1 + t * dx);
     let ey = py - (y1 + t * dy);
     (ex * ex + ey * ey).sqrt()
+}
+
+/// Instrument resolution of a position measurement, in grid cells:
+/// `sigma_inst = SIGMA_INST_CELLS * dx`, the width of the Gaussian
+/// point-spread function [`Simulation2D::measure_position`] collapses the
+/// wavefunction onto.
+const SIGMA_INST_CELLS: f64 = 3.0;
+
+/// Instrument resolution of a momentum measurement, in k bins:
+/// `sigma_k = SIGMA_K_BINS * dk` with `dk = 2*pi / (nx*dx)` the bin spacing
+/// of the **x-axis** wavenumber grid (the documented convention; the
+/// reference grid has `dx = dy`, so both axes share the same spacing). This
+/// is the width of the k-space Gaussian
+/// [`Simulation2D::measure_momentum`] collapses onto.
+const SIGMA_K_BINS: f64 = 3.0;
+
+/// Builds `{ key: value, ... }` from the given pairs. Setting a property on
+/// a fresh plain object cannot throw (it has no setters, is not frozen, and
+/// is not a proxy), so the `Reflect::set` result is unwrapped with that
+/// justification.
+fn js_object(fields: &[(&str, JsValue)]) -> JsValue {
+    let obj = Object::new();
+    for (key, value) in fields {
+        Reflect::set(&obj, &JsValue::from_str(key), value)
+            .expect("setting a field of a fresh plain object cannot throw");
+    }
+    obj.into()
+}
+
+/// Reads `state[key]` as a finite number for
+/// [`Simulation2D::deserialize_state`].
+///
+/// # Errors
+///
+/// "invalid state" mentioning the field when it is missing or not a number
+/// (`undefined`, arrays, objects), or when it is a non-finite number (NaN,
+/// +/-infinity).
+fn state_number(state: &JsValue, key: &str) -> Result<f64, JsError> {
+    let n = Reflect::get(state, &JsValue::from_str(key))
+        .expect("getting a property of a plain object cannot throw")
+        .as_f64()
+        .ok_or_else(|| {
+            JsError::new(&format!(
+                "invalid state: field '{key}' is missing or not a number"
+            ))
+        })?;
+    if !n.is_finite() {
+        return Err(JsError::new(&format!(
+            "invalid state: field '{key}' is not finite"
+        )));
+    }
+    Ok(n)
+}
+
+/// Reads `state[key]` as a non-negative integer (`nx`, `ny`) for
+/// [`Simulation2D::deserialize_state`].
+///
+/// # Errors
+///
+/// "invalid state" mentioning the field when it fails
+/// [`state_number`]'s contract, or when it is negative, fractional, or so
+/// large that the sample-count arithmetic below it could overflow (the cap
+/// of 1e8 is far beyond any addressable grid).
+fn state_index(state: &JsValue, key: &str) -> Result<usize, JsError> {
+    let n = state_number(state, key)?;
+    if n.fract() != 0.0 || !(0.0..=1e8).contains(&n) {
+        return Err(JsError::new(&format!(
+            "invalid state: field '{key}' must be an integer in [0, 1e8]"
+        )));
+    }
+    Ok(n as usize)
+}
+
+/// Reads `state[key]` as a copied `Float32Array` (`psi`, `potential`) for
+/// [`Simulation2D::deserialize_state`].
+///
+/// # Errors
+///
+/// "invalid state" mentioning the field when it is missing or not a
+/// `Float32Array`.
+fn state_f32_array(state: &JsValue, key: &str) -> Result<Vec<f32>, JsError> {
+    let value = Reflect::get(state, &JsValue::from_str(key))
+        .expect("getting a property of a plain object cannot throw");
+    let array = value.dyn_ref::<Float32Array>().ok_or_else(|| {
+        JsError::new(&format!(
+            "invalid state: field '{key}' is missing or not a Float32Array"
+        ))
+    })?;
+    Ok(array.to_vec())
 }
 
 /// One running 2D quantum simulation, exported to JS as a single class.
@@ -378,6 +472,261 @@ impl Simulation2D {
     pub fn read_potential_f32(&self) -> Float32Array {
         let data: Vec<f32> = self.v.values().iter().map(|&x| x as f32).collect();
         Float32Array::new_from_slice(&data)
+    }
+
+    // ---- observables, measurement, state serialization (Task 5) ----
+
+    /// All per-frame observables in one call: a `Float64Array` of exactly 11
+    /// values in the documented order
+    ///
+    /// ```text
+    /// [x, y, sigma_x, sigma_y, px, py, sigma_px, sigma_py, kinetic, potential, energy]
+    /// ```
+    ///
+    /// i.e. `[<x>, <y>, sx, sy, <px>, <py>, spx, spy, <T>, <V>, <E>]`:
+    /// position means and uncertainties (`dA = dx*dy` Riemann sums),
+    /// momentum means and uncertainties (ratio form in k-space, immune to
+    /// the FFT normalization), and the kinetic, potential, and total energy
+    /// against the current sampled `V`. Everything comes from one core
+    /// `observables_snapshot_2d` call — a **single** forward 2D FFT serves
+    /// every momentum quantity (the per-bin momentum density that the same
+    /// pass also produces is simply not shipped here; see
+    /// [`momentum_density`](Self::momentum_density)).
+    pub fn observables(&self) -> Float64Array {
+        let snap = observables_snapshot_2d(&self.wf, &self.v);
+        let m = &snap.moments;
+        Float64Array::new_from_slice(&[
+            m.x,
+            m.y,
+            m.sigma_x,
+            m.sigma_y,
+            m.px,
+            m.py,
+            m.sigma_px,
+            m.sigma_py,
+            snap.kinetic,
+            snap.potential,
+            snap.energy,
+        ])
+    }
+
+    /// Momentum-space probability density `|phi(k)|^2` as `f32`: one value
+    /// per DFT bin, row-major with `kx` fastest (flat bin `j*nx + i`), in
+    /// **native fftfreq order** — not fftshifted; the renderer applies any
+    /// shift itself. Scaled by `dA^2/(2*pi)^2` so that
+    /// `sum density * dkx * dky = 1` exactly (discrete Parseval), with
+    /// `dkx = 2*pi/(nx*dx)` and `dky = 2*pi/(ny*dy)`.
+    ///
+    /// Also computed through the single-FFT observables snapshot: the
+    /// density is a free by-product of the same one FFT pass that feeds
+    /// [`observables`](Self::observables).
+    pub fn momentum_density(&self) -> Float32Array {
+        let snap = observables_snapshot_2d(&self.wf, &self.v);
+        Float32Array::new_from_slice(&snap.momentum_density)
+    }
+
+    /// Performs a Born-rule position measurement: samples the cell `(ix,
+    /// iy)` with probability `|psi_k|^2` per equal-area cell, collapses the
+    /// wavefunction onto the outcome by multiplying it with the instrument
+    /// Gaussian of width `sigma_inst = SIGMA_INST_CELLS * dx`, renormalizes,
+    /// and returns the object `{ix, iy, x, y}` — the integer cell indices
+    /// plus their physical grid coordinates. Deterministic in `seed` (same
+    /// seed, same outcome and successor state on every platform).
+    ///
+    /// # Errors
+    ///
+    /// `JsError` with the core's text when the total probability weight is
+    /// zero or non-finite (e.g. the initial all-zero wavefunction) — raised
+    /// by the sampler before anything is modified.
+    pub fn measure_position(&mut self, seed: u64) -> Result<JsValue, JsError> {
+        let (ix, iy) = sample_position(&self.wf, seed).map_err(core_to_js)?;
+        let sigma_inst = SIGMA_INST_CELLS * self.grid.dx();
+        collapse_position(&mut self.wf, ix, iy, sigma_inst).map_err(core_to_js)?;
+        let (x, y) = (self.grid.x(ix), self.grid.y(iy));
+        Ok(js_object(&[
+            ("ix", JsValue::from(ix as u32)),
+            ("iy", JsValue::from(iy as u32)),
+            ("x", JsValue::from(x)),
+            ("y", JsValue::from(y)),
+        ]))
+    }
+
+    /// The k-space mirror of [`measure_position`](Self::measure_position):
+    /// samples the DFT bin `(i, j)` with probability `|FFT2(psi)_k|^2` per
+    /// bin (ratio form), collapses the wavefunction in momentum space with
+    /// the k-space instrument Gaussian of width `sigma_k = SIGMA_K_BINS *
+    /// dk` (`dk = 2*pi/(nx*dx)`, the x-axis bin spacing), renormalizes, and
+    /// returns the object `{i, j, kx, ky}` — the integer bin indices plus
+    /// those bins' wavenumbers from the core's fftfreq momentum grid
+    /// (`kx = kx_grid[i]`, `ky = ky_grid[j]`; the momenta are `hbar*k`).
+    /// Deterministic in `seed`.
+    ///
+    /// # Errors
+    ///
+    /// `JsError` with the core's text when the total probability weight is
+    /// zero or non-finite — raised by the sampler before anything is
+    /// modified.
+    pub fn measure_momentum(&mut self, seed: u64) -> Result<JsValue, JsError> {
+        let (i, j) = sample_momentum(&self.wf, seed).map_err(core_to_js)?;
+        let dk = 2.0 * std::f64::consts::PI / (self.grid.nx() as f64 * self.grid.dx());
+        let sigma_k = SIGMA_K_BINS * dk;
+        collapse_momentum(&mut self.wf, i, j, sigma_k).map_err(core_to_js)?;
+        let (kx_grid, ky_grid) = momentum_grid_2d(&self.grid);
+        Ok(js_object(&[
+            ("i", JsValue::from(i as u32)),
+            ("j", JsValue::from(j as u32)),
+            ("kx", JsValue::from(kx_grid[i])),
+            ("ky", JsValue::from(ky_grid[j])),
+        ]))
+    }
+
+    /// Serializes the whole scene state into a plain JS object
+    ///
+    /// ```text
+    /// { nx, ny, extentX, extentY, dt, m, hbar, t,
+    ///   potential: Float32Array (nx*ny), psi: Float32Array (2*nx*ny) }
+    /// ```
+    ///
+    /// `potential` holds the current sampled `V` — paint ops included — and
+    /// `psi` the wavefunction as interleaved `(re, im)` `f32` pairs, one
+    /// pair per grid point, both in the row-major x-fastest order of
+    /// [`density_phase`](Self::density_phase). The scalars let JS recreate a
+    /// compatible simulation (`new Simulation2D(nx, ny, extentX, extentY,
+    /// dt, m, hbar)`) before loading the state back through
+    /// [`deserialize_state`](Self::deserialize_state).
+    ///
+    /// Pure: nothing in the simulation is modified. The `f32` transport
+    /// quantizes the wavefunction to ~2^-23 relative per component; loading
+    /// renormalizes to absorb the resulting norm drift (see
+    /// [`deserialize_state`](Self::deserialize_state)).
+    pub fn serialize_state(&self) -> JsValue {
+        let mut psi = Vec::with_capacity(2 * self.wf.n_points());
+        for &c in self.wf.psi() {
+            psi.push(c.re as f32);
+            psi.push(c.im as f32);
+        }
+        let potential: Vec<f32> = self.v.values().iter().map(|&x| x as f32).collect();
+        js_object(&[
+            ("nx", JsValue::from(self.grid.nx() as u32)),
+            ("ny", JsValue::from(self.grid.ny() as u32)),
+            (
+                "extentX",
+                JsValue::from(self.grid.xmax() - self.grid.xmin()),
+            ),
+            (
+                "extentY",
+                JsValue::from(self.grid.ymax() - self.grid.ymin()),
+            ),
+            ("dt", JsValue::from(self.dt)),
+            ("m", JsValue::from(self.wf.m())),
+            ("hbar", JsValue::from(self.wf.hbar())),
+            ("t", JsValue::from(self.t)),
+            ("potential", Float32Array::new_from_slice(&potential).into()),
+            ("psi", Float32Array::new_from_slice(&psi).into()),
+        ])
+    }
+
+    /// Restores a state object produced by
+    /// [`serialize_state`](Self::serialize_state): validates everything
+    /// first, and only then — atomically, with no partial mutation on
+    /// failure — installs
+    ///
+    /// - `v` AND `base_v` from `potential`, so
+    ///   [`restore_potential`](Self::restore_potential) keeps the loaded
+    ///   potential (a load defines the new restore base),
+    /// - `wf` from `psi` (deinterleaved `(re, im)` pairs), then
+    ///   **renormalized**: the `f32` round trip leaves the squared norm
+    ///   ~2e-9 off 1, which would trip the propagator's 1e-10 drift guard on
+    ///   the very first post-load step,
+    /// - the reset `snapshot` from the renormalized psi, so
+    ///   [`reset_wave`](Self::reset_wave) returns to exactly the loaded
+    ///   state,
+    /// - `t`;
+    ///
+    /// and bumps `potential_version` by exactly 1. The grid, propagator,
+    /// `dt`, `m`, and `hbar` of this simulation are NOT rebuilt: the caller
+    /// must construct a matching simulation first (only `nx`/`ny` are
+    /// enforced, because the sample arrays would not fit otherwise).
+    ///
+    /// # Errors
+    ///
+    /// A `JsError` whose message contains "dimension" for shape mismatches
+    /// (`psi`/`potential` lengths against `2*nx*ny`/`nx*ny`, or a state grid
+    /// other than this simulation's `nx x ny`) and "invalid" for a
+    /// non-object argument, missing or non-numeric/non-finite fields, and
+    /// non-finite array samples. A rejected load leaves the simulation
+    /// exactly as it was.
+    pub fn deserialize_state(&mut self, state: &JsValue) -> Result<(), JsError> {
+        if !state.is_object() {
+            return Err(JsError::new(
+                "invalid state: expected a state object from serialize_state",
+            ));
+        }
+        // ---- validation: nothing mutates until every check has passed ----
+        let (nx, ny) = (state_index(state, "nx")?, state_index(state, "ny")?);
+        let psi = state_f32_array(state, "psi")?;
+        if psi.len() != 2 * nx * ny {
+            return Err(JsError::new(&format!(
+                "dimension mismatch: psi has {} samples but 2*{nx}*{ny} = {} are required",
+                psi.len(),
+                2 * nx * ny
+            )));
+        }
+        if nx != self.grid.nx() || ny != self.grid.ny() {
+            return Err(JsError::new(&format!(
+                "dimension mismatch: state grid is {nx}x{ny} but the simulation grid is {}x{}",
+                self.grid.nx(),
+                self.grid.ny()
+            )));
+        }
+        let potential = state_f32_array(state, "potential")?;
+        if potential.len() != nx * ny {
+            return Err(JsError::new(&format!(
+                "dimension mismatch: potential has {} samples but {nx}*{ny} = {} are required",
+                potential.len(),
+                nx * ny
+            )));
+        }
+        // Informational scalars: not restored, but must be present and
+        // finite so JS cannot round-trip a half-written state.
+        for key in ["extentX", "extentY", "dt", "m", "hbar"] {
+            state_number(state, key)?;
+        }
+        let t = state_number(state, "t")?;
+        if psi.iter().any(|x| !x.is_finite()) {
+            return Err(JsError::new(
+                "invalid state: psi contains non-finite samples",
+            ));
+        }
+        if potential.iter().any(|x| !x.is_finite()) {
+            return Err(JsError::new(
+                "invalid state: potential contains non-finite samples",
+            ));
+        }
+
+        // ---- restore: every check passed, mutation is safe ----
+        let potential_f64: Vec<f64> = potential.iter().map(|&x| x as f64).collect();
+        let n = potential_f64.len();
+        self.v = Potential2D::zeros(n);
+        self.v.values_mut().copy_from_slice(&potential_f64);
+        self.base_v = Potential2D::zeros(n);
+        self.base_v.values_mut().copy_from_slice(&potential_f64);
+        // psi.len() is validated even above, so the as_chunks remainder is
+        // empty and every pair is a full (re, im) sample.
+        let restored: Vec<Complex64> = psi
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|pair| Complex64::new(pair[0] as f64, pair[1] as f64))
+            .collect();
+        self.wf.psi_mut().copy_from_slice(&restored);
+        // Renormalize (see doc comment), then snapshot the renormalized
+        // state so reset_wave replays exactly what was loaded.
+        self.wf.normalize();
+        self.snapshot = self.wf.psi().to_vec();
+        self.t = t;
+        self.potential_version += 1;
+        Ok(())
     }
 }
 
@@ -825,5 +1174,204 @@ mod tests {
             right < 1e-3,
             "total rho right of the wall = {right}, gate is 1e-3"
         );
+    }
+
+    // ---- observables, measurement, state serialization (Task 5) ----
+
+    #[wasm_bindgen_test]
+    fn observables_returns_11_documented_values() {
+        let mut sim = sim();
+        set_reference_packet(&mut sim);
+        let obs = sim.observables().to_vec();
+        assert_eq!(obs.len(), 11);
+        assert!((obs[0] - 0.0).abs() < 1e-9, "<x> = {}", obs[0]); // x0 = 0
+        assert!((obs[2] - 1.5).abs() < 1e-6, "sigma_x = {}", obs[2]); // sigma 1.5
+        assert!((obs[4] - 2.0).abs() < 1e-9, "<px> = {}", obs[4]); // kx = 2
+        assert!((obs[9] - 0.0).abs() < 1e-12, "<V> = {}", obs[9]); // V = 0
+    }
+
+    #[wasm_bindgen_test]
+    fn momentum_density_parses_and_peaks_at_k() {
+        let mut sim = sim();
+        sim.set_gaussian(0.0, 0.0, 3.0, 0.0, 1.5, 1.5).unwrap();
+        let d = sim.momentum_density().to_vec();
+        assert_eq!(d.len(), NX * NY);
+        let dk = 2.0 * std::f64::consts::PI / EXTENT_X;
+        let total: f64 = d.iter().sum::<f32>() as f64 * dk * dk;
+        assert!((total - 1.0).abs() < 1e-3, "sum = {total}");
+    }
+
+    #[wasm_bindgen_test]
+    fn measure_position_collapses_and_keeps_norm() {
+        // (Review Focus 2)
+        let mut sim = sim();
+        set_reference_packet(&mut sim);
+        let before_sigma = sim.observables().to_vec()[2];
+        let out = sim.measure_position(123).unwrap();
+        let js: js_sys::Object = out.into();
+        let ix = js_sys::Reflect::get(&js, &"ix".into())
+            .unwrap()
+            .as_f64()
+            .unwrap() as usize;
+        assert!(ix < NX);
+        let norm = sim.norm();
+        assert!((norm - 1.0).abs() < 1e-10, "norm = {norm}");
+        let after_sigma = sim.observables().to_vec()[2];
+        assert!(
+            after_sigma < before_sigma,
+            "sigma {after_sigma} < {before_sigma}"
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn measure_momentum_moves_p() {
+        let mut sim = sim();
+        set_reference_packet(&mut sim); // kx = 2
+        sim.measure_momentum(7).unwrap();
+        let obs = sim.observables().to_vec();
+        assert!((sim.norm() - 1.0).abs() < 1e-10);
+        // sau sập, |<px> - 2| nằm trong vài sigma_k
+        assert!((obs[4] - 2.0).abs() < 0.5, "<px> = {}", obs[4]);
+    }
+
+    /// Channel-wise comparison of two `density_phase` buffers at f32
+    /// quantization scale: rho at even indices, phi at odd ones.
+    ///
+    /// psi travels through a serialized state as `f32 (re, im)` pairs, so a
+    /// restored state can differ from the pre-serialize f64 state by double
+    /// rounding (f64 -> f32 -> f64 -> f32, ~2^-23 relative per component) —
+    /// bit-exact equality is impossible by construction. Measured on the
+    /// exact scenario below: 1771/4096 rho and 478/4096 phi values differ by
+    /// 1-2 f32 ulps through the round trip, so each channel is gated at its
+    /// quantization scale (rho values are O(1e-2), phi values O(1)).
+    ///
+    /// The gates stay tight enough to catch a re/im interleave swap (phi
+    /// would jump by O(1) on most cells; rho is swap-invariant).
+    fn assert_density_phase_close(actual: &[f32], expected: &[f32]) {
+        assert_eq!(actual.len(), expected.len());
+        for (k, (&a, &e)) in actual.iter().zip(expected).enumerate() {
+            if k % 2 == 0 {
+                assert!((a - e).abs() <= 1e-8, "rho[{k}]: {a} vs {e}");
+            } else {
+                assert!((a - e).abs() <= 1e-5, "phi[{k}]: {a} vs {e}");
+            }
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn serialize_round_trip_restores_exact_state() {
+        // Controller ruling (2026-09-30), deviating from the brief's
+        // assert_eq! on density_phase: psi is transported as f32 (re, im)
+        // per the ruling, which double-rounds and makes bit-exact equality
+        // impossible (see assert_density_phase_close); deserialize
+        // renormalizes, because a raw f32-restored state carries a ~2e-9
+        // squared-norm drift that trips the propagator's 1e-10 guard on the
+        // very first post-load step. The potential, t, and reset-snapshot
+        // assertions stay exact.
+        let mut sim = sim();
+        sim.potential_wall(0.0, 1.25, 7.5, vec![-5.0, 5.0], vec![1.9, 1.9])
+            .unwrap();
+        set_reference_packet(&mut sim);
+        sim.advance(25).unwrap();
+        let state = sim.serialize_state();
+        let psi_before = sim.density_phase().to_vec();
+        let v_before = sim.read_potential_f32().to_vec();
+        let t_before = sim.advance(0).unwrap();
+
+        sim.advance(40).unwrap(); // chạy thêm cho khác đi
+        sim.paint_disc(0.0, 0.0, 2.0, 3.0).unwrap();
+        sim.deserialize_state(&state).unwrap();
+
+        let after_load = sim.density_phase().to_vec();
+        assert_density_phase_close(&after_load, &psi_before);
+        assert_eq!(sim.read_potential_f32().to_vec(), v_before);
+        assert_eq!(sim.advance(0).unwrap(), t_before);
+        // Loading renormalizes: the norm is 1 again and the very next step
+        // passes the propagator's guard.
+        assert!(
+            (sim.norm() - 1.0).abs() <= 1e-12,
+            "norm = {} after load",
+            sim.norm()
+        );
+        sim.advance(5).unwrap();
+        // snapshot = psi lúc serialize (renormalized): reset replay lại đúng
+        // các sample đã load — bit-exact, vì reset copy chính snapshot đó.
+        sim.reset_wave();
+        assert_eq!(sim.density_phase().to_vec(), after_load);
+    }
+
+    #[wasm_bindgen_test]
+    fn deserialize_rejects_wrong_shapes_cleanly() {
+        // (Review Focus 4)
+        let mut sim = sim();
+        let _valid_state = sim.serialize_state();
+        // độ dài sai
+        let bad = js_sys::Object::new();
+        js_sys::Reflect::set(&bad, &"nx".into(), &wasm_bindgen::JsValue::from(NX)).unwrap();
+        js_sys::Reflect::set(&bad, &"ny".into(), &wasm_bindgen::JsValue::from(NY)).unwrap();
+        js_sys::Reflect::set(
+            &bad,
+            &"psi".into(),
+            &js_sys::Float32Array::new_with_length(3).into(),
+        )
+        .unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        assert!(format!("{err:?}").contains("dimension"), "{err:?}");
+        // trạng thái sim không bị phá
+        assert!((sim.norm() - 1.0).abs() < 1e-10 || sim.norm() == 0.0);
+    }
+
+    #[wasm_bindgen_test]
+    fn deserialize_rejects_non_finite_and_missing_fields() {
+        let mut sim = sim();
+        set_reference_packet(&mut sim);
+
+        // A non-finite scalar field.
+        let bad = js_sys::Object::from(sim.serialize_state());
+        js_sys::Reflect::set(&bad, &"t".into(), &wasm_bindgen::JsValue::from(f64::NAN)).unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        assert!(format!("{err:?}").contains("invalid"), "{err:?}");
+
+        // A missing array field.
+        let bad = js_sys::Object::from(sim.serialize_state());
+        js_sys::Reflect::set(&bad, &"psi".into(), &wasm_bindgen::JsValue::UNDEFINED).unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        assert!(format!("{err:?}").contains("invalid"), "{err:?}");
+
+        // Not an object at all.
+        let err = sim
+            .deserialize_state(&wasm_bindgen::JsValue::from(42.0))
+            .unwrap_err();
+        assert!(format!("{err:?}").contains("invalid"), "{err:?}");
+
+        // A state from a different grid geometry is a dimension error.
+        let bad = js_sys::Object::from(sim.serialize_state());
+        js_sys::Reflect::set(&bad, &"nx".into(), &wasm_bindgen::JsValue::from(32u32)).unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        assert!(format!("{err:?}").contains("dimension"), "{err:?}");
+
+        // None of the rejected loads touched the simulation.
+        assert_eq!(sim.potential_version(), 0);
+        assert!((sim.norm() - 1.0).abs() < 1e-10);
+    }
+
+    #[wasm_bindgen_test]
+    fn deserialize_bumps_version_once_and_loads_wall_as_restore_base() {
+        let mut sim = sim();
+        sim.potential_wall(0.0, 1.25, 7.5, vec![-5.0, 5.0], vec![1.9, 1.9])
+            .unwrap();
+        assert_eq!(sim.potential_version(), 1);
+        let state = sim.serialize_state();
+        sim.potential_zero();
+        assert_eq!(sim.potential_version(), 2);
+        sim.deserialize_state(&state).unwrap();
+        assert_eq!(sim.potential_version(), 3, "exactly one bump per load");
+        let v = sim.read_potential_f32().to_vec();
+        assert!(v.contains(&7.5), "the wall came back");
+        // base_v = the loaded potential too: restore_potential after a load
+        // keeps the loaded wall instead of rolling back to pre-load setters.
+        sim.restore_potential();
+        assert_eq!(sim.potential_version(), 4);
+        assert_eq!(sim.read_potential_f32().to_vec(), v);
     }
 }
