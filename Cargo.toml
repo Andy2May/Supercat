@@ -1,3 +1,10 @@
 [workspace]
 resolver = "3"
 members = ["core", "wasm"]
+
+# Controller ruling after the Task-11 perf gate: cheapest optimization pass
+# for the wasm release build (wasm-pack builds this workspace's wasm member
+# with --release). Slower builds, faster propagator.
+[profile.release]
+lto = true
+codegen-units = 1

@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Perf probe (Task 11, H2 gate): the 512^2 default grid under `?perf=1`,
- * sampled for ~6 s off `window.__psiforgePerf` (fps EMA / last substeps /
- * post->frame latency). This spec NEVER asserts a threshold — it only proves
- * the page ran and produced numbers; the median is read by a human (or the
- * controller) off stdout.
+ * Perf probe (Task 11, H2 gate): the default grid under `?perf=1` (256^2
+ * after the controller ruling on the gate; 512 remains available via
+ * `?grid=512` for strong machines), sampled for ~6 s off
+ * `window.__psiforgePerf` (fps EMA / last substeps / post->frame latency).
+ * This spec NEVER asserts a threshold — it only proves the page ran and
+ * produced numbers; the median is read by a human (or the controller) off
+ * stdout.
  *
  * Exclusion from `npm run test:e2e` / CI (see playwright.config.ts): npm
  * sets `npm_lifecycle_event` to the script being run, so the skip is off
@@ -24,7 +26,7 @@ function median(values: number[]): number {
   return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-test('perf probe: 512^2 grid produces fps/substeps/workerMs numbers', async ({
+test('perf probe: default 256^2 grid produces fps/substeps/workerMs numbers', async ({
   page,
 }) => {
   const pageErrors: string[] = []
@@ -57,8 +59,8 @@ test('perf probe: 512^2 grid produces fps/substeps/workerMs numbers', async ({
     workerMs: median(measured.map((s) => s.workerMs)),
   }
   // eslint-disable-next-line no-console -- the probe's whole point: numbers on stdout
-  console.log('__psiforgePerf@512^2 samples:', JSON.stringify(samples))
-  console.log('__psiforgePerf@512^2 medians:', JSON.stringify(medians))
+  console.log('__psiforgePerf@default-256^2 samples:', JSON.stringify(samples))
+  console.log('__psiforgePerf@default-256^2 medians:', JSON.stringify(medians))
 
   // The page ran and produced numbers — nothing more (CI never gates on perf).
   expect(pageErrors).toEqual([])

@@ -8,7 +8,12 @@
 export const DEFAULTS = {
   extent: 40,
   dt: 0.005,
-  speed: 4,
+  /**
+   * Sim-seconds per wall-second. Controller ruling after the Task-11 perf
+   * gate (512^2 measured ~4 fps): 1 — ~3 substeps/frame, a watchable demo
+   * pace that leaves headroom at the default 256^2 grid.
+   */
+  speed: 1,
   /** Unitless core convention (`docs/units.md`): m = hbar = 1. */
   m: 1,
   hbar: 1,
@@ -17,18 +22,21 @@ export const DEFAULTS = {
   kMax: 15,
 } as const
 
-/** Grid sizes the `?grid=` URL param may select (M1 perf gate targets 512). */
+/**
+ * Grid sizes the `?grid=` URL param may select. 512 stays available for
+ * strong machines (spec v1 §11 pre-authorizes downgrading the default).
+ */
 export const GRID_SIZES = [128, 256, 512] as const
 
 export type GridSize = (typeof GRID_SIZES)[number]
 
 /**
  * Parses the `?grid=` param: one of {@link GRID_SIZES} verbatim, anything
- * else (missing, unsupported, malformed) falls back to the 512 default.
+ * else (missing, unsupported, malformed) falls back to the 256 default.
  */
 export function parseGridParam(value: string | null): GridSize {
   const n = value === null ? Number.NaN : Number(value)
-  return (GRID_SIZES as readonly number[]).includes(n) ? (n as GridSize) : 512
+  return (GRID_SIZES as readonly number[]).includes(n) ? (n as GridSize) : 256
 }
 
 /**

@@ -3,7 +3,7 @@
  * instance). Lives in a `.svelte.ts` module — the only file extension the
  * Svelte compiler processes for runes outside components.
  *
- * Responsibilities: worker lifecycle (`init` from `?grid=N`, default 512,
+ * Responsibilities: worker lifecycle (`init` from `?grid=N`, default 256,
  * accept 128/256/512; `destroy()` terminates), the reactive surface the UI
  * reads (`running`, `t`, `norm`, `frames`, `fatal`, perf stats), `send(msg)`
  * for every MainToWorker message, and `onFrame(cb)` for the render loop.

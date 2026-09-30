@@ -91,7 +91,8 @@ export class HeatmapRenderer {
   /**
    * Draws one frame. `potentialMax` scales the V overlay (the caller tracks
    * the potential's max magnitude); it must be > 0 whenever the potential is
-   * non-zero.
+   * non-zero. A zero value (all-zero V) is safe: the shader clamps its
+   * divisor away from zero.
    */
   draw(potentialMax: number): void {
     const gl = this.gl

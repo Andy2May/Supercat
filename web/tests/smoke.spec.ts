@@ -28,7 +28,7 @@ test('worker physics renders: t/norm advance, pause freezes frames, no errors', 
     )
     .toBeGreaterThan(10)
 
-  // After ~2 s at speed 4 the wavefunction has advanced thousands of
+  // After ~2 s at speed 1 the wavefunction has advanced hundreds of
   // propagator steps: t moves, norm stays 1, |psi|^2 stays populated.
   await page.waitForTimeout(2_000)
   const hook = await page.evaluate(() => window.__psiforge)

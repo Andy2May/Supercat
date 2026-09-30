@@ -71,22 +71,23 @@ describe('screenToGrid', () => {
 })
 
 describe('parseGridParam', () => {
-  it('null (absent ?grid) defaults to 512', () => {
-    expect(parseGridParam(null)).toBe(512)
+  it('null (absent ?grid) defaults to 256', () => {
+    expect(parseGridParam(null)).toBe(256)
   })
 
   it('accepts the three supported sizes verbatim', () => {
     expect(parseGridParam('128')).toBe(128)
     expect(parseGridParam('256')).toBe(256)
+    // 512 stays available for strong machines (spec v1 §11).
     expect(parseGridParam('512')).toBe(512)
   })
 
-  it('rejects anything else back to the 512 default', () => {
-    expect(parseGridParam('1024')).toBe(512)
-    expect(parseGridParam('64')).toBe(512)
-    expect(parseGridParam('abc')).toBe(512)
-    expect(parseGridParam('')).toBe(512)
-    expect(parseGridParam('-512')).toBe(512)
+  it('rejects anything else back to the 256 default', () => {
+    expect(parseGridParam('1024')).toBe(256)
+    expect(parseGridParam('64')).toBe(256)
+    expect(parseGridParam('abc')).toBe(256)
+    expect(parseGridParam('')).toBe(256)
+    expect(parseGridParam('-512')).toBe(256)
   })
 
   it('GRID_SIZES matches the supported set', () => {
@@ -128,7 +129,7 @@ describe('DEFAULTS', () => {
     expect(DEFAULTS).toEqual({
       extent: 40,
       dt: 0.005,
-      speed: 4,
+      speed: 1,
       m: 1,
       hbar: 1,
       sigmaMin: 0.5,
