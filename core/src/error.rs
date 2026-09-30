@@ -15,6 +15,18 @@ pub enum CoreError {
         "invalid grid: n={n}, xmin={xmin}, xmax={xmax} (need n >= 2 and xmax > xmin, all finite)"
     )]
     InvalidGrid { n: usize, xmin: f64, xmax: f64 },
+    #[error(
+        "invalid 2D grid: nx={nx}, ny={ny}, xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax} \
+         (need nx >= 2, ny >= 2, xmax > xmin, ymax > ymin, all finite)"
+    )]
+    InvalidGrid2D {
+        nx: usize,
+        ny: usize,
+        xmin: f64,
+        xmax: f64,
+        ymin: f64,
+        ymax: f64,
+    },
     #[error("dimension mismatch: expected {expected} points, got {got}")]
     DimensionMismatch { expected: usize, got: usize },
     #[error("non-finite value in {what} at index {index}")]
@@ -34,3 +46,23 @@ pub enum CoreError {
 
 /// Convenient result alias used throughout the crate.
 pub type Result<T> = std::result::Result<T, CoreError>;
+
+#[cfg(test)]
+mod tests {
+    use super::CoreError;
+
+    #[test]
+    fn invalid_grid_2d_message_lists_both_axes() {
+        let err = CoreError::InvalidGrid2D {
+            nx: 1,
+            ny: 1,
+            xmin: f64::NAN,
+            xmax: 1.0,
+            ymin: 0.0,
+            ymax: 1.0,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("nx"), "message should mention nx: {msg}");
+        assert!(msg.contains("ny"), "message should mention ny: {msg}");
+    }
+}

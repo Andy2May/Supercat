@@ -6,7 +6,8 @@
 //!
 //! # Modules
 //!
-//! - [`grid`] — the uniform 1D spatial grid [`Grid1D`](grid::Grid1D);
+//! - [`grid`] — the uniform 1D and 2D spatial grids
+//!   [`Grid1D`](grid::Grid1D) and [`Grid2D`](grid::Grid2D);
 //! - [`wavefunction`] — complex ψ sampled on a grid, with the dx-weighted
 //!   Riemann-sum norm ([`Wavefunction`](wavefunction::Wavefunction));
 //! - [`states`] — canonical initial states, currently the Gaussian packet
