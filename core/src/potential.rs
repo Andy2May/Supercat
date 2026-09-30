@@ -2,7 +2,7 @@
 //! [`Grid2D`](crate::grid::Grid2D).
 
 use crate::error::{CoreError, Result};
-use crate::grid::Grid1D;
+use crate::grid::{Grid1D, Grid2D};
 
 /// Potential energy `V(x)` sampled on a grid: one `f64` per grid point, so
 /// `values.len()` equals the grid's `n`. `V = 0` everywhere is the free
@@ -143,11 +143,11 @@ pub fn well_chain(grid: &Grid1D, count: usize, width: f64, depth: f64, period: f
 /// is `V` at the point `(grid.x(i), grid.y(j))`.
 ///
 /// Like the 1D [`Potential`], potentials are stored as plain sampled arrays
-/// rather than analytic closures: 2D analytic builders arrive in a later
-/// milestone and just fill a `Vec<f64>` once, and hand-drawn potentials in
-/// later milestones are arrays too. Mixing two potentials (e.g. an analytic
-/// background plus a hand-drawn perturbation) is the elementwise
-/// [`Potential2D::add`].
+/// rather than analytic closures: the analytic 2D builders below
+/// ([`harmonic2d`], [`finite_well2d`], [`wall`]) just fill a `Vec<f64>`
+/// once, and hand-drawn potentials in later milestones are arrays too.
+/// Mixing two potentials (e.g. an analytic background plus a hand-drawn
+/// perturbation) is the elementwise [`Potential2D::add`].
 pub struct Potential2D {
     values: Vec<f64>,
 }
@@ -161,9 +161,11 @@ impl Potential2D {
         }
     }
 
-    /// Wraps raw sampled values, no validation. Test support only: the 2D
-    /// analytic builders arrive in a later milestone, so 2D tests elsewhere
-    /// in the crate (e.g. the propagator) assemble their samples by hand.
+    /// Wraps raw sampled values, no validation. Test support only: the
+    /// analytic builders above cover the standard shapes, but tests that
+    /// need arbitrary injected samples (e.g. the propagator's
+    /// NaN-poisoned-potential guard test) still assemble their `Vec<f64>`
+    /// by hand.
     #[cfg(test)]
     pub(crate) fn from_values(values: Vec<f64>) -> Self {
         Self { values }
@@ -207,6 +209,77 @@ impl Potential2D {
             .collect();
         Ok(Potential2D { values })
     }
+}
+
+/// 2D harmonic oscillator potential, radial in the plane:
+/// `V(x_i, y_j) = 1/2 * m * omega^2 * (x_i^2 + y_j^2)`. The 2D counterpart
+/// of the 1D [`harmonic`].
+pub fn harmonic2d(grid: &Grid2D, m: f64, omega: f64) -> Potential2D {
+    let mut values = Vec::with_capacity(grid.nx() * grid.ny());
+    for j in 0..grid.ny() {
+        let y = grid.y(j);
+        for i in 0..grid.nx() {
+            let x = grid.x(i);
+            values.push(0.5 * m * omega * omega * (x * x + y * y));
+        }
+    }
+    Potential2D { values }
+}
+
+/// 2D finite square well: `V = -depth` inside the rectangle
+/// `|x - cx| < wx / 2` AND `|y - cy| < wy / 2`, `V = 0` outside. Both axes
+/// use the same half-open [`inside_window`] convention as the 1D builders,
+/// so a point exactly on any rectangle edge is *outside*. (Named
+/// `finite_well2d` to avoid clashing with the 1D [`finite_well`] in this
+/// module.)
+pub fn finite_well2d(grid: &Grid2D, cx: f64, cy: f64, wx: f64, wy: f64, depth: f64) -> Potential2D {
+    let mut values = Vec::with_capacity(grid.nx() * grid.ny());
+    for j in 0..grid.ny() {
+        let in_y = inside_window(grid.y(j), cy, wy);
+        for i in 0..grid.nx() {
+            values.push(if in_y && inside_window(grid.x(i), cx, wx) {
+                -depth
+            } else {
+                0.0
+            });
+        }
+    }
+    Potential2D { values }
+}
+
+/// A horizontal gap punched through a [`wall`]: the band
+/// `|y - center_y| < width / 2` (the same half-open window convention as
+/// every other builder — a point exactly on the band edge is *not* in the
+/// gap) is left at `V = 0`, letting particles pass.
+pub struct Gap {
+    /// y-coordinate of the gap's center.
+    pub center_y: f64,
+    /// Full vertical extent of the gap; the open band spans
+    /// `(center_y - width/2, center_y + width/2)`.
+    pub width: f64,
+}
+
+/// A vertical wall of potential `value`: `V = value` where
+/// `|x - x_center| < thickness / 2` AND the point does not fall inside any
+/// of the `gaps` (each `|y - gap.center_y| < gap.width / 2`); `V = 0`
+/// elsewhere. Slits for the double-slit experiment are a wall with two
+/// [`Gap`]s.
+pub fn wall(grid: &Grid2D, x_center: f64, thickness: f64, value: f64, gaps: &[Gap]) -> Potential2D {
+    let mut values = Vec::with_capacity(grid.nx() * grid.ny());
+    for j in 0..grid.ny() {
+        let y = grid.y(j);
+        let in_gap = gaps.iter().any(|g| inside_window(y, g.center_y, g.width));
+        for i in 0..grid.nx() {
+            values.push(
+                if !in_gap && inside_window(grid.x(i), x_center, thickness) {
+                    value
+                } else {
+                    0.0
+                },
+            );
+        }
+    }
+    Potential2D { values }
 }
 
 #[cfg(test)]
@@ -360,6 +433,16 @@ mod tests {
 
     mod potential2d {
         use super::*;
+        use crate::grid::Grid2D;
+
+        /// Reference 2D test grid: 512 × 512 points on `[-16, 16)^2`, so
+        /// `dx = dy = 0.0625 = 1/16` (exact in binary). Index landmarks used
+        /// throughout: `x(i) = -16 + i/16`, so `x(248) = -0.5`,
+        /// `x(249) = -0.4375`, `x(263) = +0.4375`, `x(264) = +0.5` — and the
+        /// same for `y(j)`.
+        fn reference_grid() -> Grid2D {
+            Grid2D::new(512, 512, -16.0, 16.0, -16.0, 16.0).expect("reference grid is valid")
+        }
 
         #[test]
         fn zeros_is_free_particle_potential() {
@@ -375,10 +458,10 @@ mod tests {
 
         #[test]
         fn add_is_elementwise() {
-            // The 2D builders arrive in a later milestone, so the sampled
-            // arrays are constructed directly: `a` holds the harmonic and
-            // `b` the barrier samples of the 1D elementwise test, as an
-            // 8-point 2D potential would store them.
+            // Hand-assembled samples (not every test potential is an
+            // analytic shape): `a` holds the harmonic and `b` the barrier
+            // samples of the 1D elementwise test, as an 8-point 2D potential
+            // would store them.
             let a = Potential2D {
                 values: vec![0.0, 0.5, 2.0, 4.5, 9.5, 12.5, 18.0, 24.5],
             };
@@ -408,6 +491,191 @@ mod tests {
                     got: 4
                 })
             ));
+        }
+
+        #[test]
+        fn harmonic2d_matches_half_r_squared_at_sample_points() {
+            let grid = reference_grid();
+            let v = harmonic2d(&grid, 1.0, 1.0);
+            assert_eq!(v.len(), 512 * 512);
+            for &(i, j) in &[(0, 0), (1, 2), (100, 200), (256, 256), (511, 511)] {
+                let (x, y) = (grid.x(i), grid.y(j));
+                let expected = 0.5 * (x * x + y * y);
+                let got = v.values()[grid.index(i, j)];
+                assert!(
+                    (got - expected).abs() < 1e-12,
+                    "V[({i}, {j})] = {got}, expected {expected}"
+                );
+            }
+        }
+
+        #[test]
+        fn harmonic2d_scales_with_mass_and_omega() {
+            let grid = reference_grid();
+            let v = harmonic2d(&grid, 2.0, 3.0);
+            let (i, j) = (100, 200); // (x, y) = (-9.375, -3.5)
+            let (x, y) = (grid.x(i), grid.y(j));
+            let expected = 0.5 * 2.0 * 3.0 * 3.0 * (x * x + y * y);
+            assert!(
+                (v.values()[grid.index(i, j)] - expected).abs() < 1e-12,
+                "V[({i}, {j})] = {}, expected {expected}",
+                v.values()[grid.index(i, j)]
+            );
+        }
+
+        #[test]
+        fn finite_well2d_is_minus_depth_inside_half_open_rectangle() {
+            // Window (-0.5, 0.5) × (-0.5, 0.5): x(248) = -0.5 and
+            // x(264) = +0.5 sit exactly on the edges (outside), while
+            // x(249) = -0.4375 and x(263) = +0.4375 are the nearest inside
+            // points — and the same for y.
+            let grid = reference_grid();
+            let v = finite_well2d(&grid, 0.0, 0.0, 1.0, 1.0, 2.5);
+            assert_eq!(v.len(), 512 * 512);
+            // Near-inside points on both axes carry the full depth.
+            assert_eq!(v.values()[grid.index(249, 256)], -2.5);
+            assert_eq!(v.values()[grid.index(263, 256)], -2.5);
+            assert_eq!(v.values()[grid.index(256, 249)], -2.5);
+            assert_eq!(v.values()[grid.index(256, 263)], -2.5);
+            assert_eq!(v.values()[grid.index(249, 249)], -2.5);
+            // Exactly on an edge -> outside (half-open window).
+            assert_eq!(v.values()[grid.index(248, 256)], 0.0);
+            assert_eq!(v.values()[grid.index(264, 256)], 0.0);
+            assert_eq!(v.values()[grid.index(256, 248)], 0.0);
+            assert_eq!(v.values()[grid.index(256, 264)], 0.0);
+            assert_eq!(v.values()[grid.index(248, 248)], 0.0);
+            assert_eq!(v.values()[grid.index(0, 0)], 0.0);
+            // Hand count: 15 x-points (249..=263) × 15 y-points = 225 inside.
+            assert_eq!(v.values().iter().filter(|&&x| x == -2.5).count(), 225);
+            assert!(v.values().iter().all(|&x| x == 0.0 || x == -2.5));
+        }
+
+        #[test]
+        fn finite_well2d_counts_off_center_rectangle_points() {
+            // Window (0, 2) × (-2.5, -1.5): x(257) = 0.0625 .. x(287) = 1.9375
+            // (31 points, x(256) = 0 and x(288) = 2 sit on the edges), and
+            // y(217) = -2.4375 .. y(231) = -1.5625 (15 points, y(216) = -2.5
+            // and y(232) = -1.5 on the edges). Hand count: 31 × 15 = 465.
+            let grid = reference_grid();
+            let v = finite_well2d(&grid, 1.0, -2.0, 2.0, 1.0, 1.0);
+            assert_eq!(v.values()[grid.index(257, 224)], -1.0);
+            assert_eq!(v.values()[grid.index(287, 231)], -1.0);
+            // Exactly on the x edge, y inside -> outside.
+            assert_eq!(v.values()[grid.index(256, 224)], 0.0);
+            assert_eq!(v.values()[grid.index(288, 224)], 0.0);
+            // Exactly on the y edge, x inside -> outside.
+            assert_eq!(v.values()[grid.index(257, 216)], 0.0);
+            assert_eq!(v.values()[grid.index(257, 232)], 0.0);
+            assert_eq!(v.values().iter().filter(|&&x| x == -1.0).count(), 465);
+        }
+
+        #[test]
+        fn wall_without_gaps_is_one_contiguous_run_per_row() {
+            // Wall band (-0.5, 0.5) in x, full height, no gaps: every row
+            // holds exactly one run of 15 points (249..=263).
+            let grid = reference_grid();
+            let v = wall(&grid, 0.0, 1.0, 7.5, &[]);
+            assert_eq!(v.len(), 512 * 512);
+            assert!(v.values().iter().all(|&x| x == 0.0 || x == 7.5));
+            for j in 0..grid.ny() {
+                let row = &v.values()[j * grid.nx()..(j + 1) * grid.nx()];
+                assert_eq!(runs(row, 7.5), vec![(249, 263)], "row {j}");
+                // Exactly on the band edges -> outside (half-open window).
+                assert_eq!(row[248], 0.0);
+                assert_eq!(row[264], 0.0);
+            }
+            // Hand count: 15 x-points × 512 rows.
+            assert_eq!(v.values().iter().filter(|&&x| x == 7.5).count(), 15 * 512);
+        }
+
+        #[test]
+        fn wall_with_two_gaps_splits_into_three_runs() {
+            // Gaps (-4.5, -3.5) and (3.5, 4.5) in y: j 185..=199 and
+            // j 313..=327 fall inside (15 rows each), while y(184) = -4.5,
+            // y(200) = -3.5, y(312) = 3.5, y(328) = 4.5 sit exactly on the
+            // gap edges and keep the wall.
+            let grid = reference_grid();
+            let gaps = [
+                Gap {
+                    center_y: -4.0,
+                    width: 1.0,
+                },
+                Gap {
+                    center_y: 4.0,
+                    width: 1.0,
+                },
+            ];
+            let v = wall(&grid, 0.0, 1.0, 3.0, &gaps);
+
+            // The column at x = 0 crosses both gaps: 3 runs of wall.
+            let col: Vec<f64> = (0..grid.ny())
+                .map(|j| v.values()[grid.index(256, j)])
+                .collect();
+            assert_eq!(runs(&col, 3.0), vec![(0, 184), (200, 312), (328, 511)]);
+
+            // Half-open gap windows: points exactly on a gap edge are NOT in
+            // the gap, so the wall stands there; mid-gap points are 0.
+            assert_eq!(v.values()[grid.index(256, 184)], 3.0);
+            assert_eq!(v.values()[grid.index(256, 200)], 3.0);
+            assert_eq!(v.values()[grid.index(256, 312)], 3.0);
+            assert_eq!(v.values()[grid.index(256, 328)], 3.0);
+            assert_eq!(v.values()[grid.index(256, 192)], 0.0);
+            assert_eq!(v.values()[grid.index(256, 320)], 0.0);
+
+            // Full-array partition, counted by hand: each gap removes
+            // 15 x-points × 15 y-points = 225 wall samples, so of the
+            // 15 × 512 = 7680 band samples, 7680 - 2 × 225 = 7230 remain.
+            let mut removed_per_gap = [0usize; 2];
+            let mut standing = 0usize;
+            for j in 0..grid.ny() {
+                for i in 0..grid.nx() {
+                    let inside_band = (grid.x(i) - 0.0).abs() < 0.5;
+                    let gap_hit = gaps
+                        .iter()
+                        .position(|g| (grid.y(j) - g.center_y).abs() < g.width / 2.0);
+                    let k = grid.index(i, j);
+                    match (inside_band, gap_hit) {
+                        (false, _) => assert_eq!(v.values()[k], 0.0, "({i}, {j})"),
+                        (true, None) => {
+                            assert_eq!(v.values()[k], 3.0, "({i}, {j})");
+                            standing += 1;
+                        }
+                        (true, Some(g)) => {
+                            assert_eq!(v.values()[k], 0.0, "({i}, {j})");
+                            removed_per_gap[g] += 1;
+                        }
+                    }
+                }
+            }
+            assert_eq!(removed_per_gap, [225, 225]);
+            assert_eq!(standing, 7230);
+        }
+
+        #[test]
+        fn add_composes_two_builder_potentials() {
+            // Harmonic background plus a well: inside the window the sum is
+            // ½(x² + y²) - depth, outside just ½(x² + y²).
+            let grid = reference_grid();
+            let h = harmonic2d(&grid, 1.0, 1.0);
+            let w = finite_well2d(&grid, 0.0, 0.0, 2.0, 2.0, 1.0);
+            let sum = h.add(&w).expect("same grid, lengths match");
+            assert_eq!(sum.len(), 512 * 512);
+            for &(i, j) in &[(0, 0), (249, 249), (256, 256), (271, 271), (300, 400)] {
+                let (x, y) = (grid.x(i), grid.y(j));
+                let harmonic = 0.5 * (x * x + y * y);
+                // Well window is (-1, 1) × (-1, 1): x(240) = -1 and
+                // x(272) = +1 sit on the edges, so 241..=271 is inside.
+                let inside = (x - 0.0).abs() < 1.0 && (y - 0.0).abs() < 1.0;
+                let expected = if inside { harmonic - 1.0 } else { harmonic };
+                let got = sum.values()[grid.index(i, j)];
+                assert!(
+                    (got - expected).abs() < 1e-12,
+                    "sum[({i}, {j})] = {got}, expected {expected}"
+                );
+            }
+            // `add` consumes neither operand.
+            assert_eq!(w.values()[grid.index(256, 256)], -1.0);
+            assert_eq!(h.len(), 512 * 512);
         }
     }
 }

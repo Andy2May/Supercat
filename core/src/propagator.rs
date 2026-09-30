@@ -533,7 +533,7 @@ mod tests {
     mod propagator2d {
         use super::*;
         use crate::grid::Grid2D;
-        use crate::potential::Potential2D;
+        use crate::potential::{Potential2D, harmonic2d};
         use crate::wavefunction::Wavefunction2D;
         use std::f64::consts::PI;
 
@@ -546,20 +546,6 @@ mod tests {
 
         fn reference_grid() -> Grid2D {
             Grid2D::new(NX, NY, XMIN, XMAX, YMIN, YMAX).expect("reference grid is valid")
-        }
-
-        /// Test-local harmonic potential `V(x, y) = (x^2 + y^2) / 2` for
-        /// `m = omega = 1`: the 2D analytic builders arrive in a later
-        /// milestone, so the samples are filled by hand.
-        fn harmonic_local(grid: &Grid2D) -> Potential2D {
-            let mut values = vec![0.0; grid.nx() * grid.ny()];
-            for j in 0..grid.ny() {
-                for i in 0..grid.nx() {
-                    let (x, y) = (grid.x(i), grid.y(j));
-                    values[grid.index(i, j)] = 0.5 * (x * x + y * y);
-                }
-            }
-            Potential2D::from_values(values)
         }
 
         /// Analytic 2D harmonic-oscillator ground state
@@ -578,7 +564,7 @@ mod tests {
                 .collect();
             let mut wf = Wavefunction2D::new(grid, psi, 1.0, 1.0).expect("ground state is valid");
             wf.normalize();
-            let v = harmonic_local(wf.grid());
+            let v = harmonic2d(wf.grid(), 1.0, 1.0);
             (wf, v)
         }
 
@@ -668,15 +654,11 @@ mod tests {
         #[test]
         fn non_finite_potential_is_rejected_before_mutating() {
             let (mut wf, _) = ho_ground_state_2d();
-            // The harmonic samples with one point poisoned: the guard must
-            // name exactly that index and leave psi untouched.
-            let mut values = Vec::with_capacity(NX * NY);
-            for j in 0..NY {
-                for i in 0..NX {
-                    let (x, y) = (wf.grid().x(i), wf.grid().y(j));
-                    values.push(0.5 * (x * x + y * y));
-                }
-            }
+            // The harmonic builder's samples with one point poisoned: the
+            // guard must name exactly that index and leave psi untouched.
+            // Arbitrary injection is why `from_values` still exists — no
+            // analytic builder can produce a NaN at a chosen index.
+            let mut values = harmonic2d(wf.grid(), 1.0, 1.0).values().to_vec();
             let expected_index = wf.grid().index(7, 5);
             values[expected_index] = f64::NAN;
             let v = Potential2D::from_values(values);
