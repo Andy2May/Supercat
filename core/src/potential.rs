@@ -1,4 +1,5 @@
-//! Spatial potential energy sampled on a [`Grid1D`].
+//! Spatial potential energy sampled on a [`Grid1D`] or a
+//! [`Grid2D`](crate::grid::Grid2D).
 
 use crate::error::{CoreError, Result};
 use crate::grid::Grid1D;
@@ -131,6 +132,73 @@ pub fn well_chain(grid: &Grid1D, count: usize, width: f64, depth: f64, period: f
         values.push(if inside_any { -depth } else { 0.0 });
     }
     Potential { values }
+}
+
+/// Potential energy `V(x, y)` sampled on a 2D grid: one `f64` per grid
+/// point, so `values.len()` equals the grid's `nx * ny`. `V = 0` everywhere
+/// is the free particle.
+///
+/// The samples are laid out row-major (x-fastest), matching
+/// [`Grid2D::index`](crate::grid::Grid2D::index): `values()[grid.index(i, j)]`
+/// is `V` at the point `(grid.x(i), grid.y(j))`.
+///
+/// Like the 1D [`Potential`], potentials are stored as plain sampled arrays
+/// rather than analytic closures: 2D analytic builders arrive in a later
+/// milestone and just fill a `Vec<f64>` once, and hand-drawn potentials in
+/// later milestones are arrays too. Mixing two potentials (e.g. an analytic
+/// background plus a hand-drawn perturbation) is the elementwise
+/// [`Potential2D::add`].
+pub struct Potential2D {
+    values: Vec<f64>,
+}
+
+impl Potential2D {
+    /// The free-particle potential: `n` zero samples, one per grid point
+    /// (`n = nx * ny` on a 2D grid).
+    pub fn zeros(n: usize) -> Self {
+        Self {
+            values: vec![0.0; n],
+        }
+    }
+
+    /// The sampled values, one per grid point, row-major (x-fastest).
+    pub fn values(&self) -> &[f64] {
+        &self.values
+    }
+
+    /// Number of samples (equals the grid's `nx * ny`).
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    /// Whether there are no samples.
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    /// Elementwise sum `self + other` — how two sampled potentials compose
+    /// (e.g. an analytic background plus a hand-drawn perturbation).
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::DimensionMismatch`] when the two potentials have
+    /// different lengths, i.e. they live on different grids. Same law as
+    /// [`Potential::add`].
+    pub fn add(&self, other: &Potential2D) -> Result<Potential2D> {
+        if self.len() != other.len() {
+            return Err(CoreError::DimensionMismatch {
+                expected: self.len(),
+                got: other.len(),
+            });
+        }
+        let values = self
+            .values
+            .iter()
+            .zip(&other.values)
+            .map(|(a, b)| a + b)
+            .collect();
+        Ok(Potential2D { values })
+    }
 }
 
 #[cfg(test)]
@@ -280,5 +348,58 @@ mod tests {
                 got: 8
             })
         ));
+    }
+
+    mod potential2d {
+        use super::*;
+
+        #[test]
+        fn zeros_is_free_particle_potential() {
+            // One sample per grid point: n = nx * ny = 8 * 4 = 32.
+            let v = Potential2D::zeros(32);
+            assert_eq!(v.len(), 32);
+            assert!(!v.is_empty());
+            assert!(v.values().iter().all(|&x| x == 0.0));
+            let empty = Potential2D::zeros(0);
+            assert!(empty.is_empty());
+            assert_eq!(empty.len(), 0);
+        }
+
+        #[test]
+        fn add_is_elementwise() {
+            // The 2D builders arrive in a later milestone, so the sampled
+            // arrays are constructed directly: `a` holds the harmonic and
+            // `b` the barrier samples of the 1D elementwise test, as an
+            // 8-point 2D potential would store them.
+            let a = Potential2D {
+                values: vec![0.0, 0.5, 2.0, 4.5, 9.5, 12.5, 18.0, 24.5],
+            };
+            let b = Potential2D {
+                values: vec![0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0],
+            };
+            let sum = a.add(&b).expect("same grid, lengths match");
+            let expected = [0.0, 0.5, 2.0, 4.5, 11.0, 12.5, 18.0, 24.5];
+            assert_eq!(sum.values(), expected.as_slice());
+            // `add` consumes neither operand.
+            assert_eq!(a.len(), 8);
+            assert_eq!(b.values()[4], 1.5);
+        }
+
+        #[test]
+        fn add_rejects_length_mismatch() {
+            let a = Potential2D {
+                values: vec![0.0; 8],
+            };
+            let b = Potential2D {
+                values: vec![0.0; 4],
+            };
+            assert!(matches!(
+                a.add(&b),
+                Err(CoreError::DimensionMismatch {
+                    expected: 8,
+                    got: 4
+                })
+            ));
+        }
     }
 }
