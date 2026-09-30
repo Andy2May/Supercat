@@ -8,10 +8,15 @@
   let { id }: { id: PresetId } = $props()
 
   // Local mirror of the language store (same pattern as App.svelte): the
-  // derived values re-translate the moment `setLang` fires.
+  // derived values re-translate the moment `setLang` fires. The subscription
+  // lives in an $effect cleanup because App keys this component on the preset
+  // id — every preset switch remounts it, and each remount must unsubscribe
+  // or the dead card's closure leaks.
   let active = $state(getLang())
-  lang.subscribe((value) => {
-    active = value
+  $effect(() => {
+    return lang.subscribe((value) => {
+      active = value
+    })
   })
 
   const title = $derived.by(() => {

@@ -17,10 +17,15 @@
   }: { onRenderFailed?: (error: unknown) => void } = $props()
 
   // Local mirror of the language store (same pattern as App.svelte): the
-  // derived label below re-translates the moment `setLang` fires.
+  // derived label below re-translates when `setLang` fires. The subscription
+  // lives in an $effect cleanup — hash routing unmounts this component on
+  // every landing visit, and each unmount must unsubscribe or the dead
+  // canvas's closure leaks.
   let active = $state(getLang())
-  lang.subscribe((value) => {
-    active = value
+  $effect(() => {
+    return lang.subscribe((value) => {
+      active = value
+    })
   })
 
   const canvasLabel = $derived.by(() => {

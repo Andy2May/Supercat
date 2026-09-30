@@ -16,9 +16,11 @@ const EN = {
  * Same no-error contract as smoke.spec.ts, with one expected exception: the
  * tile thumbnails ship in Task 10, so every landing load 404s its
  * `thumbs/<id>.png` requests on the dev server for now (each tile hides the
- * img and keeps its styled placeholder). Those resource errors are matched
- * on the message text and its source URL and filtered; everything else —
- * including real JS console errors — still fails the test.
+ * img and keeps its styled placeholder). ONLY that exact shape is ignored —
+ * a console error whose source URL is under thumbs/ AND whose text reports
+ * the 404 status. Arbitrary console errors that merely mention "thumbs/" in
+ * their text, or a thumbnail answered with any other status, still fail the
+ * test. TODO(Task 10): remove this filter when the thumbnail files land.
  */
 function expectNoErrors(page: import('@playwright/test').Page): {
   consoleErrors: string[]
@@ -29,7 +31,7 @@ function expectNoErrors(page: import('@playwright/test').Page): {
   page.on('console', (message) => {
     if (message.type() !== 'error') return
     const url = message.location().url
-    if (message.text().includes('thumbs/') || url.includes('thumbs/')) return
+    if (url.includes('thumbs/') && message.text().includes('404')) return
     consoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => pageErrors.push(String(error)))

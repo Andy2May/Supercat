@@ -3,10 +3,15 @@
   import { LANDING_ORDER, type PresetId } from '../presets/index.js'
 
   // Local mirror of the language store (same pattern as App.svelte): the
-  // derived block below re-translates the moment `setLang` fires.
+  // derived block below re-translates the moment `setLang` fires. The
+  // subscription lives in an $effect cleanup because this component mounts
+  // on every landing visit — without the unsubscribe, each navigation would
+  // leak a subscriber pinning a dead component's closure.
   let active = $state(getLang())
-  lang.subscribe((value) => {
-    active = value
+  $effect(() => {
+    return lang.subscribe((value) => {
+      active = value
+    })
   })
 
   const title = $derived.by(() => {
