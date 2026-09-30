@@ -15,6 +15,15 @@ export interface PsiforgeDebugState {
   maxDensity: number
   potentialVersion: number
   /**
+   * Field-upload path counters (Task 12 review fix R1): how many times the
+   * render loop sent the POSITION field (densityPhase) vs the MOMENTUM
+   * scratch buffer to `uploadField`. Momentum view must upload ZERO
+   * position fields (the display is view-keyed, not cadence-keyed) — the
+   * e2e pins exactly that, so the k-space/position strobing class cannot
+   * regress silently. Mutated in place; never reset (monotone counters).
+   */
+  fieldUploads: { position: number; momentum: number }
+  /**
    * Row-brightness probes for the e2e y-orientation trap: screen fraction
    * (0 = canvas top) -> mean brightness [0, 1] of that row in the last
    * drawn frame. A key's presence (inserted by `window.__psiforgeReadRow`)
@@ -41,6 +50,7 @@ function createDebugState(): PsiforgeDebugState {
     norm: 0,
     maxDensity: 0,
     potentialVersion: 0,
+    fieldUploads: { position: 0, momentum: 0 },
     rowBrightness: new Map(),
   }
   if (typeof window !== 'undefined') {

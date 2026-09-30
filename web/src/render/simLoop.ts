@@ -54,15 +54,20 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
    * the worker ships a fresh (transferred) shifted |phi(k)|^2 every cadence
    * frame, this loop copies it into (v, 0) RG32F pairs and never reallocates
    * (one 2*nx*ny allocation for the whole session; re-sized only if the grid
-   * changed). `momentumViewActive` tracks which space the LAST displayed
-   * frame belonged to — it drives the u_showV toggle and the switch-back
-   * potential re-upload below. `momentumDisplayMax` is a SEPARATE
-   * auto-exposure EMA: |phi(k)|^2 lives on a completely different physical
-   * scale than |psi(x)|^2 (dA^2/(2*pi)^2-scaled bins), so the position peak
-   * would either saturate or black out the k-space picture.
+   * changed). `showingMomentum` is VIEW-keyed, not frame-keyed (review fix
+   * R1): it mirrors `store.view === 'momentum'` and stays true across the 3
+   * in-between cadence frames — the worker attaches momentumDensity only
+   * every 4th frame, so keying the display to the frame would strobe
+   * k-space/position³ and re-fire the u_showV toggle + switch-back potential
+   * re-upload at every cadence boundary. It drives the u_showV toggle, the
+   * one-shot switch-back re-upload, and the draw's exposure reference.
+   * `momentumDisplayMax` is a SEPARATE auto-exposure EMA: |phi(k)|^2 lives
+   * on a completely different physical scale than |psi(x)|^2
+   * (dA^2/(2*pi)^2-scaled bins), so the position peak would either saturate
+   * or black out the k-space picture.
    */
   let momentumScratch: Float32Array | undefined
-  let momentumViewActive = false
+  let showingMomentum = false
   let momentumDisplayMax = 0
 
   /**
@@ -115,11 +120,11 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       renderer.uploadPotential(lastPotential, store.grid, store.grid)
       potentialMax = maxAbs(lastPotential)
     }
-    // Re-assert the V-overlay setting for the CURRENT view: a frame that
-    // arrived while the context was lost may have switched spaces without
-    // being able to touch the (dead) renderer — rebuild() alone would then
-    // re-apply the stale pre-switch value.
-    renderer.setShowV(!momentumViewActive)
+    // Re-assert the V-overlay setting for the CURRENT view (read live from
+    // the store — a view flip while the context was lost, possibly while
+    // paused with no frames arriving, must not leave a stale overlay):
+    // rebuild() alone would re-apply the last value actually applied.
+    renderer.setShowV(store.view !== 'momentum')
   }
   canvas.addEventListener('webglcontextlost', onContextLost)
   canvas.addEventListener('webglcontextrestored', onContextRestored)
@@ -132,15 +137,20 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     fpsEma = nextFpsEma(fpsEma, lastDrawAt === 0 ? 0 : now - lastDrawAt)
     lastDrawAt = now
 
-    // A momentum frame carries BOTH buffers: densityPhase keeps flowing
-    // (charts + instant switch-back), momentumDensity says which space to
-    // DISPLAY this frame.
-    const isMomentum = frame.momentumDensity !== undefined
+    // Which space the canvas DISPLAYS is view-keyed (`store.view`), NOT
+    // frame-keyed (review fix R1): momentumDensity rides the worker's
+    // 4-frame cadence, so "frame has momentumDensity" would strobe
+    // k-space/position³. While the view is momentum, a cadence frame
+    // refreshes the k-space texture and the in-between frames hold it (no
+    // position-field upload, no potential upload); densityPhase still
+    // arrives every frame and its buffer still cycles through the recycle
+    // protocol — position data keeps flowing for charts and switch-back.
+    const viewIsMomentum = store.view === 'momentum'
     displayMax = Math.max(frame.maxDensity, displayMax * 0.97)
     if (frame.potential !== undefined) {
       lastPotential = frame.potential
     }
-    if (isMomentum && frame.momentumDensity !== undefined) {
+    if (viewIsMomentum && frame.momentumDensity !== undefined) {
       // k-space has its own physical scale (dA^2/(2*pi)^2-scaled bins):
       // exposure must track the momentum peak, not the position peak. Same
       // EMA recipe as displayMax.
@@ -152,39 +162,50 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     }
     if (!contextLost) {
       renderer.resize(canvas.clientWidth, canvas.clientHeight)
-      if (isMomentum && frame.momentumDensity !== undefined) {
-        // Copy the transferred array into the reused (v, 0) RG32F scratch
-        // buffer and upload THAT — the worker's copy is then dead to us.
-        if (
-          momentumScratch === undefined ||
-          momentumScratch.length !== 2 * frame.momentumDensity.length
-        ) {
-          momentumScratch = new Float32Array(2 * frame.momentumDensity.length)
+      if (viewIsMomentum) {
+        if (frame.momentumDensity !== undefined) {
+          // Cadence frame: copy the transferred array into the reused
+          // (v, 0) RG32F scratch buffer and upload THAT — the worker's copy
+          // is then dead to us. In-between frames upload nothing and keep
+          // showing the last k-space texture.
+          if (
+            momentumScratch === undefined ||
+            momentumScratch.length !== 2 * frame.momentumDensity.length
+          ) {
+            momentumScratch = new Float32Array(2 * frame.momentumDensity.length)
+          }
+          interleaveScalarToRG(frame.momentumDensity, momentumScratch)
+          renderer.uploadField(momentumScratch, store.grid, store.grid)
+          debugState.fieldUploads.momentum++
         }
-        interleaveScalarToRG(frame.momentumDensity, momentumScratch)
-        renderer.uploadField(momentumScratch, store.grid, store.grid)
-        // No potential upload on k-space frames — V(x) is not a k-space
-        // object; the shader's u_showV keeps it fully hidden.
+        // No potential upload while the view is momentum — V(x) is not a
+        // k-space object; the shader's u_showV keeps it fully hidden for
+        // the WHOLE view duration (one transition, not per cadence frame).
       } else {
+        // A momentumDensity riding this frame (in-flight across the
+        // toggle-off) is ignored: the display follows the user's view.
         renderer.uploadField(frame.densityPhase, store.grid, store.grid)
+        debugState.fieldUploads.position++
         if (frame.potential !== undefined) {
           potentialMax = maxAbs(frame.potential)
           renderer.uploadPotential(frame.potential, store.grid, store.grid)
-        } else if (momentumViewActive && lastPotential !== undefined) {
-          // Switch-back from momentum: the worker (correctly) did not
-          // resend the potential — its version never changed — but the V
-          // overlay must return together with the position view, so force a
-          // re-upload from the Task-2 cache. Runs exactly once per switch.
+        } else if (showingMomentum && lastPotential !== undefined) {
+          // One-shot on the VIEW TRANSITION back: the worker (correctly)
+          // did not resend the potential — its version never changed — but
+          // the V overlay must return together with the position view, so
+          // force a re-upload from the Task-2 cache. `showingMomentum`
+          // clears below, so this fires exactly once per switch-back, not
+          // per frame.
           potentialMax = maxAbs(lastPotential)
           renderer.uploadPotential(lastPotential, store.grid, store.grid)
         }
       }
-      if (isMomentum !== momentumViewActive) {
-        renderer.setShowV(!isMomentum)
+      if (viewIsMomentum !== showingMomentum) {
+        renderer.setShowV(!viewIsMomentum)
       }
-      renderer.draw(potentialMax, isMomentum ? momentumDisplayMax : displayMax)
+      renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
     }
-    momentumViewActive = isMomentum
+    showingMomentum = viewIsMomentum
     // The upload (or the context-loss skip) was the last read of the frame
     // buffer — hand it back with the next advance. `frame.potential` stays
     // cached in lastPotential and is never recycled. The cast: typed-array

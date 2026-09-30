@@ -28,6 +28,22 @@ function frames(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.frames ?? 0)
 }
 
+/**
+ * Field-upload path counters (review fix R1): which buffer the render loop
+ * last sent to the GPU — position densityPhase vs momentum scratch. The
+ * display is view-keyed: while the view is momentum, the position counter
+ * must not move (the pre-fix loop keyed the display to the 4-frame cadence
+ * and strobed k-space/position³).
+ */
+function uploads(
+  page: import('@playwright/test').Page,
+): Promise<{ position: number; momentum: number }> {
+  return page.evaluate(() => ({
+    position: window.__psiforge?.fieldUploads.position ?? -1,
+    momentum: window.__psiforge?.fieldUploads.momentum ?? -1,
+  }))
+}
+
 /** Text content of a readout ('' until mounted). */
 async function readout(
   page: import('@playwright/test').Page,
@@ -77,12 +93,25 @@ test('momentum view: caption shows, frames advance, obs stay live, switch back c
     .poll(async () => readout(page, 'sigma-x-value'), { timeout: 8_000 })
     .not.toBe(sigma1)
 
-  // Switch back: caption goes away, drawing continues, no errors.
+  // Upload-path regression guard (review fix R1): the display is view-keyed,
+  // not cadence-keyed. Many frames (several 4-frame cadence periods) pass in
+  // momentum view below — ZERO of them may upload the position field, while
+  // the momentum scratch keeps refreshing.
+  const u1 = await uploads(page)
+  await page.waitForTimeout(1_200)
+  const u2 = await uploads(page)
+  expect(u2.position).toBe(u1.position)
+  expect(u2.momentum).toBeGreaterThan(u1.momentum)
+
+  // Switch back: caption goes away, drawing continues, and the position
+  // field uploads resume (the view-keyed branch flips with the view).
   await page.getByTestId('view-position').click()
   await expect(page.getByTestId('momentum-caption')).toBeHidden()
   const f2 = await frames(page)
   await page.waitForTimeout(600)
   expect(await frames(page)).toBeGreaterThan(f2)
+  const u3 = await uploads(page)
+  expect(u3.position).toBeGreaterThan(u2.position)
 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])

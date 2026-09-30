@@ -154,6 +154,11 @@ export class HeatmapRenderer {
    */
   setShowV(on: boolean): void {
     this.showV = on
+    // Defensive bind: uniform1i writes the CURRENTLY-bound program's
+    // uniform. Today a single program exists and setup() binds it forever,
+    // so this useProgram is redundant — but it keeps the call correct the
+    // day a second program appears.
+    this.gl.useProgram(this.program)
     this.gl.uniform1i(this.uShowV, on ? 1 : 0)
   }
 
