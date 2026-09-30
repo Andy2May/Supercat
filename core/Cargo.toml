@@ -9,3 +9,10 @@ description = "Quantum wave-dynamics core for Psiforge (TDSE on uniform grids)"
 rustfft = "6"
 num-complex = "0.4"
 thiserror = "2"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "step2d"
+harness = false
