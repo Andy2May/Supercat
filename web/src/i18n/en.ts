@@ -4,4 +4,6 @@ export const en: Record<string, string> = {
   'app.tagline': 'Quantum wave physics running right in your browser',
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
+  'app.noWebgl': 'WebGL2 is not available — the simulator cannot render on this device.',
+  'app.canvasLabel': '|ψ|² probability density heatmap',
 }

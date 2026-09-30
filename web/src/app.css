@@ -41,3 +41,30 @@ button {
 button:hover {
   opacity: 0.8;
 }
+
+/* Square stage: the simulation domain is square, so the canvas keeps a 1:1
+   aspect ratio and the renderer's fullscreen-quad stretch stays isotropic. */
+.stage {
+  margin: 1.5rem auto 0;
+  width: min(100%, 38rem);
+  aspect-ratio: 1 / 1;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5rem;
+  background: #000;
+}
+
+.error {
+  color: #b91c1c;
+  margin-top: 1.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error {
+    color: #f87171;
+  }
+}
