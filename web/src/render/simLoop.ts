@@ -243,6 +243,16 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       }
       if (viewIsMomentum !== showingMomentum) {
         renderer.setShowV(!viewIsMomentum)
+        // View transition (fix round 1): a fade armed in the OLD view
+        // cannot continue into the new one — the fade texture still holds
+        // the old space's image while the field is about to receive the
+        // new space's, and mix(oldSpace, newSpace) under the new view's
+        // exposure is physically meaningless. Cancel it; the new view's
+        // first upload simply lands at full.
+        if (fadeActive) {
+          fadeActive = false
+          renderer.setFade(0)
+        }
       }
       // Colormap (Task 13), recomputed from live store state EVERY frame:
       // the predicate forces mode 0 (inferno) whenever the view is momentum
@@ -320,16 +330,30 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     // slower than the fade. The exposure argument mirrors the frame-driven
     // draw (per-view EMA), so both fade textures share it (spec 5.6).
     if (fadeActive) {
-      const elapsed = (now - fadeStart) / MEASURE_FADE_MS
-      if (elapsed >= 1) {
+      if ((store.view === 'momentum') !== showingMomentum) {
+        // The view flipped since the fade was armed, but the first frame of
+        // the new view has not landed yet (the onFrame transition above
+        // catches it afterwards) — same cancel: the fade texture holds the
+        // OLD space's image, ramping it against the incoming space would
+        // mix two different spaces.
         fadeActive = false
         renderer.setFade(0)
       } else {
-        renderer.setFade(1 - elapsed)
-      }
-      if (!contextLost) {
-        renderer.resize(canvas.clientWidth, canvas.clientHeight)
-        renderer.draw(potentialMax, store.view === 'momentum' ? momentumDisplayMax : displayMax)
+        // Clamp at 0: a rAF frame timestamp can sit marginally before the
+        // performance.now() fadeStart captured inside a message handler of
+        // the same frame — an unclamped negative elapsed would extrapolate
+        // u_fade past 1 for one frame (fix round 1).
+        const elapsed = Math.max(0, (now - fadeStart) / MEASURE_FADE_MS)
+        if (elapsed >= 1) {
+          fadeActive = false
+          renderer.setFade(0)
+        } else {
+          renderer.setFade(1 - elapsed)
+        }
+        if (!contextLost) {
+          renderer.resize(canvas.clientWidth, canvas.clientHeight)
+          renderer.draw(potentialMax, store.view === 'momentum' ? momentumDisplayMax : displayMax)
+        }
       }
     }
 

@@ -116,3 +116,48 @@ test('momentum measurement (advanced + momentum view): button collapses k-space,
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })
+
+test('view flip during the collapse fade cancels it: no cross-space mix, loop stays alive', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  // Fix round 1 regression guard: a fade armed in the position view must be
+  // CANCELED when the view flips mid-fade, not ramped against the incoming
+  // k-space texture (mix(positionImage, momentumImage) would be physically
+  // meaningless for up to 250 ms). Measure, then flip to momentum as fast
+  // as the clicks land — inside the window when timing allows; the
+  // cancel-vs-finish distinction needs no pixel proof, the loop just has to
+  // stay clean and alive either way.
+  await page.goto('/#/sim/free-packet')
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(10)
+
+  await page.getByTestId('tool-measure').click()
+  const box = await page.getByTestId('sim-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  await expect(page.getByTestId('measure-toast')).toBeVisible({ timeout: 5_000 })
+
+  // Flip immediately: explore -> advanced -> momentum view.
+  await page.getByTestId('mode-toggle').click()
+  await page.getByTestId('view-momentum').click()
+  await expect(page.getByTestId('momentum-caption')).toBeVisible()
+
+  // No errors from the canceled fade, and drawing continues in the new
+  // view (momentum frames arrive and upload).
+  const f1 = await frames(page)
+  await page.waitForTimeout(600)
+  expect(await frames(page)).toBeGreaterThan(f1)
+
+  // A momentum measurement works right after the mid-fade flip — let the
+  // first toast hide first so the visibility check below is meaningful.
+  await expect(page.getByTestId('measure-toast')).toBeHidden({ timeout: 5_000 })
+  await page.getByTestId('measure-momentum').click()
+  await expect(page.getByTestId('measure-toast')).toBeVisible({ timeout: 5_000 })
+  expect(Math.abs((await norm(page)) - 1)).toBeLessThanOrEqual(1e-6)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
