@@ -80,6 +80,20 @@ export type MainToWorker =
       type: 'set-observables-cadence'
       on: boolean
     }
+  | {
+      /**
+       * Turns the momentum-space side view on/off (Task 12): while on, every
+       * `OBSERVABLES_CADENCE`-th frame carries a `momentumDensity` block
+       * (fftshifted |phi(k)|^2, transferred) IN ADDITION to `densityPhase` —
+       * position data must keep flowing so charts stay live and the switch
+       * back to position view is instant. Same counter-reset-on-flag-on
+       * behavior as the observables cadence: the first frame after the flag
+       * turns on already carries momentum data. Advanced-mode only (Task 7
+       * gating); a switch to explore sends `on: false`.
+       */
+      type: 'set-momentum-view'
+      on: boolean
+    }
 
 /**
  * Worker -> main: one renderable frame. `densityPhase` holds interleaved
@@ -102,6 +116,16 @@ export type FrameMessage = {
    * leaves the densityPhase buffer-recycling channel untouched.
    */
   obs?: ObservablesFrame
+  /**
+   * Momentum-space density (Task 12): fftshifted |phi(k)|^2, one `f32` per
+   * bin, row-major with kx fastest — the display view with k = 0 centered.
+   * Attached every `OBSERVABLES_CADENCE`-th frame while the momentum-view
+   * flag is on. A fresh array each time (wasm allocates, fftshift2d copies),
+   * so the shifted buffer rides the transfer list — unlike `densityPhase`
+   * it has no recycle channel; the main thread copies it into a reused
+   * scratch buffer immediately and drops the transfer.
+   */
+  momentumDensity?: Float32Array
 }
 
 /**
@@ -161,6 +185,16 @@ export function toObservables(a: number[] | Float64Array): ObservablesFrame {
  */
 export function shouldSendObs(frameCount: number, obsOn: boolean): boolean {
   return obsOn && frameCount % OBSERVABLES_CADENCE === 0
+}
+
+/**
+ * Pure worker cadence decision for the momentum view (Task 12): identical
+ * grid to `shouldSendObs` — an FFT-backed snapshot per frame would be waste,
+ * and the momentum view rides the same 4-frame cadence with the same
+ * reset-on-flag-on behavior (first frame after the toggle carries data).
+ */
+export function shouldSendMomentum(frameCount: number, momentumView: boolean): boolean {
+  return momentumView && frameCount % OBSERVABLES_CADENCE === 0
 }
 
 /** Worker -> main: an unrecoverable error (norm drift, bad params, panic). */

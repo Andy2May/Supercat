@@ -13,7 +13,7 @@
  * preset's potential + gaussian, then applies its autoplay flag.
  */
 import { DEFAULTS, GRID_SIZES, type GridSize } from './simParams.js'
-import { modeStore } from './modeStore.svelte.js'
+import { modeStore, type Mode } from './modeStore.svelte.js'
 import type { FrameMessage, MainToWorker, ObservablesFrame, WorkerToMain } from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
 import { ringPush } from './sparkline.js'
@@ -31,6 +31,22 @@ declare global {
     /** Perf-probe mirror (rounded), present only under `?perf=1`. */
     __psiforgePerf?: PerfStats
   }
+}
+
+/** Which space the sim canvas displays (Task 12): |psi(x)|^2 or |phi(k)|^2. */
+export type SimView = 'position' | 'momentum'
+
+/**
+ * Pure explore-snapback predicate (Task 12): the momentum view is
+ * advanced-mode only (Task 7 gating), so App.svelte reconciles the stored
+ * view against the experience mode on every flip — explore always resolves
+ * to 'position'. Extracted pure so the transition is unit-testable without
+ * a DOM; App's effect only acts when this disagrees with the stored view,
+ * which is what makes the snapback send `set-momentum-view off` exactly
+ * once.
+ */
+export function effectiveView(mode: Mode, view: SimView): SimView {
+  return mode === 'advanced' ? view : 'position'
 }
 
 function readParams(): URLSearchParams {
@@ -53,6 +69,13 @@ export class SimStore {
   norm = $state(0)
   /** Worker frames received (== frames drawn; drawing is frame-driven). */
   frames = $state(0)
+  /**
+   * Displayed space (Task 12): position |psi(x)|^2 (default) or momentum
+   * |phi(k)|^2 (advanced only). `setView` drives the worker flag; `init`
+   * resets to position (the fresh worker boots with its own flag off, so
+   * no message is needed on init).
+   */
+  view = $state<SimView>('position')
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
 
@@ -123,6 +146,7 @@ export class SimStore {
     this.t = 0
     this.norm = 0
     this.frames = 0
+    this.view = 'position'
     this.observablesHistory = []
     // Parked T8 finding: without this, a preset switch inherits the previous
     // scene's HUD numbers until the next frame overwrites them (and under
@@ -185,6 +209,18 @@ export class SimStore {
   resetWave(): void {
     this.fatal = undefined
     this.send({ type: 'reset-wave' })
+  }
+
+  /**
+   * Switches the displayed space (Task 12). A no-op when already there —
+   * repeated clicks (or re-running effects) must not spam the worker with
+   * flag messages. The worker resets its cadence counter on this message,
+   * so the first frame after an "on" toggle already carries momentum data.
+   */
+  setView(next: SimView): void {
+    if (this.view === next) return
+    this.view = next
+    this.send({ type: 'set-momentum-view', on: next === 'momentum' })
   }
 
   /**

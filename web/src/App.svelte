@@ -4,7 +4,7 @@
   import { parseRoute } from './route.js'
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
-  import { simStore } from './sim/simStore.svelte.js'
+  import { effectiveView, simStore } from './sim/simStore.svelte.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
   import ObservablesBar from './ui/ObservablesBar.svelte'
@@ -12,6 +12,7 @@
   import PresetCard from './ui/PresetCard.svelte'
   import SimCanvas from './ui/SimCanvas.svelte'
   import Toolbar from './ui/Toolbar.svelte'
+  import ViewToggle from './ui/ViewToggle.svelte'
   import WebGlMissing from './ui/WebGlMissing.svelte'
 
   // Local mirror of the language store: `$derived` below reads it, so every
@@ -49,6 +50,10 @@
       substeps: t('perf.substeps'),
       workerMs: t('perf.workerMs'),
     }
+  })
+  const momentumCaption = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    return t('view.momentumCaption')
   })
 
   // WebGL2 gate, probed once: without it the renderer cannot draw, so the
@@ -100,6 +105,16 @@
     })
   })
 
+  // Momentum-view snapback (Task 12): k-space is advanced-only (Task 7
+  // gating), so a flip to explore reconciles the stored view through the
+  // pure `effectiveView` predicate. `setView` is a no-op when the view
+  // already matches — the off flag ships exactly once per snapback, and
+  // this effect never fires a message while already in position view.
+  $effect(() => {
+    const target = effectiveView(modeStore.mode, simStore.view)
+    if (target !== simStore.view) simStore.setView(target)
+  })
+
   // Set when renderer startup throws (SimCanvas hands the error over);
   // undefined means the render loop is alive. Only the renderer's
   // NO_WEBGL2 sentinel means "no WebGL2" — anything else (shader/link
@@ -137,8 +152,12 @@
         <PresetCard id={route.id} />
       {/key}
       <SimCanvas onRenderFailed={(error) => (renderError = error)} />
+      {#if modeStore.mode === 'advanced' && simStore.view === 'momentum'}
+        <p class="momentum-caption" data-testid="momentum-caption">{momentumCaption}</p>
+      {/if}
       <PlaybackBar />
       {#if modeStore.mode === 'advanced'}
+        <ViewToggle />
         <ObservablesBar />
       {/if}
     {/if}
@@ -166,5 +185,13 @@
 
   .back:hover {
     opacity: 0.8;
+  }
+
+  .momentum-caption {
+    margin: 0.5rem 0 0;
+    text-align: center;
+    font-size: 0.85rem;
+    opacity: 0.75;
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   }
 </style>

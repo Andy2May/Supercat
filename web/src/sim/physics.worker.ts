@@ -10,12 +10,14 @@
  * `advance` behind it.
  */
 import {
+  shouldSendMomentum,
   shouldSendObs,
   toObservables,
   type MainToWorker,
   type ObservablesFrame,
   type WorkerToMain,
 } from './protocol.js'
+import { fftshift2d } from './fftshift.js'
 import { loadWasm, type WasmModule } from './wasm.js'
 
 /**
@@ -64,6 +66,21 @@ let lastMaxDensity = 0
  */
 let obsOn = false
 let frameCount = 0
+/**
+ * Momentum-space view (Task 12): `set-momentum-view` flips this flag; while
+ * on, every OBSERVABLES_CADENCE-th postFrame also attaches a
+ * `momentumDensity` block (a separate FFT from the observables pass —
+ * `momentum_density()` is its own wasm call), fftshifted so k = 0 sits at
+ * the display center and transferred (a fresh array every time; the main
+ * thread copies it into a reused scratch buffer, so no recycle channel is
+ * needed). `densityPhase` keeps flowing regardless — position data feeds
+ * the charts and the switch back. Reset on `init` like every other
+ * worker-session flag.
+ */
+let momentumView = false
+/** Grid dims from `init` — fftshift2d needs them; 0 until boot. */
+let gridNx = 0
+let gridNy = 0
 
 function fatal(message: string): void {
   halted = true
@@ -128,10 +145,20 @@ function postFrame(t: number): void {
   if (!halted && shouldSendObs(frameCount, obsOn)) {
     obs = toObservables(sim.observables())
   }
+  // Momentum view (Task 12): rides the SAME cadence counter and the same
+  // first-frame-after-flag-on guarantee (the counter resets on the flag
+  // message). The shifted copy is freshly allocated (wasm allocates,
+  // fftshift2d copies), so it is safe to hand over via the transfer list —
+  // and equally never pooled.
+  let momentumDensity: Float32Array | undefined
+  if (!halted && shouldSendMomentum(frameCount, momentumView)) {
+    momentumDensity = fftshift2d(sim.momentum_density(), gridNx, gridNy)
+    transfer.push(momentumDensity.buffer)
+  }
   frameCount++
 
   self.postMessage(
-    { type: 'frame', densityPhase, t, norm, maxDensity, potentialVersion, potential, obs },
+    { type: 'frame', densityPhase, t, norm, maxDensity, potentialVersion, potential, obs, momentumDensity },
     transfer,
   )
 }
@@ -156,9 +183,14 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           lastSentPotentialVersion = -1
           // A fresh sim may have different dims; stale pooled buffers would
           // fail the same-size check anyway — drop them up front. Its first
-          // frame must also scan maxDensity fresh.
+          // frame must also scan maxDensity fresh. The momentum-view flag
+          // is worker-session state: a brand-new sim boots in position view
+          // (SimStore.init resets its own `view` field to match).
           recyclePool.length = 0
           scanMaxDensity = true
+          momentumView = false
+          gridNx = msg.nx
+          gridNy = msg.ny
           break
         }
         case 'set-gaussian': {
@@ -198,6 +230,14 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           // Land the flag change on the cadence grid: the next frame (count
           // 0) carries obs, so toggling advanced never waits 4 frames for
           // first data.
+          frameCount = 0
+          break
+        }
+        case 'set-momentum-view': {
+          momentumView = msg.on
+          // Same rephase as the observables flag: the very next frame
+          // (count 0) carries momentum data — no 4-frame dead delay after
+          // the toggle.
           frameCount = 0
           break
         }

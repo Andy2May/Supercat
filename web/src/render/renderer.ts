@@ -26,6 +26,13 @@ export class HeatmapRenderer {
   private uPotentialMax!: WebGLUniformLocation | null
   private uMaxDensity!: WebGLUniformLocation | null
   private uGridSize!: WebGLUniformLocation | null
+  private uShowV!: WebGLUniformLocation | null
+  /**
+   * Whether the potential overlay draws (u_showV, Task 12). Kept as a field
+   * so a context-loss rebuild() re-applies the CURRENT setting instead of
+   * silently resetting the overlay to visible mid-momentum-view.
+   */
+  private showV = true
   /** Grid dims (nx, ny) of the last upload — feeds the shader's texel step. */
   private gridW = 1
   private gridH = 1
@@ -77,10 +84,14 @@ export class HeatmapRenderer {
     this.uPotentialMax = gl.getUniformLocation(this.program, 'u_potentialMax')
     this.uMaxDensity = gl.getUniformLocation(this.program, 'u_maxDensity')
     this.uGridSize = gl.getUniformLocation(this.program, 'u_gridSize')
+    this.uShowV = gl.getUniformLocation(this.program, 'u_showV')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_potential'), 1)
+    // Re-applies the CURRENT overlay setting: a context-loss rebuild must
+    // not resurrect V over a momentum view.
+    gl.uniform1i(this.uShowV, this.showV ? 1 : 0)
 
     // Fullscreen quad as a triangle strip covering clip space; the shader's
     // v_uv mapping (not the vertex order) decides which edge is "up".
@@ -133,6 +144,17 @@ export class HeatmapRenderer {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, nx, ny, 0, gl.RED, gl.FLOAT, data)
       this.potentialAllocated = { w: nx, h: ny }
     }
+  }
+
+  /**
+   * Toggles the potential overlay (u_showV, Task 12). The momentum view
+   * hides V: V(x) lives in position space and would be meaningless (and
+   * visually confusing) painted over the k-space grid. Cheap and idempotent
+   * — one uniform1i on an already-linked program.
+   */
+  setShowV(on: boolean): void {
+    this.showV = on
+    this.gl.uniform1i(this.uShowV, on ? 1 : 0)
   }
 
   /**

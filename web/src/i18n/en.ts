@@ -29,6 +29,12 @@ export const en: Record<string, string> = {
   'tool.kMag': 'Momentum |k|',
   'mode.explore': 'Explore',
   'mode.advanced': 'Advanced',
+  // Position/momentum view toggle (Task 12, advanced only): which space the
+  // canvas displays; the caption explains the k-space axes.
+  'view.position': 'Position',
+  'view.momentum': 'Momentum',
+  'view.momentumCaption': 'Momentum space kx, ky — k = 0 at the center',
+  'view.toggleLabel': 'Display space',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Switch to {mode}',
   // Observables strip (Task 11, advanced mode): sparkline labels are math

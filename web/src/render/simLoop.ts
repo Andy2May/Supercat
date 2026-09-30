@@ -13,6 +13,7 @@
  * paused simulation draws nothing and `debugState.frames` freezes.
  */
 import { computeSubsteps, DEFAULTS, nextFpsEma } from '../sim/simParams.js'
+import { interleaveScalarToRG } from '../sim/fftshift.js'
 import type { SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
@@ -48,6 +49,21 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
    * instant the peak dips.
    */
   let displayMax = 0
+  /**
+   * Momentum view (Task 12). `momentumScratch` is the REUSED upload buffer:
+   * the worker ships a fresh (transferred) shifted |phi(k)|^2 every cadence
+   * frame, this loop copies it into (v, 0) RG32F pairs and never reallocates
+   * (one 2*nx*ny allocation for the whole session; re-sized only if the grid
+   * changed). `momentumViewActive` tracks which space the LAST displayed
+   * frame belonged to — it drives the u_showV toggle and the switch-back
+   * potential re-upload below. `momentumDisplayMax` is a SEPARATE
+   * auto-exposure EMA: |phi(k)|^2 lives on a completely different physical
+   * scale than |psi(x)|^2 (dA^2/(2*pi)^2-scaled bins), so the position peak
+   * would either saturate or black out the k-space picture.
+   */
+  let momentumScratch: Float32Array | undefined
+  let momentumViewActive = false
+  let momentumDisplayMax = 0
 
   /**
    * True between webglcontextlost and webglcontextrestored: every renderer
@@ -99,6 +115,11 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       renderer.uploadPotential(lastPotential, store.grid, store.grid)
       potentialMax = maxAbs(lastPotential)
     }
+    // Re-assert the V-overlay setting for the CURRENT view: a frame that
+    // arrived while the context was lost may have switched spaces without
+    // being able to touch the (dead) renderer — rebuild() alone would then
+    // re-apply the stale pre-switch value.
+    renderer.setShowV(!momentumViewActive)
   }
   canvas.addEventListener('webglcontextlost', onContextLost)
   canvas.addEventListener('webglcontextrestored', onContextRestored)
@@ -111,19 +132,59 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     fpsEma = nextFpsEma(fpsEma, lastDrawAt === 0 ? 0 : now - lastDrawAt)
     lastDrawAt = now
 
+    // A momentum frame carries BOTH buffers: densityPhase keeps flowing
+    // (charts + instant switch-back), momentumDensity says which space to
+    // DISPLAY this frame.
+    const isMomentum = frame.momentumDensity !== undefined
     displayMax = Math.max(frame.maxDensity, displayMax * 0.97)
     if (frame.potential !== undefined) {
       lastPotential = frame.potential
     }
+    if (isMomentum && frame.momentumDensity !== undefined) {
+      // k-space has its own physical scale (dA^2/(2*pi)^2-scaled bins):
+      // exposure must track the momentum peak, not the position peak. Same
+      // EMA recipe as displayMax.
+      let peak = 0
+      for (let i = 0; i < frame.momentumDensity.length; i++) {
+        if (frame.momentumDensity[i] > peak) peak = frame.momentumDensity[i]
+      }
+      momentumDisplayMax = Math.max(peak, momentumDisplayMax * 0.97)
+    }
     if (!contextLost) {
       renderer.resize(canvas.clientWidth, canvas.clientHeight)
-      renderer.uploadField(frame.densityPhase, store.grid, store.grid)
-      if (frame.potential !== undefined) {
-        potentialMax = maxAbs(frame.potential)
-        renderer.uploadPotential(frame.potential, store.grid, store.grid)
+      if (isMomentum && frame.momentumDensity !== undefined) {
+        // Copy the transferred array into the reused (v, 0) RG32F scratch
+        // buffer and upload THAT — the worker's copy is then dead to us.
+        if (
+          momentumScratch === undefined ||
+          momentumScratch.length !== 2 * frame.momentumDensity.length
+        ) {
+          momentumScratch = new Float32Array(2 * frame.momentumDensity.length)
+        }
+        interleaveScalarToRG(frame.momentumDensity, momentumScratch)
+        renderer.uploadField(momentumScratch, store.grid, store.grid)
+        // No potential upload on k-space frames — V(x) is not a k-space
+        // object; the shader's u_showV keeps it fully hidden.
+      } else {
+        renderer.uploadField(frame.densityPhase, store.grid, store.grid)
+        if (frame.potential !== undefined) {
+          potentialMax = maxAbs(frame.potential)
+          renderer.uploadPotential(frame.potential, store.grid, store.grid)
+        } else if (momentumViewActive && lastPotential !== undefined) {
+          // Switch-back from momentum: the worker (correctly) did not
+          // resend the potential — its version never changed — but the V
+          // overlay must return together with the position view, so force a
+          // re-upload from the Task-2 cache. Runs exactly once per switch.
+          potentialMax = maxAbs(lastPotential)
+          renderer.uploadPotential(lastPotential, store.grid, store.grid)
+        }
       }
-      renderer.draw(potentialMax, displayMax)
+      if (isMomentum !== momentumViewActive) {
+        renderer.setShowV(!isMomentum)
+      }
+      renderer.draw(potentialMax, isMomentum ? momentumDisplayMax : displayMax)
     }
+    momentumViewActive = isMomentum
     // The upload (or the context-loss skip) was the last read of the frame
     // buffer — hand it back with the next advance. `frame.potential` stays
     // cached in lastPotential and is never recycled. The cast: typed-array
