@@ -120,9 +120,45 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
         case 'potential-wall':
         case 'paint-disc':
         case 'paint-segment': {
-          // The wasm crate exposes no potential mutation yet (Tasks 12/13);
-          // refuse loudly rather than pretend the edit landed.
-          throw new Error(`message type '${msg.type}' is not implemented by the wasm bindings yet`)
+          if (sim === undefined) throw new Error(`${msg.type} before init`)
+          // Every potential mutation bumps potential_version by 1; ship a
+          // frame right away (advance(0) is the t getter) so the edit is
+          // visible even while the simulation is paused.
+          switch (msg.type) {
+            case 'restore-potential':
+              sim.restore_potential()
+              break
+            case 'potential-zero':
+              sim.potential_zero()
+              break
+            case 'potential-harmonic':
+              sim.potential_harmonic(msg.omega)
+              break
+            case 'potential-wall':
+              sim.potential_wall(
+                msg.xCenter,
+                msg.thickness,
+                msg.value,
+                new Float64Array(msg.gapCenters),
+                new Float64Array(msg.gapWidths),
+              )
+              break
+            case 'paint-disc':
+              sim.paint_disc(msg.cx, msg.cy, msg.r, msg.value)
+              break
+            case 'paint-segment':
+              sim.paint_segment(
+                msg.x1,
+                msg.y1,
+                msg.x2,
+                msg.y2,
+                msg.thickness,
+                msg.value,
+              )
+              break
+          }
+          postFrame(sim.advance(0))
+          break
         }
       }
     } catch (error) {

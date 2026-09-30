@@ -12,4 +12,11 @@ export const en: Record<string, string> = {
   'perf.fps': 'FPS',
   'perf.substeps': 'substeps/frame',
   'perf.workerMs': 'worker ms',
+  'tool.brush': 'Brush',
+  'tool.barrier': 'Barrier',
+  'tool.well': 'Well',
+  'tool.eraser': 'Eraser',
+  'tool.packet': 'Packet',
+  'tool.height': 'Height',
+  'tool.kMag': 'Momentum |k|',
 }

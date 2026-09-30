@@ -12,4 +12,11 @@ export const vi: Record<string, string> = {
   'perf.fps': 'FPS',
   'perf.substeps': 'bước phụ/khung',
   'perf.workerMs': 'ms worker',
+  'tool.brush': 'Bút',
+  'tool.barrier': 'Rào chắn',
+  'tool.well': 'Giếng thế',
+  'tool.eraser': 'Tẩy',
+  'tool.packet': 'Gói sóng',
+  'tool.height': 'Độ cao',
+  'tool.kMag': 'Động lượng |k|',
 }

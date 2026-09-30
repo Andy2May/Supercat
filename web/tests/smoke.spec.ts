@@ -51,3 +51,59 @@ test('worker physics renders: t/norm advance, pause freezes frames, no errors', 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })
+
+test('brush drag paints the potential: potentialVersion increases, no errors', async ({
+  page,
+}) => {
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', (error) => pageErrors.push(String(error)))
+
+  await page.goto('/')
+
+  // The render loop must be alive before we start drawing.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => window.__psiforge?.frames ?? 0),
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThan(10)
+
+  // Select the brush ("Bút" / "Brush") via its stable test id.
+  const brush = page.getByTestId('tool-brush')
+  await expect(brush).toBeVisible()
+  await brush.click()
+
+  const before = await page.evaluate(() => window.__psiforge?.potentialVersion ?? 0)
+
+  // Drag horizontally across the middle of the WebGL canvas (the overlay
+  // canvas above it is pointer-events: none, so the sim canvas is the target).
+  const box = await page.getByTestId('sim-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  const y = box!.y + box!.height / 2
+  await page.mouse.move(box!.x + box!.width * 0.3, y)
+  await page.mouse.down()
+  for (let i = 1; i <= 10; i++) {
+    await page.mouse.move(box!.x + box!.width * (0.3 + (0.4 * i) / 10), y, {
+      steps: 2,
+    })
+  }
+  await page.mouse.up()
+
+  // Every paint-segment bumps potential_version by exactly 1; the debug
+  // hook mirrors it on the next drawn frame.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => window.__psiforge?.potentialVersion ?? 0),
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThan(before)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})

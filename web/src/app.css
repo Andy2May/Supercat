@@ -45,6 +45,7 @@ button:hover {
 /* Square stage: the simulation domain is square, so the canvas keeps a 1:1
    aspect ratio and the renderer's fullscreen-quad stretch stays isotropic. */
 .stage {
+  position: relative;
   margin: 1.5rem auto 0;
   width: min(100%, 38rem);
   aspect-ratio: 1 / 1;
@@ -56,6 +57,21 @@ canvas {
   height: 100%;
   border-radius: 0.5rem;
   background: #000;
+}
+
+/* Pointer drawing: the sim canvas owns all pointer input (capture during a
+   drag); touch drags must paint, not scroll. */
+.stage canvas {
+  touch-action: none;
+}
+
+/* Preview overlay above the WebGL canvas: strokes for barrier/well drags.
+   Purely presentational — never a pointer target. */
+.stage .overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: transparent;
 }
 
 .controls {
