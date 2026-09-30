@@ -3,20 +3,18 @@
  * instance). Lives in a `.svelte.ts` module — the only file extension the
  * Svelte compiler processes for runes outside components.
  *
- * Responsibilities: worker lifecycle (`init` from `?grid=N`, default 256,
- * accept 128/256/512; `destroy()` terminates), the reactive surface the UI
- * reads (`running`, `speed`, `t`, `norm`, `frames`, `fatal`, perf stats),
- * `send(msg)` for every MainToWorker message, and `onFrame(cb)` for the
- * render loop.
+ * Responsibilities: worker lifecycle (`init(preset)` — grid from the preset,
+ * overridable via `?grid=N` accepting 128/256/512; `destroy()` terminates),
+ * the reactive surface the UI reads (`running`, `speed`, `t`, `norm`,
+ * `frames`, `fatal`, perf stats), `send(msg)` for every MainToWorker message,
+ * and `onFrame(cb)` for the render loop.
  *
- * Default scene (the M1 "wow moment"): a double slit —
- * `potential-wall(xCenter=0, thickness=0.6, value=30, gaps at y=±3 of width
- * 1.2)` — hit by `set-gaussian(x0=-10, y0=0, kx=6, ky=0, σx=σy=1.5)`, then
- * autoplay. The wall thickness 0.6 ≈ 4 cells at 256²/extent 40 (dx=0.156):
- * the ledgered minimum so near-Nyquist components cannot pierce the pillars.
+ * The scene comes from the preset registry (`src/presets`): `init` sends the
+ * preset's potential + gaussian, then applies its autoplay flag.
  */
-import { DEFAULTS, parseGridParam } from './simParams.js'
+import { DEFAULTS, GRID_SIZES, type GridSize } from './simParams.js'
 import type { FrameMessage, MainToWorker, WorkerToMain } from './protocol.js'
+import { potentialMessage, type PresetConfig } from '../presets/index.js'
 
 /** Perf HUD sample: fps (1 s EMA), substeps of the last advance, and the
  * post-advance -> frame-arrival latency in ms. */
@@ -56,8 +54,16 @@ export class SimStore {
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
 
-  /** Grid edge count selected via `?grid=` (plain: fixed for the session). */
-  readonly grid: number
+  /**
+   * Effective grid edge count: the `?grid=` override when valid, else the
+   * last `init` preset's grid (256 until then). Plain, not reactive — it
+   * changes once per scene load and is read by the render loop's texture
+   * uploads, not by any derived value.
+   */
+  grid: number
+  /** A valid `?grid=` URL selection (128/256/512); undefined when absent or
+   * unsupported — then the preset's grid wins. (Plain: fixed for session.) */
+  readonly gridOverride: GridSize | undefined
   /** Perf HUD enabled via `?perf=1` (plain: fixed for the session). */
   readonly perfMode: boolean
   /**
@@ -74,7 +80,12 @@ export class SimStore {
 
   constructor() {
     const params = readParams()
-    this.grid = parseGridParam(params.get('grid'))
+    const rawGrid = params.get('grid')
+    const n = rawGrid === null ? Number.NaN : Number(rawGrid)
+    this.gridOverride = (GRID_SIZES as readonly number[]).includes(n)
+      ? (n as GridSize)
+      : undefined
+    this.grid = this.gridOverride ?? 256
     this.perfMode = params.get('perf') === '1'
     this.debugFatal = params.get('debugFatal') === '1'
     if (this.perfMode && typeof window !== 'undefined') {
@@ -82,11 +93,18 @@ export class SimStore {
     }
   }
 
-  /** Idempotent: creates the worker (once), sends `init` + the double-slit
-   * scene, and starts playback. `destroy()` allows a later re-init. */
-  init(): void {
+  /** Idempotent: creates the worker (once), sends `init` + the preset's
+   * potential and packet, and applies the preset's autoplay flag.
+   * `destroy()` allows a later re-init. A fresh init resets every reactive
+   * field (t, norm, frames, fatal) so a re-init with a different preset
+   * never shows the previous scene's state (Review Focus 3/5). */
+  init(preset: PresetConfig): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
+    this.t = 0
+    this.norm = 0
+    this.frames = 0
+    this.grid = this.gridOverride ?? preset.grid
     const worker = new Worker(new URL('./physics.worker.ts', import.meta.url), {
       type: 'module',
     })
@@ -104,24 +122,11 @@ export class SimStore {
       m: DEFAULTS.m,
       hbar: DEFAULTS.hbar,
     })
-    this.send({
-      type: 'potential-wall',
-      xCenter: 0,
-      thickness: 0.6,
-      value: 30,
-      gapCenters: [-3, 3],
-      gapWidths: [1.2, 1.2],
-    })
-    this.send({
-      type: 'set-gaussian',
-      x0: -10,
-      y0: 0,
-      kx: 6,
-      ky: 0,
-      sigmaX: 1.5,
-      sigmaY: 1.5,
-    })
-    this.running = true
+    this.send(potentialMessage(preset.potential))
+    if (preset.packet !== undefined) {
+      this.send({ type: 'set-gaussian', ...preset.packet })
+    }
+    this.running = preset.autoplay
     if (this.debugFatal && typeof window !== 'undefined') {
       window.setTimeout(() => {
         if (this.worker === undefined) return

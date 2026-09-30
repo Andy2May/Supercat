@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getLang, lang, setLang, t } from './i18n/index.js'
+  import { PRESETS } from './presets/index.js'
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
   import { simStore } from './sim/simStore.svelte.js'
@@ -50,11 +51,12 @@
   // app is replaced by the WebGlMissing page and no worker is ever created.
   const webglOk = hasWebGl2()
 
-  // Worker lifecycle: create once on mount (grid from `?grid=`, the
-  // double-slit scene inside), terminate on unmount.
+  // Worker lifecycle: create once on mount (the default double-slit preset;
+  // grid still overridable via `?grid=`), terminate on unmount. Task 9
+  // replaces the hardcoded preset with hash-routed scene selection.
   $effect(() => {
     if (!webglOk) return
-    simStore.init()
+    simStore.init(PRESETS['double-slit'])
     return () => simStore.destroy()
   })
 
