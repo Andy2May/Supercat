@@ -49,6 +49,9 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run build:wasm
+      # svelte-check + tsc; must run after build:wasm because the check
+      # resolves the gitignored wasm glue .d.ts that wasm-pack emits.
+      - run: npm run check
       - run: npm run build
       - run: npm run test
       - name: Cache Playwright browsers

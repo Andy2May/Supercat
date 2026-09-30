@@ -5,6 +5,7 @@ export const en: Record<string, string> = {
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
   'app.noWebgl': 'WebGL2 is not available — the simulator cannot render on this device.',
+  'app.renderFailed': 'Graphics initialization failed.',
   'app.canvasLabel': '|ψ|² probability density heatmap',
   'app.play': 'Play',
   'app.pause': 'Pause',

@@ -8,9 +8,13 @@
   import { strokeToOp, strokeToOps, type Pt } from '../sim/tools.js'
 
   let {
-    /** Fires once when WebGL2 initialization fails (App shows the dead end). */
+    /**
+     * Fires once when renderer startup throws (App shows the dead end).
+     * Carries the thrown error so App can tell the NO_WEBGL2 sentinel apart
+     * from a shader/link bug; the error is logged here either way.
+     */
     onRenderFailed = () => {},
-  }: { onRenderFailed?: () => void } = $props()
+  }: { onRenderFailed?: (error: unknown) => void } = $props()
 
   let canvas = $state<HTMLCanvasElement | undefined>(undefined)
   let overlay = $state<HTMLCanvasElement | undefined>(undefined)
@@ -22,8 +26,11 @@
     if (element === undefined) return
     try {
       return startSimLoop(element, simStore)
-    } catch {
-      onRenderFailed()
+    } catch (error) {
+      // Never swallow renderer startup failures: without this a shader/link
+      // bug would surface only as a dead canvas with no console trace.
+      console.error(error)
+      onRenderFailed(error)
     }
   })
 

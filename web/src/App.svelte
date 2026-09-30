@@ -48,7 +48,17 @@
     return () => simStore.destroy()
   })
 
-  let renderFailed = $state(false)
+  // Set when renderer startup throws (SimCanvas hands the error over);
+  // undefined means the render loop is alive. Only the renderer's
+  // NO_WEBGL2 sentinel means "no WebGL2" — anything else (shader/link
+  // bug, ...) gets its own message; the error itself is logged by SimCanvas.
+  let renderError = $state<unknown>(undefined)
+  const renderFailedLabel = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    return renderError instanceof Error && renderError.message === 'NO_WEBGL2'
+      ? t('app.noWebgl')
+      : t('app.renderFailed')
+  })
 </script>
 
 {#if !webglOk}
@@ -62,11 +72,11 @@
       </div>
     </header>
     <p>{tagline}</p>
-    {#if renderFailed}
-      <p class="error" role="alert">{t('app.noWebgl')}</p>
+    {#if renderError !== undefined}
+      <p class="error" role="alert">{renderFailedLabel}</p>
     {:else}
       <Toolbar />
-      <SimCanvas onRenderFailed={() => (renderFailed = true)} />
+      <SimCanvas onRenderFailed={(error) => (renderError = error)} />
       <PlaybackBar />
     {/if}
     {#if simStore.fatal !== undefined}
