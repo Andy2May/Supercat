@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULTS, computeSubsteps, screenToGrid } from '../src/sim/simParams.js'
+import {
+  DEFAULTS,
+  GRID_SIZES,
+  computeSubsteps,
+  nextFpsEma,
+  parseGridParam,
+  screenToGrid,
+} from '../src/sim/simParams.js'
 
 describe('computeSubsteps', () => {
   it('normal 60fps frame: computeSubsteps(1/60, 4, 0.005) = 13', () => {
@@ -63,15 +70,75 @@ describe('screenToGrid', () => {
   })
 })
 
+describe('parseGridParam', () => {
+  it('null (absent ?grid) defaults to 512', () => {
+    expect(parseGridParam(null)).toBe(512)
+  })
+
+  it('accepts the three supported sizes verbatim', () => {
+    expect(parseGridParam('128')).toBe(128)
+    expect(parseGridParam('256')).toBe(256)
+    expect(parseGridParam('512')).toBe(512)
+  })
+
+  it('rejects anything else back to the 512 default', () => {
+    expect(parseGridParam('1024')).toBe(512)
+    expect(parseGridParam('64')).toBe(512)
+    expect(parseGridParam('abc')).toBe(512)
+    expect(parseGridParam('')).toBe(512)
+    expect(parseGridParam('-512')).toBe(512)
+  })
+
+  it('GRID_SIZES matches the supported set', () => {
+    expect(GRID_SIZES).toEqual([128, 256, 512])
+  })
+})
+
+describe('nextFpsEma', () => {
+  it('seeds from the first interval when no history exists', () => {
+    // 16.67 ms per drawn frame -> ~60 fps instantaneous
+    expect(nextFpsEma(0, 1000 / 60)).toBeCloseTo(60, 0)
+  })
+
+  it('blends a new sample with weight interval/1000 (1 s time constant)', () => {
+    // 100 ms interval -> instantaneous 10 fps, weight 0.1
+    // ema = 60 + (10 - 60) * 0.1 = 55
+    expect(nextFpsEma(60, 100)).toBeCloseTo(55, 6)
+  })
+
+  it('caps the blend weight at 1 so a long gap cannot overshoot', () => {
+    // 2 s gap -> weight clamps to 1 -> ema jumps to the instantaneous 0.5 fps
+    expect(nextFpsEma(60, 2000)).toBeCloseTo(0.5, 6)
+  })
+
+  it('non-positive intervals leave the estimate untouched', () => {
+    expect(nextFpsEma(60, 0)).toBe(60)
+    expect(nextFpsEma(60, -5)).toBe(60)
+  })
+
+  it('converges towards a steady rate', () => {
+    let ema = 0
+    for (let i = 0; i < 200; i++) ema = nextFpsEma(ema, 20) // steady 50 fps
+    expect(ema).toBeCloseTo(50, 3)
+  })
+})
+
 describe('DEFAULTS', () => {
   it('matches the pinned simulation defaults', () => {
     expect(DEFAULTS).toEqual({
       extent: 40,
       dt: 0.005,
       speed: 4,
+      m: 1,
+      hbar: 1,
       sigmaMin: 0.5,
       sigmaMax: 6,
       kMax: 15,
     })
+  })
+
+  it('carries the unitless core convention m = hbar = 1', () => {
+    expect(DEFAULTS.m).toBe(1)
+    expect(DEFAULTS.hbar).toBe(1)
   })
 })

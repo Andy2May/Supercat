@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:wasm": "cd .. && wasm-pack build wasm --target web --out-dir ../web/src/wasm/psiforge-wasm",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "perf": "playwright test tests/perf.spec.ts",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {

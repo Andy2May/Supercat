@@ -6,4 +6,10 @@ export const vi: Record<string, string> = {
   'app.lang.switchToVi': 'Tiếng Việt',
   'app.noWebgl': 'Không có WebGL2 — trình mô phỏng không thể hiển thị trên thiết bị này.',
   'app.canvasLabel': 'Bản đồ nhiệt mật độ xác suất |ψ|²',
+  'app.play': 'Chạy',
+  'app.pause': 'Tạm dừng',
+  'app.fatal': 'Lỗi mô phỏng:',
+  'perf.fps': 'FPS',
+  'perf.substeps': 'bước phụ/khung',
+  'perf.workerMs': 'ms worker',
 }

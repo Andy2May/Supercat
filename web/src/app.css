@@ -58,6 +58,30 @@ canvas {
   background: #000;
 }
 
+.controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Perf HUD (`?perf=1`): fixed top-right overlay, monospace numbers. */
+.hud {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.8rem;
+  text-align: left;
+  background: color-mix(in srgb, canvas 75%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  pointer-events: none;
+  z-index: 10;
+}
+
 .error {
   color: #b91c1c;
   margin-top: 1.5rem;

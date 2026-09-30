@@ -4,8 +4,8 @@
  * Playwright polls it and humans can poke it from the console. The cost is a
  * handful of property writes per frame, so it ships in every build.
  *
- * `frames` ticks inside `HeatmapRenderer.draw()`; the frame source (the demo
- * loop now, the worker bridge in Task 11) owns `t` / `norm` / `maxDensity` /
+ * `frames` ticks inside `HeatmapRenderer.draw()`; the frame source (the
+ * worker bridge in `simLoop.ts`) owns `t` / `norm` / `maxDensity` /
  * `potentialVersion`.
  */
 export interface PsiforgeDebugState {

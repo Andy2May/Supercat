@@ -32,12 +32,23 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+      # The web app imports the gitignored wasm-pack output, so the web job
+      # builds it first (same wasm-pack 0.13.1 / --target web as local
+      # `npm run build:wasm`).
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack 0.13.1 (prebuilt)
+        run: |
+          curl -sSL https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz | tar xz -C "$HOME"
+          echo "$HOME/wasm-pack-v0.13.1-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - run: npm run build:wasm
       - run: npm run build
       - run: npm run test
       - name: Cache Playwright browsers
