@@ -1,0 +1,59 @@
+name: deploy-pages
+
+# Spec §8.3: every merge to main deploys the web app to GitHub Pages.
+# Independent of the ci.yml test jobs — deploy is not gated on them.
+on:
+  push:
+    branches: [main]
+
+# One deploy at a time; a new push to main cancels the in-flight deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      # Same toolchain as the ci web job: the app imports the gitignored
+      # wasm-pack output, so it is rebuilt here before `npm run build`
+      # (wasm-pack 0.13.1 / --target web, matching `npm run build:wasm`).
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack 0.13.1 (prebuilt)
+        run: |
+          curl -sSL https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz | tar xz -C "$HOME"
+          echo "$HOME/wasm-pack-v0.13.1-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm run build:wasm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

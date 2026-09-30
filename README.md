@@ -25,8 +25,9 @@ psiforge/
 └── web/       TypeScript + Vite + WebGL2 — rendering and interaction only
 ```
 
-Currently only `core/` (the `psiforge-core` crate) exists; the other
-components arrive in later milestones.
+Currently `core/` (the `psiforge-core` crate), `wasm/` (the `psiforge-wasm`
+binding), and `web/` (the browser sandbox) exist; `python/` is planned for a
+later milestone.
 
 ## Quickstart
 
@@ -82,8 +83,37 @@ cargo build                # build the workspace
 cargo test -p psiforge-core  # run the core test suite
 ```
 
+### Running the web app locally
+
+The browser sandbox is the `web/` app: Vite + Svelte 5 + WebGL2, with the
+simulation in a Web Worker backed by `wasm/`. It imports wasm-pack output
+that is generated, not committed. Prerequisites: stable Rust and
+[wasm-pack](https://rustwasm.github.io/wasm-pack/) 0.13.1. Then:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cd web
+npm run build:wasm   # wasm-pack build wasm -> src/wasm/ (gitignored)
+npm ci
+npm run dev          # open the printed localhost URL
+```
+
+Every push to `main` deploys the app to GitHub Pages:
+<https://andy2may.github.io/Supercat/> — the link goes live after the first
+deploy to `main` (Pages source "GitHub Actions" must be enabled in the
+repository settings).
+
+### Test suites
+
+- `cargo test --all` — Rust tests for `core/` and `wasm/`
+- `wasm-pack test --node wasm` — wasm-bindgen tests in Node
+- `npm run test` in `web/` — vitest unit tests
+- `npm run test:e2e` in `web/` — Playwright smoke e2e (dev server)
+- `cargo bench -p psiforge-core` — criterion benchmarks, run locally
+
 CI runs `cargo fmt --all --check`, `cargo clippy --all-targets -- -D
-warnings`, and `cargo test --all` on every pull request.
+warnings`, `cargo test --all`, and the wasm and web suites on every pull
+request; merges to `main` additionally deploy the web app to Pages.
 
 ## License
 
