@@ -94,6 +94,29 @@ export type MainToWorker =
       type: 'set-momentum-view'
       on: boolean
     }
+  | {
+      /**
+       * Born-rule position measurement (Task 14): the worker samples the
+       * outcome cell from |psi|^2 (wasm `measure_position`), collapses ψ
+       * with the instrument Gaussian, renormalizes, and ships the collapsed
+       * state as a frame carrying `measured` AT ONCE. `seed` is a plain
+       * JS number (< 2^48); the worker crosses it to BigInt at the wasm
+       * boundary. NOTE: the click/seed is only a TRIGGER — the outcome is
+       * drawn from the Born distribution, never placed by the user.
+       */
+      type: 'measure-position'
+      seed: number
+    }
+  | {
+      /**
+       * The k-space mirror (Task 14): samples a DFT bin with probability
+       * |FFT2(psi)_k|^2, collapses ψ in momentum space, renormalizes, and
+       * frames the result with `measured` (kx/ky wavenumbers + the sampled
+       * bins). Same trigger-only contract as `measure-position`.
+       */
+      type: 'measure-momentum'
+      seed: number
+    }
 
 /**
  * Worker -> main: one renderable frame. `densityPhase` holds interleaved
@@ -126,6 +149,31 @@ export type FrameMessage = {
    * scratch buffer immediately and drops the transfer.
    */
   momentumDensity?: Float32Array
+  /**
+   * The measurement outcome this frame's state collapsed onto (Task 14):
+   * present exactly on the frame the worker ships immediately after a
+   * `measure-position` / `measure-momentum` message. `x`/`y` carry the
+   * outcome in the natural coordinates of the kind — PHYSICAL grid
+   * coordinates for a position measurement, kx/ky wavenumbers for a
+   * momentum measurement. `i`/`j` (momentum kind only) add the sampled
+   * fftfreq bin so the marker can map through the same fftshift the
+   * display uses (see markers.ts `binToScreen`).
+   */
+  measured?: MeasuredOutcome
+}
+
+/** One Born-rule measurement outcome, riding the frame that carries the
+ * collapsed state (see FrameMessage.measured). */
+export interface MeasuredOutcome {
+  kind: 'position' | 'momentum'
+  /** position: physical x; momentum: kx (1/length). */
+  x: number
+  /** position: physical y; momentum: ky (1/length). */
+  y: number
+  /** Sampled fftfreq bin i (momentum kind only) — feeds binToScreen. */
+  i?: number
+  /** Sampled fftfreq bin j (momentum kind only) — feeds binToScreen. */
+  j?: number
 }
 
 /**
@@ -192,9 +240,18 @@ export function shouldSendObs(frameCount: number, obsOn: boolean): boolean {
  * grid to `shouldSendObs` — an FFT-backed snapshot per frame would be waste,
  * and the momentum view rides the same 4-frame cadence with the same
  * reset-on-flag-on behavior (first frame after the toggle carries data).
+ *
+ * `force` (Task 14): a momentum measurement sets the worker's one-shot
+ * `forceMomentumNext` flag so the IMMEDIATE post-measure frame carries
+ * |phi(k)|^2 even off-cadence — the momentum-view crossfade needs the new
+ * k-space texture on the very frame whose `measured` block starts it.
  */
-export function shouldSendMomentum(frameCount: number, momentumView: boolean): boolean {
-  return momentumView && frameCount % OBSERVABLES_CADENCE === 0
+export function shouldSendMomentum(
+  frameCount: number,
+  momentumView: boolean,
+  force = false,
+): boolean {
+  return momentumView && (force || frameCount % OBSERVABLES_CADENCE === 0)
 }
 
 /** Worker -> main: an unrecoverable error (norm drift, bad params, panic). */

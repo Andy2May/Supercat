@@ -10,8 +10,14 @@
  *
  * A worker frame -> upload field (+ potential when shipped) -> draw ->
  * refresh the debug hook and the perf HUD. Drawing is frame-driven, so a
- * paused simulation draws nothing and `debugState.frames` freezes.
+ * paused simulation draws nothing and `debugState.frames` freezes — with
+ * one exception (Task 14): while a measurement crossfade is running, the
+ * tick itself draws extra frames to ramp u_fade even when no worker frame
+ * arrives (a paused sim can still be mid-fade).
  */
+
+/** Collapse crossfade window (Task 14, spec 5.6): 250 ms old -> new. */
+const MEASURE_FADE_MS = 250
 import { computeSubsteps, DEFAULTS, nextFpsEma } from '../sim/simParams.js'
 import { interleaveScalarToRG } from '../sim/fftshift.js'
 import { modeStore } from '../sim/modeStore.svelte.js'
@@ -70,6 +76,18 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
   let momentumScratch: Float32Array | undefined
   let showingMomentum = false
   let momentumDisplayMax = 0
+  /**
+   * Measurement crossfade (Task 14): `fadeActive` while the collapse
+   * dissolves old -> new over MEASURE_FADE_MS. `fadeStart` is the
+   * arrival time of the measured frame; the tick ramps u_fade 1 -> 0 and
+   * draws between worker frames (the fade must animate even when the sim
+   * is paused or advancing slower than the window). Exposure: the fade
+   * renders BOTH textures under the post-collapse frame's displayMax —
+   * one u_maxDensity uniform for the whole pass, so the no-flicker rule
+   * (spec 5.6) holds by construction.
+   */
+  let fadeActive = false
+  let fadeStart = 0
 
   /**
    * True between webglcontextlost and webglcontextrestored: every renderer
@@ -112,6 +130,11 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
   }
   const onContextRestored = (): void => {
     contextLost = false
+    // A fade in flight when the context died cannot continue: rebuild()
+    // reset u_fade to 0 and stubbed both field textures, so the swap's
+    // captured "old" state is gone. Drop the fade — the next frame simply
+    // shows the collapsed state.
+    fadeActive = false
     renderer.rebuild(canvas)
     // Drop the stale overlay scale, then re-upload the cached potential and
     // re-derive the scale from it (full texImage2D — rebuild reset the
@@ -163,6 +186,23 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     }
     if (!contextLost) {
       renderer.resize(canvas.clientWidth, canvas.clientHeight)
+      // Measurement crossfade (Task 14): capture the OLD state — whatever
+      // the field texture currently displays, position or k-space — BEFORE
+      // the upload branches below overwrite it, and hold u_fade at 1 so
+      // this very draw still shows the pre-collapse state at full. In the
+      // momentum view the fade additionally requires the frame to carry
+      // momentumDensity (the worker's forceMomentumNext guarantees it on
+      // measured frames); without it no new k-space upload would follow
+      // and the fade would dissolve into a stale texture.
+      if (
+        frame.measured !== undefined &&
+        (!viewIsMomentum || frame.momentumDensity !== undefined) &&
+        renderer.beginFade()
+      ) {
+        fadeActive = true
+        fadeStart = now
+        renderer.setFade(1)
+      }
       if (viewIsMomentum) {
         if (frame.momentumDensity !== undefined) {
           // Cadence frame: copy the transferred array into the reused
@@ -271,6 +311,25 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
           recycleBuffer === undefined ? [] : [recycleBuffer],
         )
         recycleBuffer = undefined
+      }
+    }
+
+    // Measurement crossfade driver (Task 14): ramp u_fade 1 -> 0 over the
+    // window and DRAW even without a new worker frame — the collapse must
+    // animate at full rAF rate whether the sim runs, is paused, or advances
+    // slower than the fade. The exposure argument mirrors the frame-driven
+    // draw (per-view EMA), so both fade textures share it (spec 5.6).
+    if (fadeActive) {
+      const elapsed = (now - fadeStart) / MEASURE_FADE_MS
+      if (elapsed >= 1) {
+        fadeActive = false
+        renderer.setFade(0)
+      } else {
+        renderer.setFade(1 - elapsed)
+      }
+      if (!contextLost) {
+        renderer.resize(canvas.clientWidth, canvas.clientHeight)
+        renderer.draw(potentialMax, store.view === 'momentum' ? momentumDisplayMax : displayMax)
       }
     }
 

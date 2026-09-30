@@ -10,10 +10,11 @@
 
 import type { MainToWorker } from './protocol.js'
 
-/** The five canvas tools. `packet` is the wave-packet emitter, handled by
- * `dragToPacket` (see packet.ts) — in the paint-op pipeline it produces
- * nothing. */
-export type Tool = 'brush' | 'barrier' | 'well' | 'eraser' | 'packet'
+/** The six canvas tools. `packet` is the wave-packet emitter, handled by
+ * `dragToPacket` (see packet.ts); `measure` is the position-measurement
+ * trigger (Task 14), handled as a click in SimCanvas — in the paint-op
+ * pipeline both produce nothing. */
+export type Tool = 'brush' | 'barrier' | 'well' | 'eraser' | 'packet' | 'measure'
 
 /** One pointer sample in physics (grid) coordinates. */
 export type Pt = { x: number; y: number }
@@ -45,6 +46,8 @@ function dist(from: Pt, to: Pt): number {
  *   the remaining distance is at most one step. Walk it repeatedly (or use
  *   {@link strokeToOps}) to cover a long drag with overlapping discs.
  * - packet — `null` (the emitter lives in `dragToPacket`, packet.ts).
+ * - measure — `null` (a pure TRIGGER: SimCanvas sends `measure-position` on
+ *   a click, not a paint op — see the quantum-measurement note there).
  */
 export function strokeToOp(
   tool: Tool,
@@ -88,6 +91,7 @@ export function strokeToOp(
       }
     }
     case 'packet':
+    case 'measure':
       return null
   }
 }

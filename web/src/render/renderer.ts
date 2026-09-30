@@ -23,11 +23,21 @@ export class HeatmapRenderer {
   private vertexBuffer!: WebGLBuffer
   private fieldTexture!: WebGLTexture
   private potentialTexture!: WebGLTexture
+  /**
+   * Pre-measurement field snapshot for the collapse crossfade (Task 14).
+   * Holds whatever `fieldTexture` held when `beginFade()` last ran — the
+   * position densityPhase or the momentum scratch, i.e. exactly the last
+   * DISPLAYED state in whichever space the view is in. Swapped in as a
+   * texture-unit-2 sibling of the field; the shader mixes the two under
+   * `u_fade` with one shared exposure.
+   */
+  private fadeTexture!: WebGLTexture
   private uPotentialMax!: WebGLUniformLocation | null
   private uMaxDensity!: WebGLUniformLocation | null
   private uGridSize!: WebGLUniformLocation | null
   private uShowV!: WebGLUniformLocation | null
   private uColorMode!: WebGLUniformLocation | null
+  private uFade!: WebGLUniformLocation | null
   /**
    * Whether the potential overlay draws (u_showV, Task 12). Kept as a field
    * so a context-loss rebuild() re-applies the CURRENT setting instead of
@@ -53,6 +63,8 @@ export class HeatmapRenderer {
    */
   private fieldAllocated = { w: 0, h: 0 }
   private potentialAllocated = { w: 0, h: 0 }
+  /** Allocation size of the fade texture (see beginFade for the swap). */
+  private fadeAllocated = { w: 0, h: 0 }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -94,10 +106,16 @@ export class HeatmapRenderer {
     this.uGridSize = gl.getUniformLocation(this.program, 'u_gridSize')
     this.uShowV = gl.getUniformLocation(this.program, 'u_showV')
     this.uColorMode = gl.getUniformLocation(this.program, 'u_colorMode')
+    this.uFade = gl.getUniformLocation(this.program, 'u_fade')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_potential'), 1)
+    gl.uniform1i(gl.getUniformLocation(this.program, 'u_fadeTex'), 2)
+    // No fade is running on a fresh context: the mix collapses to the plain
+    // field sample (a rebuild after context loss also lands here — see
+    // beginFade for why a lost fade is simply dropped).
+    gl.uniform1f(this.uFade, 0)
     // Re-applies the CURRENT overlay setting: a context-loss rebuild must
     // not resurrect V over a momentum view.
     gl.uniform1i(this.uShowV, this.showV ? 1 : 0)
@@ -122,11 +140,13 @@ export class HeatmapRenderer {
 
     this.fieldTexture = this.createNearestTexture(gl.RG32F, gl.RG)
     this.potentialTexture = this.createNearestTexture(gl.R32F, gl.RED)
+    this.fadeTexture = this.createNearestTexture(gl.RG32F, gl.RG)
 
     // The 1x1 stubs above match no real upload: the first upload of each
     // texture after boot or a context restore must fully allocate.
     this.fieldAllocated = { w: 0, h: 0 }
     this.potentialAllocated = { w: 0, h: 0 }
+    this.fadeAllocated = { w: 0, h: 0 }
   }
 
   /** Replaces the field texture: (rho, phase) interleaved, row-major j*nx+i. */
@@ -156,6 +176,53 @@ export class HeatmapRenderer {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, nx, ny, 0, gl.RED, gl.FLOAT, data)
       this.potentialAllocated = { w: nx, h: ny }
     }
+  }
+
+  /**
+   * Arms the collapse crossfade (Task 14): captures the CURRENT field
+   * texture — the last displayed state, position density or momentum
+   * scratch — as the "old" side of the fade, so the next `uploadField`
+   * (the collapsed state) can dissolve in over it via `setFade`.
+   *
+   * Capturing is a pure JS texture-HANDLE swap (fieldTexture <->
+   * fadeTexture, allocation records with them): zero GL work, no
+   * float-rendering extension, no dependency on the canvas backbuffer.
+   * The task sketch suggested `gl.copyTexImage2D`, but that reads the
+   * current READ framebuffer — the canvas backbuffer is post-compositing
+   * garbage by the time a worker message handler runs (preserveDrawingBuffer
+   * is false), and copying into RG32F from an RGBA8 canvas is illegal in
+   * WebGL2 anyway; an FBO round-trip would additionally require
+   * EXT_color_buffer_float for completeness. The swap achieves the exact
+   * same result — the old texture keeps its pixels — deterministically.
+   *
+   * Returns false when there is nothing to fade from (no field uploaded
+   * yet — the very first frames, or right after a context-loss rebuild):
+   * callers must then not start a fade. Call BEFORE uploading the new
+   * field, or the "old" state is already gone.
+   */
+  beginFade(): boolean {
+    if (this.fieldAllocated.w === 0) return false
+    const oldField = this.fieldTexture
+    this.fieldTexture = this.fadeTexture
+    this.fadeTexture = oldField
+    const oldAllocated = this.fieldAllocated
+    this.fieldAllocated = this.fadeAllocated
+    this.fadeAllocated = oldAllocated
+    return true
+  }
+
+  /**
+   * Drives the crossfade blend (u_fade): 1 = pre-measurement state,
+   * 0 = current field. The caller ramps 1 -> 0 over the fade window via
+   * rAF, drawing between frames; one uniform1f per call. Setting 0 outside
+   * a fade is the neutral state (the shader's mix collapses to the field
+   * sample).
+   */
+  setFade(fade: number): void {
+    // Defensive bind (see setShowV): uniform1f writes the CURRENTLY-bound
+    // program's uniform.
+    this.gl.useProgram(this.program)
+    this.gl.uniform1f(this.uFade, fade)
   }
 
   /**
@@ -204,6 +271,8 @@ export class HeatmapRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.fieldTexture)
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, this.potentialTexture)
+    gl.activeTexture(gl.TEXTURE2)
+    gl.bindTexture(gl.TEXTURE_2D, this.fadeTexture)
     gl.uniform1f(this.uPotentialMax, potentialMax)
     gl.uniform1f(this.uMaxDensity, maxDensity)
     gl.uniform2f(this.uGridSize, this.gridW, this.gridH)
@@ -259,6 +328,7 @@ export class HeatmapRenderer {
   dispose(): void {
     const gl = this.gl
     gl.deleteTexture(this.fieldTexture)
+    gl.deleteTexture(this.fadeTexture)
     gl.deleteTexture(this.potentialTexture)
     gl.deleteBuffer(this.vertexBuffer)
     gl.deleteVertexArray(this.vao)

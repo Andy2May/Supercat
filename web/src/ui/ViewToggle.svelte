@@ -14,6 +14,11 @@
    * position view — phase is meaningless in k-space (the texture's phase
    * channel is 0), so switching to momentum HIDES the button while the
    * stored flag survives; the coloring resumes on switch-back.
+   *
+   * The momentum view swaps the phase button for the momentum MEASUREMENT
+   * trigger (Task 14): a click samples a DFT bin from |phi(k)|^2 and
+   * collapses ψ in k-space. Same trigger-only contract as the measure tool
+   * on the canvas — the click itself fixes nothing about the outcome.
    */
 
   // Local mirror of the language store (same pattern as App.svelte): the
@@ -33,10 +38,21 @@
       position: t('view.position'),
       momentum: t('view.momentum'),
       phaseColor: t('view.phaseColor'),
+      measureMomentum: t('measure.momentumTool'),
     }
   })
 
   const view = $derived(simStore.view)
+
+  function measureMomentum(): void {
+    // Never poke a dead sim (nobody would answer), then trigger the
+    // Born-rule sampling with a fresh 48-bit seed.
+    if (simStore.fatal !== undefined) return
+    simStore.send({
+      type: 'measure-momentum',
+      seed: Math.floor(Math.random() * 2 ** 48),
+    })
+  }
 </script>
 
 <div class="view-controls">
@@ -70,6 +86,15 @@
       onclick={() => (simStore.phaseColor = !simStore.phaseColor)}
     >
       {labels.phaseColor}
+    </button>
+  {:else}
+    <button
+      type="button"
+      data-testid="measure-momentum"
+      class="phase"
+      onclick={measureMomentum}
+    >
+      {labels.measureMomentum}
     </button>
   {/if}
 </div>

@@ -15,17 +15,20 @@
     })
   })
 
-  const TOOLS: readonly Tool[] = ['brush', 'barrier', 'well', 'eraser', 'packet']
+  const TOOLS: readonly Tool[] = ['brush', 'barrier', 'well', 'eraser', 'packet', 'measure']
 
   // Swatch dot per tool, mirroring the canvas rendering so the button
   // previews what a stroke looks like: warm = positive V (brush/barrier),
-  // teal = negative V (well), dashed ring = eraser, arrow = packet.
+  // teal = negative V (well), dashed ring = eraser, arrow = packet. The
+  // measure tool's dot renders as a hollow target ring (see .swatch-ring)
+  // — crosshair semantics, no potential value.
   const SWATCH: Record<Tool, string> = {
     brush: '#f2730d',
     barrier: '#f2730d',
     well: '#1f9eb8',
     eraser: '#888',
     packet: '#e6c040',
+    measure: 'transparent',
   }
 
   const labels = $derived.by(() => {
@@ -36,6 +39,7 @@
       well: t('tool.well'),
       eraser: t('tool.eraser'),
       packet: t('tool.packet'),
+      measure: t('measure.positionTool'),
       height: t('tool.height'),
       kMag: t('tool.kMag'),
     }
@@ -51,7 +55,11 @@
         class:active={toolState.tool === tool}
         onclick={() => (toolState.tool = tool)}
       >
-        <span class="swatch" style={`--swatch: ${SWATCH[tool]}`}></span>
+        <span
+          class="swatch"
+          class:swatch-ring={tool === 'measure'}
+          style={`--swatch: ${SWATCH[tool]}`}
+        ></span>
         {labels[tool]}
       </button>
     {/each}
@@ -113,6 +121,13 @@
     border-radius: 50%;
     background: var(--swatch);
     vertical-align: baseline;
+  }
+
+  /* Measure tool: a hollow ring reads as a target/crosshair — the click
+     aims a measurement, it paints no potential. */
+  .swatch-ring {
+    border: 1.5px solid currentColor;
+    box-sizing: border-box;
   }
 
   .slider {

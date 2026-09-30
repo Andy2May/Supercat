@@ -27,6 +27,13 @@ export const vi: Record<string, string> = {
   'tool.packet': 'Gói sóng',
   'tool.height': 'Độ cao',
   'tool.kMag': 'Động lượng |k|',
+  // Measurement (Task 14): toolbar trigger + momentum-view button + the
+  // outcome toast. The result templates carry '{x}'/'{y}' placeholders
+  // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
+  'measure.positionTool': 'Đo vị trí',
+  'measure.momentumTool': 'Đo động lượng',
+  'measure.resultPosition': 'Đo tại ({x}, {y})',
+  'measure.resultMomentum': 'Đo k = ({x}, {y})',
   'mode.explore': 'Khám phá',
   'mode.advanced': 'Nâng cao',
   // Position/momentum view toggle (Task 12, advanced only): which space the

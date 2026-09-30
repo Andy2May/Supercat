@@ -77,6 +77,11 @@ describe('strokeToOp single-op tools', () => {
     expect(strokeToOp('packet', height, from, to)).toBeNull()
   })
 
+  it('measure -> null (a click trigger, never a paint op — Task 14)', () => {
+    expect(strokeToOp('measure', height, from, to)).toBeNull()
+    expect(strokeToOps('measure', height, from, to)).toEqual([])
+  })
+
   it('eraser height is ignored — the eraser always writes 0', () => {
     const op = strokeToOp('eraser', 20, { x: 0, y: 0 }, { x: 0.1, y: 0 })
     expect(op).not.toBeNull()

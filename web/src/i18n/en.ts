@@ -27,6 +27,13 @@ export const en: Record<string, string> = {
   'tool.packet': 'Packet',
   'tool.height': 'Height',
   'tool.kMag': 'Momentum |k|',
+  // Measurement (Task 14): toolbar trigger + momentum-view button + the
+  // outcome toast. The result templates carry '{x}'/'{y}' placeholders
+  // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
+  'measure.positionTool': 'Measure position',
+  'measure.momentumTool': 'Measure momentum',
+  'measure.resultPosition': 'Measured at ({x}, {y})',
+  'measure.resultMomentum': 'Measured k = ({x}, {y})',
   'mode.explore': 'Explore',
   'mode.advanced': 'Advanced',
   // Position/momentum view toggle (Task 12, advanced only): which space the

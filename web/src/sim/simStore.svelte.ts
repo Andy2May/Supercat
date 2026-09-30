@@ -14,7 +14,13 @@
  */
 import { DEFAULTS, GRID_SIZES, type GridSize } from './simParams.js'
 import { modeStore, type Mode } from './modeStore.svelte.js'
-import type { FrameMessage, MainToWorker, ObservablesFrame, WorkerToMain } from './protocol.js'
+import type {
+  FrameMessage,
+  MainToWorker,
+  MeasuredOutcome,
+  ObservablesFrame,
+  WorkerToMain,
+} from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
 import { ringPush } from './sparkline.js'
 
@@ -106,6 +112,14 @@ export class SimStore {
   phaseColor = $state(false)
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
+  /**
+   * Latest measurement outcome (Task 14): set (a fresh object each time —
+   * identical coordinates still re-trigger the marker/toast effect) when a
+   * frame carrying `measured` lands, read by SimCanvas to spawn the ring
+   * marker + toast. Cleared by `init` so a preset switch never flashes the
+   * previous scene's outcome.
+   */
+  lastMeasurement = $state<MeasuredOutcome | undefined>(undefined)
 
   /**
    * Effective grid edge count: the `?grid=` override when valid, else the
@@ -171,6 +185,7 @@ export class SimStore {
   init(preset: PresetConfig): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
+    this.lastMeasurement = undefined
     this.t = 0
     this.norm = 0
     this.frames = 0
@@ -290,6 +305,11 @@ export class SimStore {
       // Mutating the $state proxy array through ringPush notifies the
       // ObservablesBar's redraw effect (push drops the oldest past 600).
       ringPush(this.observablesHistory, { t: msg.t, ...msg.obs })
+    }
+    if (msg.measured !== undefined) {
+      // Fresh object identity per outcome: consecutive measurements landing
+      // on the same spot must still re-fire the marker/toast effect.
+      this.lastMeasurement = msg.measured
     }
     for (const cb of this.frameListeners) cb(msg)
   }

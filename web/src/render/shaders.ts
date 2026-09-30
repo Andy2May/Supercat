@@ -24,6 +24,15 @@ precision highp float;
 // Field: RG32F, interleaved (rho, phase) per grid point. The phase channel
 // (arg psi, (-pi, pi]) feeds the hue-phase colormap — u_colorMode 1 below.
 uniform sampler2D u_field;
+// Pre-measurement field snapshot for the collapse crossfade (Task 14):
+// u_fade = 1 shows the pre-collapse state, 0 the current field, with
+// mix(fadeSample, fieldSample, 1 - u_fade). BOTH samples read the same
+// exposure uniform (u_maxDensity) — spec 5.6's no-flicker rule: during the
+// 250 ms fade only the state may change, never the brightness scale. The
+// default 0 makes the pass a no-op when no fade is running (the mix
+// collapses to the plain field sample).
+uniform sampler2D u_fadeTex;
+uniform float u_fade;
 // Potential: R32F, one value per grid point.
 uniform sampler2D u_potential;
 uniform float u_potentialMax;
@@ -55,7 +64,10 @@ vec3 hsv2rgb(vec3 hsv) {
 }
 
 void main() {
-  vec2 field = texture(u_field, v_uv).xy;
+  // Collapse crossfade (Task 14): u_fade 1 -> pre-measurement snapshot,
+  // 0 -> current field. Outside a fade u_fade is 0 and this is the plain
+  // field sample. One shared exposure for both samples (see u_fadeTex).
+  vec2 field = mix(texture(u_fadeTex, v_uv).xy, texture(u_field, v_uv).xy, 1.0 - u_fade);
   float rho = field.x;
 
   // Auto-exposure tone map: normalize by the frame's (smoothed) peak so

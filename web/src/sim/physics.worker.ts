@@ -14,6 +14,7 @@ import {
   shouldSendObs,
   toObservables,
   type MainToWorker,
+  type MeasuredOutcome,
   type ObservablesFrame,
   type WorkerToMain,
 } from './protocol.js'
@@ -81,6 +82,18 @@ let momentumView = false
 /** Grid dims from `init` — fftshift2d needs them; 0 until boot. */
 let gridNx = 0
 let gridNy = 0
+/**
+ * One-shot momentum cadence override (Task 14): either measure handler sets
+ * this so the IMMEDIATE post-collapse postFrame attaches momentumDensity
+ * even when the 4-frame cadence would skip it — the momentum-view
+ * crossfade must fade between old and new |phi(k)|^2 starting exactly on
+ * the measured frame (a POSITION measurement also changes |phi(k)|^2, so
+ * the k-space display must refresh on it too). Consumed (cleared) by the
+ * very next postFrame, and still gated on `momentumView` — a collapse
+ * watched in position view crossfades the position display, so no extra
+ * FFT is owed.
+ */
+let forceMomentumNext = false
 
 function fatal(message: string): void {
   halted = true
@@ -100,7 +113,7 @@ function ensureWasm(): Promise<WasmModule> {
  * copy; wasm's `density_phase()` always returns a fresh array); everything
  * shipped goes into the transfer list — the worker never touches it again.
  */
-function postFrame(t: number): void {
+function postFrame(t: number, measured?: MeasuredOutcome): void {
   if (sim === undefined) return
   const fresh = sim.density_phase()
   const norm = sim.norm()
@@ -149,16 +162,31 @@ function postFrame(t: number): void {
   // first-frame-after-flag-on guarantee (the counter resets on the flag
   // message). The shifted copy is freshly allocated (wasm allocates,
   // fftshift2d copies), so it is safe to hand over via the transfer list —
-  // and equally never pooled.
+  // and equally never pooled. Task 14's forceMomentumNext (set by
+  // measure-momentum) overrides the cadence for THIS frame only; the flag
+  // is consumed whether or not it fires (momentumView gate), so it can
+  // never leak into a later view.
   let momentumDensity: Float32Array | undefined
-  if (!halted && shouldSendMomentum(frameCount, momentumView)) {
+  if (!halted && shouldSendMomentum(frameCount, momentumView, forceMomentumNext)) {
     momentumDensity = fftshift2d(sim.momentum_density(), gridNx, gridNy)
     transfer.push(momentumDensity.buffer)
   }
+  forceMomentumNext = false
   frameCount++
 
   self.postMessage(
-    { type: 'frame', densityPhase, t, norm, maxDensity, potentialVersion, potential, obs, momentumDensity },
+    {
+      type: 'frame',
+      densityPhase,
+      t,
+      norm,
+      maxDensity,
+      potentialVersion,
+      potential,
+      obs,
+      momentumDensity,
+      measured,
+    },
     transfer,
   )
 }
@@ -189,6 +217,7 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           recyclePool.length = 0
           scanMaxDensity = true
           momentumView = false
+          forceMomentumNext = false
           gridNx = msg.nx
           gridNy = msg.ny
           break
@@ -223,6 +252,40 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           halted = false
           scanMaxDensity = true
           postFrame(0)
+          break
+        }
+        case 'measure-position': {
+          if (sim === undefined) throw new Error('measure-position before init')
+          // wasm wants the seed as BigInt; the protocol carries a plain
+          // number (< 2^48, exactly representable as a double).
+          const out = sim.measure_position(BigInt(msg.seed))
+          // The collapsed packet's |psi|^2 peak is nothing like the spread
+          // state's — force a fresh maxDensity scan so the post-measure
+          // exposure tracks the new state, then frame it AT ONCE: the
+          // collapse must be visible immediately (spec 5.6), and the frame
+          // carries the outcome for the crossfade + marker + toast. If the
+          // user is watching k-space, |phi(k)|^2 collapsed too — the forced
+          // momentum send below ships that on the same frame.
+          scanMaxDensity = true
+          forceMomentumNext = true
+          postFrame(sim.advance(0), { kind: 'position', x: out.x, y: out.y })
+          break
+        }
+        case 'measure-momentum': {
+          if (sim === undefined) throw new Error('measure-momentum before init')
+          const out = sim.measure_momentum(BigInt(msg.seed))
+          // The k-space collapse must ride THIS frame when the view is
+          // momentum (see forceMomentumNext above); the position collapse
+          // is framed regardless — both spaces see the new state.
+          scanMaxDensity = true
+          forceMomentumNext = true
+          postFrame(sim.advance(0), {
+            kind: 'momentum',
+            x: out.kx,
+            y: out.ky,
+            i: out.i,
+            j: out.j,
+          })
           break
         }
         case 'set-observables-cadence': {

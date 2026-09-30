@@ -6,6 +6,8 @@
   import { simStore } from '../sim/simStore.svelte.js'
   import { toolState } from '../sim/toolStore.svelte.js'
   import { strokeToOp, strokeToOps, type Pt } from '../sim/tools.js'
+  import { binToScreen, clearMarkers, drawMarkers, spawnMarker } from './markers.js'
+  import type { MeasuredOutcome } from '../sim/protocol.js'
 
   let {
     /**
@@ -65,12 +67,18 @@
   /** packet: press point (the future packet center) and current pointer. */
   let packetFrom: Pt | undefined
   let packetTo: Pt | undefined
+  /** measure: pointer-down screen position (click-vs-drag detection). */
+  let measureDown: { x: number; y: number } | undefined
   let flushRaf = 0
 
-  // Cancel any pending flush when the component goes away mid-drag.
+  // Cancel any pending flush / marker animation / toast timer when the
+  // component goes away mid-drag or mid-measurement.
   $effect(() => {
     return () => {
       if (flushRaf !== 0) cancelAnimationFrame(flushRaf)
+      if (markerRaf !== 0) cancelAnimationFrame(markerRaf)
+      if (toastTimer !== 0) window.clearTimeout(toastTimer)
+      clearMarkers()
     }
   })
 
@@ -84,6 +92,10 @@
 
   function isPacketTool(tool: string): tool is 'packet' {
     return tool === 'packet'
+  }
+
+  function isMeasureTool(tool: string): tool is 'measure' {
+    return tool === 'measure'
   }
 
   function toGrid(event: PointerEvent): Pt {
@@ -151,6 +163,10 @@
       packetFrom = point
       packetTo = point
       drawPreview()
+    } else if (isMeasureTool(toolState.tool)) {
+      // Record the press position in SCREEN pixels: the release decides
+      // click (< 3 px) vs. drag, and only a click measures.
+      measureDown = { x: event.offsetX, y: event.offsetY }
     }
   }
 
@@ -191,7 +207,28 @@
       packetFrom = undefined
       packetTo = undefined
       clearPreview()
+    } else if (measureDown !== undefined) {
+      const drag = Math.hypot(event.offsetX - measureDown.x, event.offsetY - measureDown.y)
+      measureDown = undefined
+      if (drag < 3) measurePosition()
     }
+  }
+
+  /**
+   * Sends a position measurement (Task 14). QUANTUM MEASUREMENT, NOT STATE
+   * PREPARATION: the click is purely a TRIGGER — the worker samples the
+   * outcome cell from |psi|^2 (Born rule, deterministic per seed) and
+   * collapses ψ around it with the instrument Gaussian. The click location
+   * itself is never used; there is deliberately no "place the particle
+   * here" semantic. The seed spans the full 48-bit wasm domain.
+   */
+  function measurePosition(): void {
+    // A fatal worker state means nobody will ever answer the measurement.
+    if (simStore.fatal !== undefined) return
+    simStore.send({
+      type: 'measure-position',
+      seed: Math.floor(Math.random() * 2 ** 48),
+    })
   }
 
   /**
@@ -230,6 +267,7 @@
     previewTo = undefined
     packetFrom = undefined
     packetTo = undefined
+    measureDown = undefined
     clearPreview()
   }
 
@@ -362,6 +400,75 @@
     if (canvas === undefined || overlay === undefined) return
     overlayContext()?.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight)
   }
+
+  // ------------------------------------------------ measurement marker/toast
+
+  /** Dedicated markers rAF id — runs exactly while a ring is alive. */
+  let markerRaf = 0
+  /** Transient outcome toast ("Đo tại (x, y)" / "Đo k = (kx, ky)"). */
+  let toast = $state<string | undefined>(undefined)
+  let toastTimer = 0
+
+  function markerTick(): void {
+    const element = canvas
+    if (element === undefined) {
+      markerRaf = 0
+      return
+    }
+    const ctx = overlayContext()
+    const alive =
+      ctx !== undefined &&
+      drawMarkers(ctx, performance.now(), element.clientWidth, element.clientHeight)
+    markerRaf = alive ? requestAnimationFrame(markerTick) : 0
+  }
+
+  /** Outcome -> toast text; hides itself again after 2 s. */
+  function showToast(outcome: MeasuredOutcome): void {
+    // Non-reactive t() on purpose: a language flip must not re-fire the
+    // marker effect (and the toast is long gone before it would matter).
+    const template = t(
+      outcome.kind === 'position' ? 'measure.resultPosition' : 'measure.resultMomentum',
+    )
+    toast = template.replace('{x}', fmt(outcome.x)).replace('{y}', fmt(outcome.y))
+    if (toastTimer !== 0) window.clearTimeout(toastTimer)
+    toastTimer = window.setTimeout(() => {
+      toast = undefined
+      toastTimer = 0
+    }, 2_000)
+  }
+
+  /** Fixed 2-decimal readout; keeps "-0.00" from ever rendering. */
+  function fmt(value: number): string {
+    const s = value.toFixed(2)
+    return s === '-0.00' ? '0.00' : s
+  }
+
+  // A landed measurement: spawn the ring marker where the OUTCOME sits and
+  // announce it. Position outcomes map through the same gridToScreen the
+  // previews use; momentum outcomes map their fftfreq bin through the
+  // fftshift-consistent binToScreen so the ring lands on the exact texel
+  // the collapsed k-space cell lights up.
+  $effect(() => {
+    const outcome = simStore.lastMeasurement
+    const element = canvas
+    if (outcome === undefined || element === undefined) return
+    if (outcome.kind === 'position') {
+      const s = gridToScreen({ x: outcome.x, y: outcome.y })
+      spawnMarker(s.x, s.y, performance.now())
+    } else if (outcome.i !== undefined && outcome.j !== undefined) {
+      const s = binToScreen(
+        outcome.i,
+        outcome.j,
+        simStore.grid,
+        simStore.grid,
+        element.clientWidth,
+        element.clientHeight,
+      )
+      spawnMarker(s.x, s.y, performance.now())
+    }
+    showToast(outcome)
+    if (markerRaf === 0) markerRaf = requestAnimationFrame(markerTick)
+  })
 </script>
 
 <div class="stage">
@@ -375,4 +482,25 @@
     onpointercancel={onPointerCancel}
   ></canvas>
   <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
+  {#if toast !== undefined}
+    <div class="toast" data-testid="measure-toast" role="status">{toast}</div>
+  {/if}
 </div>
+
+<style>
+  /* Outcome toast: transient, non-interactive, top-center of the stage. */
+  .toast {
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font-size: 0.9rem;
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+</style>
