@@ -1,3 +1,10 @@
 /target
 /.worktrees
 /.superpowers
+
+# web (npm package)
+/web/node_modules/
+/web/dist/
+/web/src/wasm/
+/web/test-results/
+/web/playwright-report/
