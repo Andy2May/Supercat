@@ -12,16 +12,7 @@ const EN = {
   harmonic: 'Harmonic oscillator',
 } as const
 
-/**
- * Same no-error contract as smoke.spec.ts, with one expected exception: the
- * tile thumbnails ship in Task 10, so every landing load 404s its
- * `thumbs/<id>.png` requests on the dev server for now (each tile hides the
- * img and keeps its styled placeholder). ONLY that exact shape is ignored —
- * a console error whose source URL is under thumbs/ AND whose text reports
- * the 404 status. Arbitrary console errors that merely mention "thumbs/" in
- * their text, or a thumbnail answered with any other status, still fail the
- * test. TODO(Task 10): remove this filter when the thumbnail files land.
- */
+/** Attaches the no-error collectors every scenario asserts at the end. */
 function expectNoErrors(page: import('@playwright/test').Page): {
   consoleErrors: string[]
   pageErrors: string[]
@@ -29,10 +20,7 @@ function expectNoErrors(page: import('@playwright/test').Page): {
   const consoleErrors: string[] = []
   const pageErrors: string[] = []
   page.on('console', (message) => {
-    if (message.type() !== 'error') return
-    const url = message.location().url
-    if (url.includes('thumbs/') && message.text().includes('404')) return
-    consoleErrors.push(message.text())
+    if (message.type() === 'error') consoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => pageErrors.push(String(error)))
   return { consoleErrors, pageErrors }

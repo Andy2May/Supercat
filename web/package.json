@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "perf": "playwright test tests/perf.spec.ts",
+    "thumbs": "playwright test tests/thumbs.spec.ts",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json && tsc -p tests/tsconfig.json"
   },
   "devDependencies": {
