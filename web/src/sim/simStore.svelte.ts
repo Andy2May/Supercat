@@ -49,6 +49,19 @@ export function effectiveView(mode: Mode, view: SimView): SimView {
   return mode === 'advanced' ? view : 'position'
 }
 
+/**
+ * Pure render-mode predicate (Task 13): the HSV phase colormap is only
+ * meaningful in the position view — the k-space texture interleaves (v, 0),
+ * so its phase channel is 0 everywhere and hue would be a garbage constant.
+ * Momentum frames therefore ALWAYS render density inferno; the stored
+ * `phaseColor` flag survives the round-trip untouched and the mode resumes
+ * when the user switches back (the button hides in momentum view, the flag
+ * does not reset).
+ */
+export function effectiveColorMode(view: SimView, phaseColor: boolean): 0 | 1 {
+  return view === 'position' && phaseColor ? 1 : 0
+}
+
 function readParams(): URLSearchParams {
   return typeof location === 'undefined'
     ? new URLSearchParams()
@@ -76,6 +89,15 @@ export class SimStore {
    * no message is needed on init).
    */
   view = $state<SimView>('position')
+  /**
+   * HSV phase colormap on (Task 13, advanced + position view only): PURE
+   * render state — flipping it sends nothing to the worker; the render
+   * loop derives the effective u_colorMode every frame via
+   * `effectiveColorMode`. Unlike `view`, a momentum round-trip does NOT
+   * clear it (the phase toggle hides, the flag survives); `init` does (a
+   * fresh scene boots on the inferno default).
+   */
+  phaseColor = $state(false)
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
 
@@ -147,6 +169,7 @@ export class SimStore {
     this.norm = 0
     this.frames = 0
     this.view = 'position'
+    this.phaseColor = false
     this.observablesHistory = []
     // Parked T8 finding: without this, a preset switch inherits the previous
     // scene's HUD numbers until the next frame overwrites them (and under

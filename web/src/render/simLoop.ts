@@ -14,7 +14,7 @@
  */
 import { computeSubsteps, DEFAULTS, nextFpsEma } from '../sim/simParams.js'
 import { interleaveScalarToRG } from '../sim/fftshift.js'
-import type { SimStore } from '../sim/simStore.svelte.js'
+import { effectiveColorMode, type SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
 
@@ -203,6 +203,12 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       if (viewIsMomentum !== showingMomentum) {
         renderer.setShowV(!viewIsMomentum)
       }
+      // Colormap (Task 13), recomputed from live store state EVERY frame:
+      // the predicate forces mode 0 (inferno) whenever the view is momentum
+      // (the k-space texture's phase channel is 0 — hue would be garbage),
+      // and a view round-trip resumes phase coloring without any message.
+      // Idempotent + one uniform1i, so per-frame is free.
+      renderer.setColorMode(effectiveColorMode(store.view, store.phaseColor))
       renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
     }
     showingMomentum = viewIsMomentum

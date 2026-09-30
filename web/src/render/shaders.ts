@@ -22,7 +22,7 @@ export const FRAGMENT_SHADER_SRC = `#version 300 es
 precision highp float;
 
 // Field: RG32F, interleaved (rho, phase) per grid point. The phase channel
-// is unsampled in M1 — hue-phase visualisation is M2 work.
+// (arg psi, (-pi, pi]) feeds the hue-phase colormap — u_colorMode 1 below.
 uniform sampler2D u_field;
 // Potential: R32F, one value per grid point.
 uniform sampler2D u_potential;
@@ -35,12 +35,28 @@ uniform vec2 u_gridSize;
 // zero). The momentum-space view (Task 12) turns the overlay off: V(x) has
 // no meaning on the k-space grid.
 uniform int u_showV;
+// Colormap select (Task 13): 0 = inferno density (default; exactly the
+// pre-Task-13 arithmetic), 1 = HSV phase (hue = arg psi). The renderer only
+// passes 1 for the POSITION view — the k-space texture interleaves (v, 0),
+// so its phase channel is 0 everywhere and every hue would collapse to the
+// same constant.
+uniform int u_colorMode;
 
 in vec2 v_uv;
 out vec4 outColor;
 
+// Branchless HSV -> RGB (h/s/v in [0, 1]): the classic K-constant form —
+// the hue wheel is sampled at 120-degree offsets, folded by abs() into
+// triangle waves, then clamped into the RGB triple.
+vec3 hsv2rgb(vec3 hsv) {
+  const vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(hsv.xxx + K.xyz) * 6.0 - K.www);
+  return hsv.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), hsv.y);
+}
+
 void main() {
-  float rho = texture(u_field, v_uv).x;
+  vec2 field = texture(u_field, v_uv).xy;
+  float rho = field.x;
 
   // Auto-exposure tone map: normalize by the frame's (smoothed) peak so
   // spread-out late stages and dim diffraction fringes keep full contrast
@@ -56,7 +72,19 @@ void main() {
   vec3 c2 = vec3(0.73, 0.21, 0.30);
   vec3 c3 = vec3(0.99, 0.91, 0.63);
   vec3 color;
-  if (b < 0.3333) {
+  if (u_colorMode == 1) {
+    // HSV phase colormap (Task 13): hue encodes arg psi — phi in (-pi, pi]
+    // maps to [0, 1) via fract((phi + PI) / TAU), so phi = -pi -> hue 0 and
+    // phi = +pi -> fract(1) = 0 as well: both sides of the branch cut read
+    // the same red, keeping the wheel continuous in RGB. Saturation 0.9
+    // leaves a little white for perceived brightness; VALUE is mode 0's
+    // tonemapped brightness b VERBATIM — the auto-exposure carries over, so
+    // dim diffraction fringes stay dim and the hue, not brightness, carries
+    // the phase structure.
+    float phi = field.y;
+    float hue = fract((phi + 3.14159265358979) / 6.28318530717959);
+    color = hsv2rgb(vec3(hue, 0.9, b));
+  } else if (b < 0.3333) {
     color = mix(vec3(0.0), c1, b * 3.0);
   } else if (b < 0.6667) {
     color = mix(c1, c2, b * 3.0 - 1.0);

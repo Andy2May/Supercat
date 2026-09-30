@@ -30,11 +30,13 @@ export const vi: Record<string, string> = {
   'mode.explore': 'Khám phá',
   'mode.advanced': 'Nâng cao',
   // Position/momentum view toggle (Task 12, advanced only): which space the
-  // canvas displays; the caption explains the k-space axes.
+  // canvas displays; the caption explains the k-space axes. Phase color
+  // (Task 13) is the HSV colormap toggle next to the segmented control.
   'view.position': 'Vị trí',
   'view.momentum': 'Động lượng',
   'view.momentumCaption': 'Không gian động lượng kx, ky — k = 0 ở giữa',
   'view.toggleLabel': 'Không gian hiển thị',
+  'view.phaseColor': 'Màu pha',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Chuyển sang {mode}',
   // Observables strip (Task 11, advanced mode): sparkline labels are math

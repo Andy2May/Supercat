@@ -117,6 +117,49 @@ test('momentum view: caption shows, frames advance, obs stay live, switch back c
   expect(pageErrors).toEqual([])
 })
 
+test('phase color toggle: advanced+position only; hides in momentum, resumes after', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  // Fresh context boots in explore: the advanced control row (including
+  // the phase toggle) is unmounted entirely.
+  await page.goto('/#/sim/free-packet')
+  await expect(page.getByTestId('phase-toggle')).toBeHidden()
+
+  // Advanced + position view: the toggle is mounted, starts OFF, and flips
+  // the stored flag on click. Frames keep advancing under the HSV colormap
+  // (the mode-1 shader branch compiled and the loop is alive).
+  await page.getByTestId('mode-toggle').click()
+  const phase = page.getByTestId('phase-toggle')
+  await expect(phase).toBeVisible()
+  await expect(phase).toHaveAttribute('aria-pressed', 'false')
+  await phase.click()
+  await expect(phase).toHaveAttribute('aria-pressed', 'true')
+  const f1 = await frames(page)
+  await page.waitForTimeout(600)
+  expect(await frames(page)).toBeGreaterThan(f1)
+
+  // Momentum view: phase is meaningless in k-space, so the button HIDES
+  // (not merely disables) while the canvas renders density inferno and
+  // drawing continues.
+  await page.getByTestId('view-momentum').click()
+  await expect(page.getByTestId('momentum-caption')).toBeVisible()
+  await expect(phase).toBeHidden()
+  const f2 = await frames(page)
+  await page.waitForTimeout(600)
+  expect(await frames(page)).toBeGreaterThan(f2)
+
+  // Back to position: the toggle reappears STILL PRESSED — the stored flag
+  // survived the round-trip and the coloring resumes.
+  await page.getByTestId('view-position').click()
+  await expect(phase).toBeVisible()
+  await expect(phase).toHaveAttribute('aria-pressed', 'true')
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
 test('switching to explore while in momentum view snaps back to position', async ({
   page,
 }) => {

@@ -27,12 +27,20 @@ export class HeatmapRenderer {
   private uMaxDensity!: WebGLUniformLocation | null
   private uGridSize!: WebGLUniformLocation | null
   private uShowV!: WebGLUniformLocation | null
+  private uColorMode!: WebGLUniformLocation | null
   /**
    * Whether the potential overlay draws (u_showV, Task 12). Kept as a field
    * so a context-loss rebuild() re-applies the CURRENT setting instead of
    * silently resetting the overlay to visible mid-momentum-view.
    */
   private showV = true
+  /**
+   * Colormap select (u_colorMode, Task 13): 0 = inferno density, 1 = HSV
+   * phase. Kept as a field for the same reason as `showV`: a context-loss
+   * rebuild() re-applies the current mode instead of flashing back to the
+   * inferno default.
+   */
+  private colorMode: 0 | 1 = 0
   /** Grid dims (nx, ny) of the last upload — feeds the shader's texel step. */
   private gridW = 1
   private gridH = 1
@@ -85,6 +93,7 @@ export class HeatmapRenderer {
     this.uMaxDensity = gl.getUniformLocation(this.program, 'u_maxDensity')
     this.uGridSize = gl.getUniformLocation(this.program, 'u_gridSize')
     this.uShowV = gl.getUniformLocation(this.program, 'u_showV')
+    this.uColorMode = gl.getUniformLocation(this.program, 'u_colorMode')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
@@ -92,6 +101,9 @@ export class HeatmapRenderer {
     // Re-applies the CURRENT overlay setting: a context-loss rebuild must
     // not resurrect V over a momentum view.
     gl.uniform1i(this.uShowV, this.showV ? 1 : 0)
+    // Same for the colormap (Task 13): a rebuild must not flash phase mode
+    // back to inferno until the next setColorMode call.
+    gl.uniform1i(this.uColorMode, this.colorMode)
 
     // Fullscreen quad as a triangle strip covering clip space; the shader's
     // v_uv mapping (not the vertex order) decides which edge is "up".
@@ -163,6 +175,20 @@ export class HeatmapRenderer {
   }
 
   /**
+   * Selects the colormap (u_colorMode, Task 13): 0 = inferno density (the
+   * M1 default), 1 = HSV phase. Pure render state — no worker round-trip.
+   * The render loop recomputes the effective mode every frame (phase only
+   * exists in the position view), so this is cheap and idempotent.
+   */
+  setColorMode(mode: 0 | 1): void {
+    this.colorMode = mode
+    // Defensive bind (see setShowV): uniform1i writes the CURRENTLY-bound
+    // program's uniform.
+    this.gl.useProgram(this.program)
+    this.gl.uniform1i(this.uColorMode, mode)
+  }
+
+  /**
    * Draws one frame. `potentialMax` scales the V overlay (the caller tracks
    * the potential's max magnitude; a zero value for all-zero V is safe — the
    * shader clamps its divisor away from zero). `maxDensity` is the
@@ -181,6 +207,7 @@ export class HeatmapRenderer {
     gl.uniform1f(this.uPotentialMax, potentialMax)
     gl.uniform1f(this.uMaxDensity, maxDensity)
     gl.uniform2f(this.uGridSize, this.gridW, this.gridH)
+    gl.uniform1i(this.uColorMode, this.colorMode)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.bindVertexArray(null)
 

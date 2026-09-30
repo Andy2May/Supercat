@@ -8,6 +8,12 @@
    * flips the worker's momentum flag; the render loop follows the frames
    * (a frame carrying `momentumDensity` displays k-space). The caption
    * under the canvas lives in App.svelte.
+   *
+   * Next to it sits the HSV phase-color toggle (Task 13): pure render state
+   * (`simStore.phaseColor`, no worker message). It is mounted ONLY in the
+   * position view — phase is meaningless in k-space (the texture's phase
+   * channel is 0), so switching to momentum HIDES the button while the
+   * stored flag survives; the coloring resumes on switch-back.
    */
 
   // Local mirror of the language store (same pattern as App.svelte): the
@@ -26,37 +32,58 @@
       toggleLabel: t('view.toggleLabel'),
       position: t('view.position'),
       momentum: t('view.momentum'),
+      phaseColor: t('view.phaseColor'),
     }
   })
 
   const view = $derived(simStore.view)
 </script>
 
-<div class="view-toggle" role="group" aria-label={labels.toggleLabel} data-testid="view-toggle">
-  <button
-    type="button"
-    data-testid="view-position"
-    aria-pressed={view === 'position'}
-    class:active={view === 'position'}
-    onclick={() => simStore.setView('position')}
-  >
-    {labels.position}
-  </button>
-  <button
-    type="button"
-    data-testid="view-momentum"
-    aria-pressed={view === 'momentum'}
-    class:active={view === 'momentum'}
-    onclick={() => simStore.setView('momentum')}
-  >
-    {labels.momentum}
-  </button>
+<div class="view-controls">
+  <div class="view-toggle" role="group" aria-label={labels.toggleLabel} data-testid="view-toggle">
+    <button
+      type="button"
+      data-testid="view-position"
+      aria-pressed={view === 'position'}
+      class:active={view === 'position'}
+      onclick={() => simStore.setView('position')}
+    >
+      {labels.position}
+    </button>
+    <button
+      type="button"
+      data-testid="view-momentum"
+      aria-pressed={view === 'momentum'}
+      class:active={view === 'momentum'}
+      onclick={() => simStore.setView('momentum')}
+    >
+      {labels.momentum}
+    </button>
+  </div>
+  {#if view === 'position'}
+    <button
+      type="button"
+      data-testid="phase-toggle"
+      aria-pressed={simStore.phaseColor}
+      class="phase"
+      class:active={simStore.phaseColor}
+      onclick={() => (simStore.phaseColor = !simStore.phaseColor)}
+    >
+      {labels.phaseColor}
+    </button>
+  {/if}
 </div>
 
 <style>
+  .view-controls {
+    display: inline-flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    align-items: stretch;
+  }
+
   .view-toggle {
     display: inline-flex;
-    margin-top: 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 0.5rem;
     overflow: hidden;
@@ -82,5 +109,13 @@
 
   button:not(.active):hover {
     background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* The phase toggle stands ALONE (not inside the segmented group), so it
+     carries the group's border itself; the sibling selector above must not
+     draw a divider between the group's edge and it. */
+  .phase {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 0.5rem;
   }
 </style>
