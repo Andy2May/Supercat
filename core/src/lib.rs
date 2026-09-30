@@ -10,14 +10,16 @@
 //!   [`Grid1D`](grid::Grid1D) and [`Grid2D`](grid::Grid2D);
 //! - [`wavefunction`] — complex ψ sampled on a grid, with the dx-weighted
 //!   Riemann-sum norm ([`Wavefunction`](wavefunction::Wavefunction));
-//! - [`states`] — canonical initial states, currently the Gaussian packet
-//!   [`gaussian`](states::gaussian);
+//! - [`states`] — canonical initial states, currently the Gaussian packets
+//!   [`gaussian`](states::gaussian) and
+//!   [`gaussian_2d`](states::gaussian_2d);
 //! - [`potential`] — potentials as sampled arrays with analytic builders
 //!   (harmonic, finite well, barrier, well chain), elementwise
 //!   [`add`](potential::Potential::add), and [`zeros`](potential::Potential::zeros);
-//! - [`propagator`] — [`SplitOperator`](propagator::SplitOperator), a
-//!   second-order Strang-splitting TDSE propagator guarded by a per-step norm
-//!   check, behind the [`Propagator`](propagator::Propagator) trait;
+//! - [`propagator`] — [`SplitOperator`](propagator::SplitOperator) and its
+//!   2D twin [`SplitOperator2D`](propagator::SplitOperator2D),
+//!   second-order Strang-splitting TDSE propagators guarded by a per-step
+//!   norm check, behind the [`Propagator`](propagator::Propagator) trait;
 //! - [`observables`] — ⟨x⟩, σ_x, ⟨p⟩, σ_p, kinetic/potential/total energy,
 //!   the momentum grid, and window probabilities
 //!   ([`norm_in_range`](observables::norm_in_range));

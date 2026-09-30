@@ -101,7 +101,6 @@ pub(crate) fn k_grid(n: usize, dx: f64) -> Vec<f64> {
 /// transformed in place, then every column (length `ny`, stride `nx`) is
 /// staged through the tail of `scratch` and transformed back into place.
 /// `scratch.len()` must be at least [`scratch2_len`]`(nx, ny)`.
-#[allow(dead_code, reason = "first caller is the 2D propagator (next task)")]
 pub(crate) fn transform2_forward(
     buf: &mut [Complex64],
     scratch: &mut [Complex64],
@@ -119,7 +118,6 @@ pub(crate) fn transform2_forward(
 /// and the column pass reuses it exactly as the row pass does, so the row
 /// and column passes contribute `1/nx` and `1/ny` respectively — no extra
 /// scaling here.
-#[allow(dead_code, reason = "first caller is the 2D propagator (next task)")]
 pub(crate) fn transform2_inverse(
     buf: &mut [Complex64],
     scratch: &mut [Complex64],
@@ -158,7 +156,6 @@ fn transform2_with(
 /// Scratch length that satisfies both 2D transform directions for an
 /// `nx * ny` buffer: the work space of the longer 1D pass plus `ny` slots to
 /// stage one column.
-#[allow(dead_code, reason = "first caller is the 2D propagator (next task)")]
 pub(crate) fn scratch2_len(nx: usize, ny: usize) -> usize {
     scratch_len(nx).max(scratch_len(ny)) + ny
 }

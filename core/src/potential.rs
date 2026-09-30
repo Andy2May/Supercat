@@ -161,6 +161,14 @@ impl Potential2D {
         }
     }
 
+    /// Wraps raw sampled values, no validation. Test support only: the 2D
+    /// analytic builders arrive in a later milestone, so 2D tests elsewhere
+    /// in the crate (e.g. the propagator) assemble their samples by hand.
+    #[cfg(test)]
+    pub(crate) fn from_values(values: Vec<f64>) -> Self {
+        Self { values }
+    }
+
     /// The sampled values, one per grid point, row-major (x-fastest).
     pub fn values(&self) -> &[f64] {
         &self.values
