@@ -86,7 +86,13 @@ void main() {
   float vD = texture(u_potential, v_uv - vec2(0.0, texel.y)).x;
   float dv = max(max(abs(v - vL), abs(v - vR)), max(abs(v - vU), abs(v - vD)));
   float edge = clamp(dv / vScale, 0.0, 1.0);
-  color = mix(color, vec3(1.0, 0.62, 0.15), edge * 0.9);
+  // Edge hue follows the SIGN of the shape: warm amber outlines barriers
+  // (V > 0), cool cyan outlines wells (V < 0) — the neighborhood sum picks
+  // the dominant sign so the outer rim of a well stays cyan, not amber.
+  vec3 edgeColor = (v + vL + vR + vU + vD) > 0.0
+    ? vec3(1.0, 0.62, 0.15)
+    : vec3(0.35, 0.90, 1.0);
+  color = mix(color, edgeColor, edge * 0.9);
 
   outColor = vec4(color, 1.0);
 }

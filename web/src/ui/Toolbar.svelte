@@ -12,6 +12,17 @@
 
   const TOOLS: readonly Tool[] = ['brush', 'barrier', 'well', 'eraser', 'packet']
 
+  // Swatch dot per tool, mirroring the canvas rendering so the button
+  // previews what a stroke looks like: warm = positive V (brush/barrier),
+  // teal = negative V (well), dashed ring = eraser, arrow = packet.
+  const SWATCH: Record<Tool, string> = {
+    brush: '#f2730d',
+    barrier: '#f2730d',
+    well: '#1f9eb8',
+    eraser: '#888',
+    packet: '#e6c040',
+  }
+
   const labels = $derived.by(() => {
     active // dependency: re-translate when the language changes
     return {
@@ -35,6 +46,7 @@
         class:active={toolState.tool === tool}
         onclick={() => (toolState.tool = tool)}
       >
+        <span class="swatch" style={`--swatch: ${SWATCH[tool]}`}></span>
         {labels[tool]}
       </button>
     {/each}
@@ -86,6 +98,16 @@
     background: currentColor;
     /* Keep the pressed label readable against the inverted background. */
     color: light-dark(white, black);
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-inline-end: 0.4rem;
+    border-radius: 50%;
+    background: var(--swatch);
+    vertical-align: baseline;
   }
 
   .slider {
