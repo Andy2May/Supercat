@@ -109,11 +109,13 @@ fn js_object(fields: &[(&str, JsValue)]) -> JsValue {
 /// # Errors
 ///
 /// "invalid state" mentioning the field when it is missing or not a number
-/// (`undefined`, arrays, objects), or when it is a non-finite number (NaN,
-/// +/-infinity).
+/// (`undefined`, arrays, objects), when it is a non-finite number (NaN,
+/// +/-infinity), or when reading it throws — `Reflect::get` on the
+/// caller-supplied object runs arbitrary code, and a throwing getter or
+/// proxy trap surfaces here as an error, never a panic.
 fn state_number(state: &JsValue, key: &str) -> Result<f64, JsError> {
     let n = Reflect::get(state, &JsValue::from_str(key))
-        .expect("getting a property of a plain object cannot throw")
+        .map_err(|_| JsError::new(&format!("invalid state: reading field '{key}' threw")))?
         .as_f64()
         .ok_or_else(|| {
             JsError::new(&format!(
@@ -128,20 +130,27 @@ fn state_number(state: &JsValue, key: &str) -> Result<f64, JsError> {
     Ok(n)
 }
 
+/// Largest grid axis a state may declare: `floor(sqrt(u32::MAX / 2))`, so
+/// that with both `nx` and `ny` at the cap the sample-count products
+/// `nx * ny` and `2 * nx * ny` still fit `usize` even on wasm32, where
+/// `usize` is 32-bit (`2 * 46340^2 = 4294791200 < 2^32`). Still far beyond
+/// any addressable grid — the reference grid is 64 x 64.
+const MAX_GRID_AXIS: f64 = 46340.0;
+
 /// Reads `state[key]` as a non-negative integer (`nx`, `ny`) for
 /// [`Simulation2D::deserialize_state`].
 ///
 /// # Errors
 ///
 /// "invalid state" mentioning the field when it fails
-/// [`state_number`]'s contract, or when it is negative, fractional, or so
-/// large that the sample-count arithmetic below it could overflow (the cap
-/// of 1e8 is far beyond any addressable grid).
+/// [`state_number`]'s contract, or when it is negative, fractional, or
+/// larger than [`MAX_GRID_AXIS`] (which keeps the sample-count arithmetic
+/// that follows overflow-free on every target).
 fn state_index(state: &JsValue, key: &str) -> Result<usize, JsError> {
     let n = state_number(state, key)?;
-    if n.fract() != 0.0 || !(0.0..=1e8).contains(&n) {
+    if n.fract() != 0.0 || !(0.0..=MAX_GRID_AXIS).contains(&n) {
         return Err(JsError::new(&format!(
-            "invalid state: field '{key}' must be an integer in [0, 1e8]"
+            "invalid state: field '{key}' must be an integer in [0, {MAX_GRID_AXIS}]"
         )));
     }
     Ok(n as usize)
@@ -152,11 +161,12 @@ fn state_index(state: &JsValue, key: &str) -> Result<usize, JsError> {
 ///
 /// # Errors
 ///
-/// "invalid state" mentioning the field when it is missing or not a
-/// `Float32Array`.
+/// "invalid state" mentioning the field when it is missing, not a
+/// `Float32Array`, or its read throws (getter / proxy trap — same contract
+/// as [`state_number`], never a panic).
 fn state_f32_array(state: &JsValue, key: &str) -> Result<Vec<f32>, JsError> {
     let value = Reflect::get(state, &JsValue::from_str(key))
-        .expect("getting a property of a plain object cannot throw");
+        .map_err(|_| JsError::new(&format!("invalid state: reading field '{key}' threw")))?;
     let array = value.dyn_ref::<Float32Array>().ok_or_else(|| {
         JsError::new(&format!(
             "invalid state: field '{key}' is missing or not a Float32Array"
@@ -653,9 +663,10 @@ impl Simulation2D {
     /// A `JsError` whose message contains "dimension" for shape mismatches
     /// (`psi`/`potential` lengths against `2*nx*ny`/`nx*ny`, or a state grid
     /// other than this simulation's `nx x ny`) and "invalid" for a
-    /// non-object argument, missing or non-numeric/non-finite fields, and
-    /// non-finite array samples. A rejected load leaves the simulation
-    /// exactly as it was.
+    /// non-object argument, a field whose read throws (getter / proxy
+    /// trap), missing or non-numeric/non-finite fields, and non-finite
+    /// array samples. A rejected load leaves the simulation exactly as it
+    /// was.
     pub fn deserialize_state(&mut self, state: &JsValue) -> Result<(), JsError> {
         if !state.is_object() {
             return Err(JsError::new(
@@ -1373,5 +1384,80 @@ mod tests {
         sim.restore_potential();
         assert_eq!(sim.potential_version(), 4);
         assert_eq!(sim.read_potential_f32().to_vec(), v);
+    }
+
+    #[wasm_bindgen_test]
+    fn deserialize_maps_throwing_getters_to_errors_without_touching_state() {
+        // Fix round 1 (finding 1): Reflect::get on the caller-supplied state
+        // runs arbitrary JS — a throwing accessor (or a proxy trap) must
+        // surface as a JsError mentioning "invalid", never as a wasm trap
+        // from an .expect(). Both read paths are covered: a scalar field
+        // (nx, via state_number) and an array field (psi, via
+        // state_f32_array).
+        let mut sim = sim();
+        set_reference_packet(&mut sim);
+        let before = sim.density_phase().to_vec();
+
+        let bad = js_sys::eval("({ get nx() { throw new Error('boom'); } })")
+            .expect("eval of an object literal is valid");
+        let err = sim.deserialize_state(&bad).unwrap_err();
+        let msg = format!("{err:?}");
+        assert!(msg.contains("invalid"), "{msg}");
+
+        let bad = js_sys::eval("({ nx: 64, ny: 64, get psi() { throw new Error('boom'); } })")
+            .expect("eval of an object literal is valid");
+        let err = sim.deserialize_state(&bad).unwrap_err();
+        let msg = format!("{err:?}");
+        assert!(msg.contains("invalid"), "{msg}");
+
+        // Neither rejected load touched the simulation.
+        assert_eq!(sim.potential_version(), 0);
+        assert_eq!(sim.density_phase().to_vec(), before);
+    }
+
+    #[wasm_bindgen_test]
+    fn deserialize_rejects_oversized_grid_axes_without_overflow() {
+        // Fix round 1 (finding 2): usize is 32-bit on wasm32, so crafted
+        // nx = ny = 50000 would make 2*nx*ny overflow (debug panic / release
+        // wrap) under the old 1e8 axis cap. The MAX_GRID_AXIS cap must
+        // reject them as "invalid" before any arithmetic, and the boundary
+        // case nx = ny = 46340 must reach the ordinary "dimension" length
+        // check with 2*nx*ny still inside u32.
+        let mut sim = sim();
+        set_reference_packet(&mut sim);
+        let before = sim.density_phase().to_vec();
+
+        let bad = js_sys::Object::new();
+        js_sys::Reflect::set(&bad, &"nx".into(), &wasm_bindgen::JsValue::from(50000u32)).unwrap();
+        js_sys::Reflect::set(&bad, &"ny".into(), &wasm_bindgen::JsValue::from(50000u32)).unwrap();
+        js_sys::Reflect::set(
+            &bad,
+            &"psi".into(),
+            &js_sys::Float32Array::new_with_length(3).into(),
+        )
+        .unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        let msg = format!("{err:?}");
+        assert!(msg.contains("invalid"), "{msg}");
+
+        // Boundary: both axes at MAX_GRID_AXIS pass state_index, so the
+        // psi-length product 2*46340*46340 is actually evaluated on wasm32
+        // usize — it must compare cleanly into a "dimension" error.
+        let bad = js_sys::Object::new();
+        js_sys::Reflect::set(&bad, &"nx".into(), &wasm_bindgen::JsValue::from(46340u32)).unwrap();
+        js_sys::Reflect::set(&bad, &"ny".into(), &wasm_bindgen::JsValue::from(46340u32)).unwrap();
+        js_sys::Reflect::set(
+            &bad,
+            &"psi".into(),
+            &js_sys::Float32Array::new_with_length(3).into(),
+        )
+        .unwrap();
+        let err = sim.deserialize_state(&bad.into()).unwrap_err();
+        let msg = format!("{err:?}");
+        assert!(msg.contains("dimension"), "{msg}");
+
+        // Neither rejected load touched the simulation.
+        assert_eq!(sim.potential_version(), 0);
+        assert_eq!(sim.density_phase().to_vec(), before);
     }
 }
