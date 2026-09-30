@@ -430,6 +430,38 @@ mod tests {
         }
 
         #[test]
+        fn norm_carries_da_weight_on_non_unit_spacing() {
+            // Grid 8×4 over [0, 4) × [0, 2): dx = dy = 0.5, so dA = 0.25 and
+            // the 32 points tile area A = 4 × 2 = 8.
+            // Hand computation: Σ|c|²·dA = 32·|c|²·0.25 = |c|²·A, so with
+            // c = 1 the norm is √8 — an unweighted sqrt(Σ|ψₖ|²) would give
+            // √32 instead, which pins the dA weighting (all other 2D tests
+            // use dx = dy = 1 where the two conventions coincide).
+            let grid = Grid2D::new(8, 4, 0.0, 4.0, 0.0, 2.0).unwrap();
+            let mut wf = Wavefunction2D::new(grid, ones(32), 1.0, 1.0).unwrap();
+
+            // Before normalizing: ||psi|| = sqrt(32 * 0.5 * 0.5) = sqrt(A).
+            assert!(
+                (wf.norm() - 8.0_f64.sqrt()).abs() < EPS,
+                "norm = {}",
+                wf.norm()
+            );
+
+            wf.normalize();
+            assert!((wf.norm() - 1.0).abs() < EPS, "norm = {}", wf.norm());
+
+            let expected = 1.0 / 8.0_f64.sqrt();
+            for (i, c) in wf.psi().iter().enumerate() {
+                assert!(
+                    (c.re - expected).abs() < EPS,
+                    "element {i}: re = {}, expected {expected}",
+                    c.re
+                );
+                assert_eq!(c.im, 0.0, "element {i}: im = {}", c.im);
+            }
+        }
+
+        #[test]
         fn accessors_expose_fields_and_grid() {
             let grid = Grid2D::new(8, 4, 0.0, 8.0, 0.0, 4.0).unwrap();
             let mut wf = Wavefunction2D::new(grid, ones(32), 2.5, 0.7).unwrap();
