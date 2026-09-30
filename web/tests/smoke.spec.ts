@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
 
+/**
+ * Every scenario enters a simulation directly by hash (Task 9): '/' is the
+ * preset landing now, so the smoke suite must boot a scene via
+ * '#/sim/double-slit' (the M1 default) to reach the simulator at all.
+ */
+
 /** The propagator step (DEFAULTS.dt): one `step` click must add exactly this. */
 const DT = 0.005
 
@@ -34,7 +40,7 @@ test('worker physics renders: t/norm advance, pause freezes frames, no errors', 
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  await page.goto('/')
+  await page.goto('/#/sim/double-slit')
 
   // The render loop must produce more than 10 drawn frames within 5 s.
   await expect
@@ -70,7 +76,7 @@ test('brush drag paints the potential: potentialVersion increases, no errors', a
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  await page.goto('/')
+  await page.goto('/#/sim/double-slit')
 
   // The render loop must be alive before we start drawing.
   await expect
@@ -117,7 +123,7 @@ test('playback bar: step advances t by exactly dt, reset returns t to 0', async 
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  await page.goto('/')
+  await page.goto('/#/sim/double-slit')
   await expect
     .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
@@ -155,7 +161,7 @@ test('fatal banner halts the loop; "Reset & run again" restarts it', async ({
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   // ?debugFatal=1: the store fakes a fatal ~1 s after boot (test-only param).
-  await page.goto('/?debugFatal=1')
+  await page.goto('/?debugFatal=1#/sim/double-slit')
 
   const banner = page.getByTestId('error-banner')
   await expect(banner).toBeVisible({ timeout: 10_000 })
@@ -185,7 +191,7 @@ test('packet tool: a drag drops a fresh gaussian (t resets, |psi|^2 repopulates)
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  await page.goto('/')
+  await page.goto('/#/sim/double-slit')
   await expect
     .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
@@ -254,7 +260,7 @@ test('canvas y-axis points up: a barrier drawn in the top quarter stays on scree
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  await page.goto('/')
+  await page.goto('/#/sim/double-slit')
   await expect
     .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)

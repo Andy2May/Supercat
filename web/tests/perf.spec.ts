@@ -32,7 +32,8 @@ test('perf probe: default 256^2 grid produces fps/substeps/workerMs numbers', as
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(String(error)))
 
-  await page.goto('/?perf=1')
+  // '/' is the landing page since Task 9 — enter the default scene by hash.
+  await page.goto('/?perf=1#/sim/double-slit')
 
   const samples: PerfSample[] = []
   for (let i = 0; i < 12; i++) {

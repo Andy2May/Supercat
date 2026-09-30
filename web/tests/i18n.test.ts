@@ -4,6 +4,7 @@ import { en } from '../src/i18n/en.js'
 import { vi } from '../src/i18n/vi.js'
 
 import { getLang, setLang, t } from '../src/i18n/index.js'
+import { LANDING_ORDER } from '../src/presets/index.js'
 
 describe('i18n', () => {
   afterEach(() => {
@@ -43,5 +44,44 @@ describe('i18n', () => {
   it('unknown keys fall back to the key itself', () => {
     setLang('en')
     expect(t('no.such.key')).toBe('no.such.key')
+  })
+})
+
+describe('preset narration (Task 9)', () => {
+  it('every preset has title/teaser/card in both languages; card 3-5 lines; teaser one short line', () => {
+    for (const dict of [vi, en]) {
+      for (const id of LANDING_ORDER) {
+        const title = dict[`preset.${id}.title`]
+        expect(title, `preset.${id}.title`).toBeTruthy()
+
+        const teaser = dict[`preset.${id}.teaser`]
+        expect(teaser, `preset.${id}.teaser`).toBeTruthy()
+        expect(teaser!.length, `preset.${id}.teaser`).toBeLessThanOrEqual(80)
+        expect(teaser!.split('\n')).toHaveLength(1)
+
+        const lines = dict[`preset.${id}.card`]?.split('\n') ?? []
+        expect(lines.length, `preset.${id}.card`).toBeGreaterThanOrEqual(3)
+        expect(lines.length, `preset.${id}.card`).toBeLessThanOrEqual(5)
+        for (const line of lines) {
+          expect(line.trim().length, `preset.${id}.card`).toBeGreaterThan(0)
+        }
+      }
+    }
+  })
+
+  it('vi preset titles are pinned by the launch spec', () => {
+    expect(vi['preset.double-slit.title']).toBe('Khe kép')
+    expect(vi['preset.tunneling.title']).toBe('Xuyên hầm')
+    expect(vi['preset.free-packet.title']).toBe('Gói sóng tự do')
+    expect(vi['preset.harmonic.title']).toBe('Dao động điều hòa')
+    expect(vi['preset.sandbox.title']).toBe('Tự do khám phá')
+  })
+
+  it('vi and en cards agree on line count (parallel narration)', () => {
+    for (const id of LANDING_ORDER) {
+      expect(vi[`preset.${id}.card`].split('\n')).toHaveLength(
+        en[`preset.${id}.card`].split('\n').length,
+      )
+    }
   })
 })

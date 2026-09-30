@@ -71,6 +71,15 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
    * consumed the data; nothing reads it afterwards.
    */
   let recycleBuffer: ArrayBuffer | undefined
+  /**
+   * Worker generation this loop last saw. Hash routing (Task 9) can
+   * destroy()+init() the store mid-session (preset switch) while an
+   * `advance` is in flight — the terminated worker never answers, so
+   * `advanceInFlight` would stay true forever and the new worker would
+   * never receive an advance. A bumped epoch means: drop all in-flight
+   * state (the flag and any stale recycle buffer) and start clean.
+   */
+  let epoch = store.epoch
 
   // Context-loss recovery (hand-verified — about:gpu or WEBGL_lose_context;
   // no CI story for killing a real context). preventDefault on `lost` is
@@ -142,6 +151,14 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
 
   const tick = (now: number): void => {
     if (disposed) return
+    // Worker swap (see `epoch` above): reset the advance bookkeeping the
+    // dead worker stranded. Checked in `tick` (not onFrame) because a swap
+    // can also happen while paused, and this must run before the next post.
+    if (store.epoch !== epoch) {
+      epoch = store.epoch
+      advanceInFlight = false
+      recycleBuffer = undefined
+    }
     // Clamp the wall-clock delta so a background tab waking up cannot
     // teleport the simulation (or explode the substep count).
     const dtWall = Math.min((now - last) / 1000, 0.1)

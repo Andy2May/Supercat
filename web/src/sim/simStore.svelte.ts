@@ -75,6 +75,14 @@ export class SimStore {
   /** Live HUD numbers; mutated in place by the render loop each frame. */
   perf = $state<PerfStats>({ fps: 0, substeps: 0, workerMs: 0 })
 
+  /**
+   * Bumped by every `init` (plain, not reactive — only the render loop's
+   * plain rAF tick reads it). Lets `simLoop` detect a destroy()+init()
+   * worker swap mid-session and drop in-flight advance state instead of
+   * deadlocking on an answer the terminated worker will never send.
+   */
+  epoch = 0
+
   private worker: Worker | undefined
   private readonly frameListeners = new Set<(frame: FrameMessage) => void>()
 
@@ -104,6 +112,18 @@ export class SimStore {
     this.t = 0
     this.norm = 0
     this.frames = 0
+    // Parked T8 finding: without this, a preset switch inherits the previous
+    // scene's HUD numbers until the next frame overwrites them (and under
+    // `?perf=1` the window mirror would too).
+    this.perf.fps = 0
+    this.perf.substeps = 0
+    this.perf.workerMs = 0
+    if (typeof window !== 'undefined' && window.__psiforgePerf !== undefined) {
+      window.__psiforgePerf.fps = 0
+      window.__psiforgePerf.substeps = 0
+      window.__psiforgePerf.workerMs = 0
+    }
+    this.epoch++
     this.grid = this.gridOverride ?? preset.grid
     const worker = new Worker(new URL('./physics.worker.ts', import.meta.url), {
       type: 'module',

@@ -1,11 +1,14 @@
 <script lang="ts">
   import { getLang, lang, setLang, t } from './i18n/index.js'
   import { PRESETS } from './presets/index.js'
+  import { parseRoute } from './route.js'
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
   import { simStore } from './sim/simStore.svelte.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
+  import Landing from './ui/Landing.svelte'
   import PlaybackBar from './ui/PlaybackBar.svelte'
+  import PresetCard from './ui/PresetCard.svelte'
   import SimCanvas from './ui/SimCanvas.svelte'
   import Toolbar from './ui/Toolbar.svelte'
   import WebGlMissing from './ui/WebGlMissing.svelte'
@@ -21,9 +24,9 @@
     active // dependency: re-translate when the language changes
     return t('app.title')
   })
-  const tagline = $derived.by(() => {
+  const backLabel = $derived.by(() => {
     active
-    return t('app.tagline')
+    return t('app.backToLanding')
   })
   const toggleLabel = $derived.by(() => {
     active
@@ -51,12 +54,31 @@
   // app is replaced by the WebGlMissing page and no worker is ever created.
   const webglOk = hasWebGl2()
 
-  // Worker lifecycle: create once on mount (the default double-slit preset;
-  // grid still overridable via `?grid=`), terminate on unmount. Task 9
-  // replaces the hardcoded preset with hash-routed scene selection.
+  // ---- hash routing (Task 9) --------------------------------------------
+  // '' / '#/' (and '#', its empty-fragment form) land; '#/sim/<id>' is a
+  // preset; anything else falls back to double-slit inside `parseRoute`.
+  let route = $state(parseRoute(location.hash))
+
+  $effect(() => {
+    const onHashChange = () => {
+      route = parseRoute(location.hash)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  })
+
+  // Worker lifecycle, route-driven. `route` is only ever reassigned by the
+  // hashchange handler above, so this effect re-runs exactly on route
+  // changes — never on unrelated re-renders (language/mode flips don't
+  // touch it). Svelte runs the previous cleanup first, so a preset switch
+  // is always destroy() then init(): the old worker is terminated before
+  // the new scene boots, and leaving for the landing view tears the worker
+  // down entirely (no worker runs outside the sim view).
   $effect(() => {
     if (!webglOk) return
-    simStore.init(PRESETS['double-slit'])
+    if (route.view !== 'sim') return
+    const preset = PRESETS[route.id]
+    simStore.init(preset)
     return () => simStore.destroy()
   })
 
@@ -75,9 +97,12 @@
 
 {#if !webglOk}
   <WebGlMissing />
+{:else if route.view === 'landing'}
+  <Landing />
 {:else}
   <main>
     <header>
+      <a class="back" data-testid="back-link" href="#/">{backLabel}</a>
       <h1>{title}</h1>
       <div class="controls">
         <button onclick={() => setLang(active === 'vi' ? 'en' : 'vi')}>{toggleLabel}</button>
@@ -86,11 +111,13 @@
         </button>
       </div>
     </header>
-    <p>{tagline}</p>
     {#if renderError !== undefined}
       <p class="error" role="alert">{renderFailedLabel}</p>
     {:else}
       <Toolbar />
+      {#key route.id}
+        <PresetCard id={route.id} />
+      {/key}
       <SimCanvas onRenderFailed={(error) => (renderError = error)} />
       <PlaybackBar />
     {/if}
@@ -106,3 +133,17 @@
     {/if}
   </main>
 {/if}
+
+<style>
+  .back {
+    align-self: center;
+    font-size: 0.9rem;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .back:hover {
+    opacity: 0.8;
+  }
+</style>
