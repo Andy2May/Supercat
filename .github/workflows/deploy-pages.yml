@@ -40,7 +40,11 @@ jobs:
       - run: npm run build:wasm
       - run: npm ci
       - run: npm run build
-      - uses: actions/configure-pages@v5
+      # No actions/configure-pages here: the build job holds no `pages`
+      # permission (workflow-level `contents: read` only), and the step's
+      # outputs are unused — base: './' needs no base-path injection, and
+      # upload-pages-artifact + deploy-pages only need the Pages source
+      # pre-set to "GitHub Actions" in the repository settings.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
