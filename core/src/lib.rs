@@ -80,3 +80,11 @@ pub mod potential;
 pub mod propagator;
 pub mod states;
 pub mod wavefunction;
+
+// `Complex64` appears throughout this crate's public API (e.g.
+// [`Wavefunction2D::psi`](wavefunction::Wavefunction2D::psi) returns
+// `&[Complex64]`) but `num-complex` is not a dependency downstream crates
+// should need to add just to name the sample type. Re-exporting it lets the
+// wasm bindings crate hold `Vec<Complex64>` snapshots without its own copy
+// of the dependency.
+pub use num_complex;
