@@ -19,6 +19,18 @@ describe('i18n', () => {
     }
   })
 
+  it('mode keys exist in both languages (Task 7 explore/advanced toggle)', () => {
+    for (const dict of [vi, en]) {
+      for (const key of ['mode.explore', 'mode.advanced', 'mode.switchHint']) {
+        expect(dict[key], key).toBeTruthy()
+      }
+    }
+    // The hint names the target mode via a '{mode}' placeholder filled in
+    // App.svelte — every language must keep exactly that placeholder.
+    expect(vi['mode.switchHint']).toContain('{mode}')
+    expect(en['mode.switchHint']).toContain('{mode}')
+  })
+
   it('t() reads the active dictionary and setLang switches it', () => {
     setLang('vi')
     expect(getLang()).toBe('vi')

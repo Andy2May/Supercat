@@ -27,4 +27,8 @@ export const vi: Record<string, string> = {
   'tool.packet': 'Gói sóng',
   'tool.height': 'Độ cao',
   'tool.kMag': 'Động lượng |k|',
+  'mode.explore': 'Khám phá',
+  'mode.advanced': 'Nâng cao',
+  // Header toggle hint; '{mode}' is replaced with the target mode's name.
+  'mode.switchHint': 'Chuyển sang {mode}',
 }

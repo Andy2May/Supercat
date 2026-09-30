@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getLang, lang, setLang, t } from './i18n/index.js'
   import { hasWebGl2 } from './sim/webglDetect.js'
+  import { modeStore } from './sim/modeStore.svelte.js'
   import { simStore } from './sim/simStore.svelte.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import PlaybackBar from './ui/PlaybackBar.svelte'
@@ -26,6 +27,15 @@
   const toggleLabel = $derived.by(() => {
     active
     return t(active === 'vi' ? 'app.lang.switchToEn' : 'app.lang.switchToVi')
+  })
+  // Mode toggle: the button always names the mode it switches TO (the hint
+  // template '{mode}' is filled with the target mode's translated name), so
+  // the label re-derives on both a language change (`active`) and a mode
+  // flip (`modeStore.mode`).
+  const modeToggleLabel = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    const target = modeStore.mode === 'explore' ? 'mode.advanced' : 'mode.explore'
+    return t('mode.switchHint').replace('{mode}', t(target))
   })
   const hudLabels = $derived.by(() => {
     active
@@ -69,6 +79,9 @@
       <h1>{title}</h1>
       <div class="controls">
         <button onclick={() => setLang(active === 'vi' ? 'en' : 'vi')}>{toggleLabel}</button>
+        <button data-testid="mode-toggle" onclick={() => modeStore.toggle()}>
+          {modeToggleLabel}
+        </button>
       </div>
     </header>
     <p>{tagline}</p>

@@ -27,4 +27,8 @@ export const en: Record<string, string> = {
   'tool.packet': 'Packet',
   'tool.height': 'Height',
   'tool.kMag': 'Momentum |k|',
+  'mode.explore': 'Explore',
+  'mode.advanced': 'Advanced',
+  // Header toggle hint; '{mode}' is replaced with the target mode's name.
+  'mode.switchHint': 'Switch to {mode}',
 }
