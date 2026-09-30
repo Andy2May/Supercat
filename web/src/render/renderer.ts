@@ -22,6 +22,10 @@ export class HeatmapRenderer {
   private readonly potentialTexture: WebGLTexture
   private readonly uPotentialMax: WebGLUniformLocation | null
   private readonly uMaxDensity: WebGLUniformLocation | null
+  private readonly uGridSize: WebGLUniformLocation | null
+  /** Grid dims (nx, ny) of the last upload — feeds the shader's texel step. */
+  private gridW = 1
+  private gridH = 1
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2', { antialias: false })
@@ -34,6 +38,7 @@ export class HeatmapRenderer {
     this.program = this.buildProgram()
     this.uPotentialMax = gl.getUniformLocation(this.program, 'u_potentialMax')
     this.uMaxDensity = gl.getUniformLocation(this.program, 'u_maxDensity')
+    this.uGridSize = gl.getUniformLocation(this.program, 'u_gridSize')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
@@ -60,6 +65,8 @@ export class HeatmapRenderer {
 
   /** Replaces the field texture: (rho, phase) interleaved, row-major j*nx+i. */
   uploadField(data: Float32Array, nx: number, ny: number): void {
+    this.gridW = nx
+    this.gridH = ny
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.fieldTexture)
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
@@ -108,6 +115,7 @@ export class HeatmapRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.potentialTexture)
     gl.uniform1f(this.uPotentialMax, potentialMax)
     gl.uniform1f(this.uMaxDensity, maxDensity)
+    gl.uniform2f(this.uGridSize, this.gridW, this.gridH)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.bindVertexArray(null)
 
