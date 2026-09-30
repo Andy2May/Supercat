@@ -30,6 +30,24 @@ let wasmReady: Promise<WasmModule> | undefined
 let halted = false
 /** potential_version last shipped to the main thread (-1 = nothing yet). */
 let lastSentPotentialVersion = -1
+/**
+ * Frame buffers the main thread returned via `advance.recycle` (Task-6
+ * micro-opt): transferring a buffer detaches it here, so ping-pong reuse is
+ * only possible when main lends each buffer back after its upload. With at
+ * most one advance in flight, steady state cycles ~two buffers instead of
+ * orphaning every frame's ~0.5-2 MB to the GC on either side.
+ */
+const recyclePool: Float32Array[] = []
+/**
+ * maxDensity scan cadence (Task-6 micro-opt b): every 2nd frame the scan
+ * is skipped and the previous frame's peak is shipped instead — the main
+ * thread's display peak is already a 0.97/frame EMA over maxDensity, so
+ * one frame of staleness is invisible. State resets (`init`,
+ * `set-gaussian`, `reset-wave`) force the next scan: a fresh packet's peak
+ * must not ride the old state's value.
+ */
+let scanMaxDensity = true
+let lastMaxDensity = 0
 
 function fatal(message: string): void {
   halted = true
@@ -44,20 +62,37 @@ function ensureWasm(): Promise<WasmModule> {
 /**
  * Ships the current state as a `frame`: interleaved (rho, phi) buffer plus
  * the sampled potential, but only when its revision moved since the last
- * shipped frame (the renderer caches the potential texture). Both buffers
- * go into the transfer list — the worker never touches them again.
+ * shipped frame (the renderer caches the potential texture). The frame
+ * buffer is a recycled one when the pool has a same-size spare (.set()
+ * copy; wasm's `density_phase()` always returns a fresh array); everything
+ * shipped goes into the transfer list — the worker never touches it again.
  */
 function postFrame(t: number): void {
   if (sim === undefined) return
-  const densityPhase = sim.density_phase()
+  const fresh = sim.density_phase()
   const norm = sim.norm()
 
   // |psi|^2 lives at even indices of the interleaved pairs; wasm exposes no
-  // max getter, and one linear scan over rho is ~0.1 ms at 512^2.
-  let maxDensity = 0
-  for (let i = 0; i < densityPhase.length; i += 2) {
-    if (densityPhase[i] > maxDensity) maxDensity = densityPhase[i]
+  // max getter, and one linear scan over rho is ~0.1 ms at 512^2 — halved
+  // by the every-2nd-frame cadence (see scanMaxDensity).
+  let maxDensity: number
+  if (scanMaxDensity) {
+    maxDensity = 0
+    for (let i = 0; i < fresh.length; i += 2) {
+      if (fresh[i] > maxDensity) maxDensity = fresh[i]
+    }
+    lastMaxDensity = maxDensity
+  } else {
+    maxDensity = lastMaxDensity
   }
+  scanMaxDensity = !scanMaxDensity
+
+  const pooled = recyclePool.pop()
+  const densityPhase =
+    pooled !== undefined && pooled.length === fresh.length
+      ? pooled
+      : new Float32Array(fresh.length)
+  densityPhase.set(fresh)
 
   const potentialVersion = sim.potential_version()
   const transfer: Transferable[] = [densityPhase.buffer]
@@ -92,6 +127,11 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           )
           halted = false
           lastSentPotentialVersion = -1
+          // A fresh sim may have different dims; stale pooled buffers would
+          // fail the same-size check anyway — drop them up front. Its first
+          // frame must also scan maxDensity fresh.
+          recyclePool.length = 0
+          scanMaxDensity = true
           break
         }
         case 'set-gaussian': {
@@ -99,11 +139,18 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           sim.set_gaussian(msg.x0, msg.y0, msg.kx, msg.ky, msg.sigmaX, msg.sigmaY)
           // set_gaussian resets t = 0; ship the fresh state right away so a
           // dropped packet is visible (and t = 0 observable) even while the
-          // simulation is paused. advance(0) is the no-step t getter.
+          // simulation is paused. advance(0) is the no-step t getter. The
+          // new packet's peak needs a fresh scan, not the old state's.
+          scanMaxDensity = true
           postFrame(sim.advance(0))
           break
         }
         case 'advance': {
+          // Bank the returned frame buffer before any early return so a
+          // dropped advance never leaks it; same-size check happens at use.
+          if (msg.recycle !== undefined) {
+            recyclePool.push(new Float32Array(msg.recycle))
+          }
           // After a fatal the worker refuses advances until reset-wave; the
           // main loop has already stopped on the fatal, so no reply needed.
           if (halted || sim === undefined) return
@@ -115,6 +162,7 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           if (sim === undefined) throw new Error('reset-wave before init')
           sim.reset_wave()
           halted = false
+          scanMaxDensity = true
           postFrame(0)
           break
         }

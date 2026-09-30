@@ -142,8 +142,13 @@ export class SimStore {
     this.send({ type: 'reset-wave' })
   }
 
-  send(msg: MainToWorker): void {
-    this.worker?.postMessage(msg)
+  /**
+   * Posts to the worker; `transfer` (the recycle channel's returned frame
+   * buffer) moves backing stores zero-copy instead of structured-cloning
+   * them.
+   */
+  send(msg: MainToWorker, transfer: Transferable[] = []): void {
+    this.worker?.postMessage(msg, transfer)
   }
 
   /** Subscribes to worker frames; returns the unsubscribe closure. */

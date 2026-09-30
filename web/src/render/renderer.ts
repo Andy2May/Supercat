@@ -30,14 +30,14 @@ export class HeatmapRenderer {
   private gridW = 1
   private gridH = 1
   /**
-   * True whenever GL resources were just (re)created: fresh textures hold
-   * only 1x1 stubs, so the next upload of each texture must fully
-   * reallocate via texImage2D. Every upload already takes that full path;
-   * the flag records the requirement so Task 6's in-place texSubImage2D
-   * fast path can branch on it (until then it is cleared by the uploads
-   * that satisfy it — Task 6 will own per-texture allocation tracking).
+   * Allocated size of each texture. Same-size uploads take the in-place
+   * texSubImage2D fast path (no GPU reallocation per frame); a mismatch —
+   * the 1x1 boot stubs, a context restore, or a grid change — falls back to
+   * a full texImage2D and records the new dims. setup() resets both to
+   * {0,0}, which is what forces the full path after rebuild().
    */
-  private needsFullUpload = true
+  private fieldAllocated = { w: 0, h: 0 }
+  private potentialAllocated = { w: 0, h: 0 }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -50,9 +50,10 @@ export class HeatmapRenderer {
    * about:gpu / WEBGL_lose_context): after `webglcontextrestored` every
    * resource above is gone. Re-acquires the (new) context for the canvas
    * and rebuilds program, quad and textures from scratch — exactly what
-   * the constructor built. Textures come back as 1x1 stubs; the render
-   * loop re-uploads the field with the next frame and the potential from
-   * its cached copy, both as full texImage2D (`needsFullUpload`).
+   * the constructor built. Textures come back as 1x1 stubs and setup()
+   * resets the allocation tracking to {0,0}, so the render loop's next
+   * uploads (field with the next frame, potential from its cached copy)
+   * take the full texImage2D path.
    */
   rebuild(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
@@ -99,7 +100,10 @@ export class HeatmapRenderer {
     this.fieldTexture = this.createNearestTexture(gl.RG32F, gl.RG)
     this.potentialTexture = this.createNearestTexture(gl.R32F, gl.RED)
 
-    this.needsFullUpload = true
+    // The 1x1 stubs above match no real upload: the first upload of each
+    // texture after boot or a context restore must fully allocate.
+    this.fieldAllocated = { w: 0, h: 0 }
+    this.potentialAllocated = { w: 0, h: 0 }
   }
 
   /** Replaces the field texture: (rho, phase) interleaved, row-major j*nx+i. */
@@ -108,39 +112,27 @@ export class HeatmapRenderer {
     this.gridH = ny
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.fieldTexture)
-    // Full (re)allocation — also the forced path a context restore demands
-    // (needsFullUpload): after rebuild() the texture is a fresh 1x1 stub.
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RG32F,
-      nx,
-      ny,
-      0,
-      gl.RG,
-      gl.FLOAT,
-      data,
-    )
-    this.needsFullUpload = false
+    if (this.fieldAllocated.w === nx && this.fieldAllocated.h === ny) {
+      // Steady state: same-size upload, refresh in place — no per-frame GPU
+      // reallocation (the Task-6 perf fix; texImage2D per frame re-allocated
+      // the storage and re-specified the texture every time).
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, nx, ny, gl.RG, gl.FLOAT, data)
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, nx, ny, 0, gl.RG, gl.FLOAT, data)
+      this.fieldAllocated = { w: nx, h: ny }
+    }
   }
 
   /** Replaces the potential texture: one f32 per grid point, row-major. */
   uploadPotential(data: Float32Array, nx: number, ny: number): void {
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.potentialTexture)
-    // Full (re)allocation — see uploadField for the needsFullUpload note.
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.R32F,
-      nx,
-      ny,
-      0,
-      gl.RED,
-      gl.FLOAT,
-      data,
-    )
-    this.needsFullUpload = false
+    if (this.potentialAllocated.w === nx && this.potentialAllocated.h === ny) {
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, nx, ny, gl.RED, gl.FLOAT, data)
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, nx, ny, 0, gl.RED, gl.FLOAT, data)
+      this.potentialAllocated = { w: nx, h: ny }
+    }
   }
 
   /**

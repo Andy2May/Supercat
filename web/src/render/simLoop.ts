@@ -5,7 +5,8 @@
  *   running && no advance in flight -> computeSubsteps(dtWall, speed, dt)
  *                                   -> post advance        (drop-if-busy:
  *                                      an unanswered advance skips the post,
- *                                      never queues)
+ *                                      never queues; carries the previous
+ *                                      frame's buffer back for reuse)
  *
  * A worker frame -> upload field (+ potential when shipped) -> draw ->
  * refresh the debug hook and the perf HUD. Drawing is frame-driven, so a
@@ -63,6 +64,13 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
    * edit. The buffers are transferred (main owns them), never mutated.
    */
   let lastPotential: Float32Array | undefined
+  /**
+   * The previous frame's densityPhase backing buffer, returned to the
+   * worker (zero-copy) with the next advance so frame buffers ping-pong
+   * instead of piling up on the GC. Stashed only after the texture upload
+   * consumed the data; nothing reads it afterwards.
+   */
+  let recycleBuffer: ArrayBuffer | undefined
 
   // Context-loss recovery (hand-verified — about:gpu or WEBGL_lose_context;
   // no CI story for killing a real context). preventDefault on `lost` is
@@ -75,8 +83,8 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     contextLost = false
     renderer.rebuild(canvas)
     // Drop the stale overlay scale, then re-upload the cached potential and
-    // re-derive the scale from it (full texImage2D — rebuild set
-    // needsFullUpload). The field re-uploads with the next frame anyway.
+    // re-derive the scale from it (full texImage2D — rebuild reset the
+    // allocation tracking). The field re-uploads with the next frame anyway.
     potentialMax = 0
     if (lastPotential !== undefined) {
       renderer.uploadPotential(lastPotential, store.grid, store.grid)
@@ -107,6 +115,12 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       }
       renderer.draw(potentialMax, displayMax)
     }
+    // The upload (or the context-loss skip) was the last read of the frame
+    // buffer — hand it back with the next advance. `frame.potential` stays
+    // cached in lastPotential and is never recycled. The cast: typed-array
+    // `.buffer` is ArrayBufferLike, but these arrays were transferred from
+    // the worker as plain ArrayBuffers (never SharedArrayBuffer).
+    recycleBuffer = frame.densityPhase.buffer as ArrayBuffer
 
     debugState.t = frame.t
     debugState.norm = frame.norm
@@ -143,7 +157,11 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
         advanceInFlight = true
         postedAt = now
         lastSubsteps = substeps
-        store.send({ type: 'advance', substeps })
+        store.send(
+          { type: 'advance', substeps, recycle: recycleBuffer },
+          recycleBuffer === undefined ? [] : [recycleBuffer],
+        )
+        recycleBuffer = undefined
       }
     }
 

@@ -29,7 +29,21 @@ export type MainToWorker =
       sigmaX: number
       sigmaY: number
     }
-  | { type: 'advance'; substeps: number }
+  | {
+      type: 'advance'
+      substeps: number
+      /**
+       * Buffer-recycling channel (Task-6 micro-opt): the previous frame's
+       * `densityPhase` backing buffer, returned zero-copy once the main
+       * thread's texture upload has consumed it. Transferring a buffer
+       * detaches it in the sender, so the worker can only reuse frame
+       * buffers the main thread lends back — with at most one advance in
+       * flight, steady state cycles ~two buffers (ping-pong) instead of
+       * orphaning each frame's ~0.5-2 MB to the GC. Absent on the first
+       * advance after boot or a pause (nothing to return yet).
+       */
+      recycle?: ArrayBuffer
+    }
   | { type: 'reset-wave' }
   | { type: 'restore-potential' }
   | { type: 'potential-zero' }
