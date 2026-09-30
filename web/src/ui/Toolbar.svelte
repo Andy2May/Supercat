@@ -4,10 +4,15 @@
   import type { Tool } from '../sim/tools.js'
 
   // Local mirror of the language store (same pattern as App.svelte): the
-  // derived label block re-translates the moment `setLang` fires.
+  // derived label block re-translates the moment `setLang` fires. The
+  // subscription lives in an $effect cleanup — hash routing unmounts this
+  // component on every landing visit, and each unmount must unsubscribe or
+  // the dead toolbar's closure leaks.
   let active = $state(getLang())
-  lang.subscribe((value) => {
-    active = value
+  $effect(() => {
+    return lang.subscribe((value) => {
+      active = value
+    })
   })
 
   const TOOLS: readonly Tool[] = ['brush', 'barrier', 'well', 'eraser', 'packet']
