@@ -156,6 +156,21 @@ test('phase color toggle: advanced+position only; hides in momentum, resumes aft
   await expect(phase).toBeVisible()
   await expect(phase).toHaveAttribute('aria-pressed', 'true')
 
+  // Explore flip (spec v1 §2.1): the whole advanced control row unmounts
+  // with the flag still on underneath — the canvas falls back to inferno
+  // via the effective-mode predicate (unit-pinned; no pixel assertions
+  // here). Back in advanced the toggle returns still pressed, so the user
+  // is never stuck in HSV without a button to turn it off.
+  await page.getByTestId('mode-toggle').click()
+  await expect(page.getByTestId('view-toggle')).toBeHidden()
+  await expect(phase).toBeHidden()
+  const f3 = await frames(page)
+  await page.waitForTimeout(400)
+  expect(await frames(page)).toBeGreaterThan(f3)
+  await page.getByTestId('mode-toggle').click()
+  await expect(phase).toBeVisible()
+  await expect(phase).toHaveAttribute('aria-pressed', 'true')
+
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })

@@ -50,16 +50,20 @@ export function effectiveView(mode: Mode, view: SimView): SimView {
 }
 
 /**
- * Pure render-mode predicate (Task 13): the HSV phase colormap is only
- * meaningful in the position view — the k-space texture interleaves (v, 0),
- * so its phase channel is 0 everywhere and hue would be a garbage constant.
- * Momentum frames therefore ALWAYS render density inferno; the stored
- * `phaseColor` flag survives the round-trip untouched and the mode resumes
- * when the user switches back (the button hides in momentum view, the flag
- * does not reset).
+ * Pure render-mode predicate (Task 13): the HSV phase colormap applies only
+ * in ADVANCED + POSITION view. Two independent disqualifiers:
+ *   - momentum view: the k-space texture interleaves (v, 0), so its phase
+ *     channel is 0 everywhere and hue would be a garbage constant — momentum
+ *     frames ALWAYS render density inferno;
+ *   - explore mode (spec v1 §2.1): explore has no phase colormap at all —
+ *     the stored flag may persist into explore (nothing resets it), but the
+ *     canvas must fall back to inferno there or the user would be stuck
+ *     with HSV and no button to turn it off.
+ * The stored `phaseColor` flag survives explore/momentum round-trips
+ * untouched; when advanced + position return, the coloring resumes.
  */
-export function effectiveColorMode(view: SimView, phaseColor: boolean): 0 | 1 {
-  return view === 'position' && phaseColor ? 1 : 0
+export function effectiveColorMode(view: SimView, phaseColor: boolean, mode: Mode): 0 | 1 {
+  return mode === 'advanced' && view === 'position' && phaseColor ? 1 : 0
 }
 
 function readParams(): URLSearchParams {
@@ -90,11 +94,13 @@ export class SimStore {
    */
   view = $state<SimView>('position')
   /**
-   * HSV phase colormap on (Task 13, advanced + position view only): PURE
-   * render state — flipping it sends nothing to the worker; the render
-   * loop derives the effective u_colorMode every frame via
-   * `effectiveColorMode`. Unlike `view`, a momentum round-trip does NOT
-   * clear it (the phase toggle hides, the flag survives); `init` does (a
+   * HSV phase colormap on (Task 13): PURE render state — flipping it sends
+   * nothing to the worker. The flag is only a REQUEST: the render loop
+   * derives the effective u_colorMode every frame via `effectiveColorMode`,
+   * which honors it solely in advanced + position view (explore and
+   * momentum always render inferno — spec v1 §2.1 / phaseless k-space
+   * texture). Nothing clears it on explore or momentum round-trips (the
+   * button hides, the flag survives, the coloring resumes); `init` does (a
    * fresh scene boots on the inferno default).
    */
   phaseColor = $state(false)

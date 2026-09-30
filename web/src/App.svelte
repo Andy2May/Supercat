@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { getLang, lang, setLang, t } from './i18n/index.js'
   import { PRESETS } from './presets/index.js'
   import { parseRoute } from './route.js'
@@ -79,12 +80,18 @@
   // touch it). Svelte runs the previous cleanup first, so a preset switch
   // is always destroy() then init(): the old worker is terminated before
   // the new scene boots, and leaving for the landing view tears the worker
-  // down entirely (no worker runs outside the sim view).
+  // down entirely (no worker runs outside the sim view). The `untrack`
+  // keeps the route-only contract honest: SimStore.init READS
+  // modeStore.mode (its Task-11 boot cadence send), and a tracked read
+  // here would make every explore <-> advanced flip tear the worker down
+  // and re-init it — resetting t, view, observables history and Task 13's
+  // phaseColor instead of leaving live mode toggles to the message-driven
+  // effects below (which is what they are for).
   $effect(() => {
     if (!webglOk) return
     if (route.view !== 'sim') return
     const preset = PRESETS[route.id]
-    simStore.init(preset)
+    untrack(() => simStore.init(preset))
     return () => simStore.destroy()
   })
 

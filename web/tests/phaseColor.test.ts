@@ -66,13 +66,19 @@ describe('FRAGMENT_SHADER_SRC phase colormap (structural)', () => {
 })
 
 describe('effectiveColorMode (pure render-mode predicate)', () => {
-  it('phase color only ever applies in the position view', () => {
-    expect(effectiveColorMode('position', true)).toBe(1)
-    expect(effectiveColorMode('position', false)).toBe(0)
+  it('phase color applies ONLY in advanced + position view with the flag on', () => {
+    expect(effectiveColorMode('position', true, 'advanced')).toBe(1)
+    expect(effectiveColorMode('position', false, 'advanced')).toBe(0)
     // Momentum view: ALWAYS inferno, whatever the stored flag — the k-space
     // texture's phase channel is 0 and hue would be a garbage constant.
-    expect(effectiveColorMode('momentum', true)).toBe(0)
-    expect(effectiveColorMode('momentum', false)).toBe(0)
+    expect(effectiveColorMode('momentum', true, 'advanced')).toBe(0)
+    expect(effectiveColorMode('momentum', false, 'advanced')).toBe(0)
+    // Explore mode has NO phase colormap (spec v1 §2.1): even with the
+    // flag still stored and the view position, the canvas renders inferno.
+    expect(effectiveColorMode('position', true, 'explore')).toBe(0)
+    expect(effectiveColorMode('position', false, 'explore')).toBe(0)
+    expect(effectiveColorMode('momentum', true, 'explore')).toBe(0)
+    expect(effectiveColorMode('momentum', false, 'explore')).toBe(0)
   })
 })
 
@@ -109,5 +115,25 @@ describe('SimStore phaseColor flag', () => {
     store.destroy()
     store.init(PRESETS['sandbox'])
     expect(store.phaseColor).toBe(false)
+  })
+
+  it('explore flip does not render HSV (spec v1 §2.1): flag survives, predicate gates it', () => {
+    modeStore.mode = 'advanced'
+    const store = new RecordingStore()
+    store.init(PRESETS['free-packet'])
+    store.phaseColor = true
+    expect(effectiveColorMode(store.view, store.phaseColor, modeStore.mode)).toBe(1)
+
+    // The reviewer's trap: advanced + position + phase ON -> explore. The
+    // flag is NOT cleared (nothing sends, nothing resets), but the canvas
+    // must fall back to inferno — explore has no phase colormap and no
+    // button to turn one off.
+    modeStore.mode = 'explore'
+    expect(store.phaseColor).toBe(true)
+    expect(effectiveColorMode(store.view, store.phaseColor, modeStore.mode)).toBe(0)
+
+    // Round-trip back: the coloring resumes exactly where it was.
+    modeStore.mode = 'advanced'
+    expect(effectiveColorMode(store.view, store.phaseColor, modeStore.mode)).toBe(1)
   })
 })

@@ -14,6 +14,7 @@
  */
 import { computeSubsteps, DEFAULTS, nextFpsEma } from '../sim/simParams.js'
 import { interleaveScalarToRG } from '../sim/fftshift.js'
+import { modeStore } from '../sim/modeStore.svelte.js'
 import { effectiveColorMode, type SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
@@ -205,10 +206,13 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       }
       // Colormap (Task 13), recomputed from live store state EVERY frame:
       // the predicate forces mode 0 (inferno) whenever the view is momentum
-      // (the k-space texture's phase channel is 0 — hue would be garbage),
-      // and a view round-trip resumes phase coloring without any message.
+      // (the k-space texture's phase channel is 0 — hue would be garbage) OR
+      // the mode is explore (spec v1 §2.1: explore has no phase colormap —
+      // the flag persists but must stop rendering, or the user would be
+      // stuck with HSV and no button to turn it off), and any round-trip
+      // back to advanced + position resumes phase coloring with no message.
       // Idempotent + one uniform1i, so per-frame is free.
-      renderer.setColorMode(effectiveColorMode(store.view, store.phaseColor))
+      renderer.setColorMode(effectiveColorMode(store.view, store.phaseColor, modeStore.mode))
       renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
     }
     showingMomentum = viewIsMomentum
