@@ -176,6 +176,14 @@ impl Potential2D {
         &self.values
     }
 
+    /// Mutable access to the raw samples, no validation — the hand-drawn
+    /// path: the wasm paint ops edit `V` in place (set absolute values
+    /// inside a brush shape) instead of rebuilding through the analytic
+    /// builders. Callers keep the row-major layout and sample count intact.
+    pub fn values_mut(&mut self) -> &mut [f64] {
+        &mut self.values
+    }
+
     /// Number of samples (equals the grid's `nx * ny`).
     pub fn len(&self) -> usize {
         self.values.len()
