@@ -39,6 +39,14 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
   let fpsEma = 0
   let lastDrawAt = 0
   let potentialMax = 0
+  /**
+   * Smoothed display peak of |psi|^2 — the renderer's auto-exposure
+   * reference. Follows rises instantly (a fresh packet jumps to full
+   * brightness at once) and decays slowly (x0.97 per frame, ~0.4 s half-life)
+   * so the picture neither flickers as the packet spreads nor snaps dark the
+   * instant the peak dips.
+   */
+  let displayMax = 0
 
   const offFrame = store.onFrame((frame) => {
     if (disposed) return
@@ -48,13 +56,14 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     fpsEma = nextFpsEma(fpsEma, lastDrawAt === 0 ? 0 : now - lastDrawAt)
     lastDrawAt = now
 
+    displayMax = Math.max(frame.maxDensity, displayMax * 0.97)
     renderer.resize(canvas.clientWidth, canvas.clientHeight)
     renderer.uploadField(frame.densityPhase, store.grid, store.grid)
     if (frame.potential !== undefined) {
       potentialMax = maxAbs(frame.potential)
       renderer.uploadPotential(frame.potential, store.grid, store.grid)
     }
-    renderer.draw(potentialMax)
+    renderer.draw(potentialMax, displayMax)
 
     debugState.t = frame.t
     debugState.norm = frame.norm

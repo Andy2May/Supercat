@@ -21,6 +21,7 @@ export class HeatmapRenderer {
   private readonly fieldTexture: WebGLTexture
   private readonly potentialTexture: WebGLTexture
   private readonly uPotentialMax: WebGLUniformLocation | null
+  private readonly uMaxDensity: WebGLUniformLocation | null
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2', { antialias: false })
@@ -32,6 +33,7 @@ export class HeatmapRenderer {
 
     this.program = this.buildProgram()
     this.uPotentialMax = gl.getUniformLocation(this.program, 'u_potentialMax')
+    this.uMaxDensity = gl.getUniformLocation(this.program, 'u_maxDensity')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
@@ -90,11 +92,12 @@ export class HeatmapRenderer {
 
   /**
    * Draws one frame. `potentialMax` scales the V overlay (the caller tracks
-   * the potential's max magnitude); it must be > 0 whenever the potential is
-   * non-zero. A zero value (all-zero V) is safe: the shader clamps its
-   * divisor away from zero.
+   * the potential's max magnitude; a zero value for all-zero V is safe — the
+   * shader clamps its divisor away from zero). `maxDensity` is the
+   * auto-exposure reference — the caller passes a smoothed per-frame peak of
+   * |psi|^2; it must be > 0 whenever the field is non-zero, and zero is safe.
    */
-  draw(potentialMax: number): void {
+  draw(potentialMax: number, maxDensity: number): void {
     const gl = this.gl
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
     gl.useProgram(this.program)
@@ -104,6 +107,7 @@ export class HeatmapRenderer {
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, this.potentialTexture)
     gl.uniform1f(this.uPotentialMax, potentialMax)
+    gl.uniform1f(this.uMaxDensity, maxDensity)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.bindVertexArray(null)
 
