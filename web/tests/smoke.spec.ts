@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test'
 
+/** The propagator step (DEFAULTS.dt): one `step` click must add exactly this. */
+const DT = 0.005
+
+/** Attaches the no-error collectors every smoke scenario asserts at the end. */
+function expectNoErrors(page: import('@playwright/test').Page): {
+  consoleErrors: string[]
+  pageErrors: string[]
+} {
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', (error) => pageErrors.push(String(error)))
+  return { consoleErrors, pageErrors }
+}
+
+/** Polls the debug hook until the render loop has drawn `n` frames. */
+function frames(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => window.__psiforge?.frames ?? 0)
+}
+
 /**
  * Smoke: the app mounts, the physics worker feeds WebGL2 frames, and the
  * always-on debug hook (`window.__psiforge`, updated on every draw) proves
@@ -10,22 +32,13 @@ import { expect, test } from '@playwright/test'
 test('worker physics renders: t/norm advance, pause freezes frames, no errors', async ({
   page,
 }) => {
-  const consoleErrors: string[] = []
-  const pageErrors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text())
-  })
-  page.on('pageerror', (error) => pageErrors.push(String(error)))
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/')
 
   // The render loop must produce more than 10 drawn frames within 5 s.
   await expect
-    .poll(
-      async () =>
-        page.evaluate(() => window.__psiforge?.frames ?? 0),
-      { timeout: 5_000 },
-    )
+    .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
 
   // After ~2 s at speed 1 the wavefunction has advanced hundreds of
@@ -55,22 +68,13 @@ test('worker physics renders: t/norm advance, pause freezes frames, no errors', 
 test('brush drag paints the potential: potentialVersion increases, no errors', async ({
   page,
 }) => {
-  const consoleErrors: string[] = []
-  const pageErrors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text())
-  })
-  page.on('pageerror', (error) => pageErrors.push(String(error)))
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/')
 
   // The render loop must be alive before we start drawing.
   await expect
-    .poll(
-      async () =>
-        page.evaluate(() => window.__psiforge?.frames ?? 0),
-      { timeout: 5_000 },
-    )
+    .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
 
   // Select the brush ("Bút" / "Brush") via its stable test id.
@@ -103,6 +107,134 @@ test('brush drag paints the potential: potentialVersion increases, no errors', a
       { timeout: 5_000 },
     )
     .toBeGreaterThan(before)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('playback bar: step advances t by exactly dt, reset returns t to 0', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(10)
+
+  // Pause, then let any in-flight advance drain before pinning t.
+  await page.click('[data-testid="play-pause"]')
+  await page.waitForTimeout(500)
+  const tPaused = await page.evaluate(() => window.__psiforge?.t ?? 0)
+  expect(tPaused).toBeGreaterThan(0)
+
+  // One step: exactly one propagator step (dt) beyond the paused time.
+  await page.click('[data-testid="step"]')
+  await expect
+    .poll(() => page.evaluate(() => window.__psiforge?.t ?? 0), { timeout: 5_000 })
+    .toBeGreaterThan(tPaused)
+  const tStepped = await page.evaluate(() => window.__psiforge?.t ?? 0)
+  expect(tStepped - tPaused).toBeCloseTo(DT, 10)
+
+  // Reset: psi -> the last snapshot, t = 0 — framed immediately even though
+  // the simulation stays paused (reset-wave always posts a frame).
+  await page.click('[data-testid="reset"]')
+  await expect
+    .poll(() => page.evaluate(() => window.__psiforge?.t ?? -1), { timeout: 5_000 })
+    .toBe(0)
+  const hook = await page.evaluate(() => window.__psiforge)
+  expect(Math.abs(hook!.norm - 1)).toBeLessThanOrEqual(1e-6)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('fatal banner halts the loop; "Reset & run again" restarts it', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  // ?debugFatal=1: the store fakes a fatal ~1 s after boot (test-only param).
+  await page.goto('/?debugFatal=1')
+
+  const banner = page.getByTestId('error-banner')
+  await expect(banner).toBeVisible({ timeout: 10_000 })
+
+  // The loop is dead: frames freeze (sample twice with a drain gap).
+  await page.waitForTimeout(500)
+  const frozenAt = await frames(page)
+  await page.waitForTimeout(600)
+  expect(await frames(page)).toBe(frozenAt)
+
+  // Play is disabled until the reset (ledger UX fix).
+  await expect(page.getByTestId('play-pause')).toBeDisabled()
+
+  // Recovery: reset-wave + resume — the banner clears and frames move again.
+  await page.getByTestId('fatal-reset').click()
+  await expect(banner).toBeHidden()
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(frozenAt)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('packet tool: a drag drops a fresh gaussian (t resets, |psi|^2 repopulates)', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(10)
+
+  // Let the default scene advance so t is clearly past zero before the drop.
+  await expect
+    .poll(() => page.evaluate(() => window.__psiforge?.t ?? 0), { timeout: 5_000 })
+    .toBeGreaterThan(0.5)
+
+  // Slow playback to 0.1x through the (bound) speed slider: after the drop
+  // auto-resumes from t = 0, the resumed sim re-advances only ~0.005/s of
+  // wall time per 100 ms — the reset stays observable for seconds.
+  await page.$eval(
+    '[data-testid="speed-slider"]',
+    (el: HTMLInputElement) => {
+      el.value = '0.1'
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    },
+  )
+
+  // Select the packet tool and drag on the canvas: press = center, drag =
+  // aim. The drag spans ~35% of the canvas (>> the 2 px dead zone).
+  await page.getByTestId('tool-packet').click()
+  const box = await page.getByTestId('sim-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  const y = box!.y + box!.height / 2
+  await page.mouse.move(box!.x + box!.width * 0.25, y)
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width * 0.6, y, { steps: 5 })
+  await page.mouse.up()
+
+  // set-gaussian resets t = 0 (worker semantics) and frames the state at
+  // once; the sim auto-resumes, so t may already be re-advancing a little.
+  await expect
+    .poll(() => page.evaluate(() => window.__psiforge?.t ?? -1), { timeout: 5_000 })
+    .toBeLessThan(0.2)
+  const tAfterDrop = await page.evaluate(() => window.__psiforge?.t ?? -1)
+  expect(tAfterDrop).toBeGreaterThanOrEqual(0)
+
+  // Re-advancing at 0.1x: half a second of wall time adds <= 0.15 sim time.
+  await page.waitForTimeout(500)
+  const tLater = await page.evaluate(() => window.__psiforge?.t ?? -1)
+  expect(tLater).toBeGreaterThanOrEqual(tAfterDrop)
+  expect(tLater - tAfterDrop).toBeLessThan(0.15)
+
+  // The dropped packet is a real, normalized wavefunction.
+  const hook = await page.evaluate(() => window.__psiforge)
+  expect(hook!.maxDensity).toBeGreaterThan(0)
+  expect(Math.abs(hook!.norm - 1)).toBeLessThanOrEqual(1e-6)
 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])

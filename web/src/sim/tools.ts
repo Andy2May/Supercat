@@ -10,8 +10,9 @@
 
 import type { MainToWorker } from './protocol.js'
 
-/** The five potential-drawing tools. `packet` becomes a wave-packet emitter
- * in Task 16; until then it produces no paint op. */
+/** The five canvas tools. `packet` is the wave-packet emitter, handled by
+ * `dragToPacket` (see packet.ts) — in the paint-op pipeline it produces
+ * nothing. */
 export type Tool = 'brush' | 'barrier' | 'well' | 'eraser' | 'packet'
 
 /** One pointer sample in physics (grid) coordinates. */
@@ -43,7 +44,7 @@ function dist(from: Pt, to: Pt): number {
  *   {@link ERASER_STEP} from `from` toward `to`, landing exactly on `to` when
  *   the remaining distance is at most one step. Walk it repeatedly (or use
  *   {@link strokeToOps}) to cover a long drag with overlapping discs.
- * - packet — `null` (Task 16 wires the emitter).
+ * - packet — `null` (the emitter lives in `dragToPacket`, packet.ts).
  */
 export function strokeToOp(
   tool: Tool,

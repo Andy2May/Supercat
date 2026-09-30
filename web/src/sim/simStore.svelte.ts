@@ -5,12 +5,15 @@
  *
  * Responsibilities: worker lifecycle (`init` from `?grid=N`, default 256,
  * accept 128/256/512; `destroy()` terminates), the reactive surface the UI
- * reads (`running`, `t`, `norm`, `frames`, `fatal`, perf stats), `send(msg)`
- * for every MainToWorker message, and `onFrame(cb)` for the render loop.
+ * reads (`running`, `speed`, `t`, `norm`, `frames`, `fatal`, perf stats),
+ * `send(msg)` for every MainToWorker message, and `onFrame(cb)` for the
+ * render loop.
  *
- * Interim scene (Task 16 replaces it with the double slit): after `init` a
- * free spreading gaussian `set-gaussian(x0=-8, y0=0, kx=4, ky=0, sigma=1.5)`
- * with V = 0, then autoplay.
+ * Default scene (the M1 "wow moment"): a double slit —
+ * `potential-wall(xCenter=0, thickness=0.6, value=30, gaps at y=±3 of width
+ * 1.2)` — hit by `set-gaussian(x0=-10, y0=0, kx=6, ky=0, σx=σy=1.5)`, then
+ * autoplay. The wall thickness 0.6 ≈ 4 cells at 256²/extent 40 (dx=0.156):
+ * the ledgered minimum so near-Nyquist components cannot pierce the pillars.
  */
 import { DEFAULTS, parseGridParam } from './simParams.js'
 import type { FrameMessage, MainToWorker, WorkerToMain } from './protocol.js'
@@ -39,6 +42,12 @@ function readParams(): URLSearchParams {
 export class SimStore {
   /** Autoplay flag: the rAF loop posts advances only while this is true. */
   running = $state(false)
+  /**
+   * Playback speed (sim-seconds per wall-second), slider-bound in
+   * [0.1, 5]. The render loop reads it live; `DEFAULTS.speed` is the boot
+   * value, not a const capture.
+   */
+  speed = $state(DEFAULTS.speed)
   /** Latest frame's simulation time / norm; 0 until the first frame. */
   t = $state(0)
   norm = $state(0)
@@ -51,6 +60,12 @@ export class SimStore {
   readonly grid: number
   /** Perf HUD enabled via `?perf=1` (plain: fixed for the session). */
   readonly perfMode: boolean
+  /**
+   * Test-only fake-fatal switch (`?debugFatal=1`): the store kills playback
+   * from the main thread ~1 s after boot so the banner + frozen-loop +
+   * reset-and-run path can be e2e-tested without provoking a real error.
+   */
+  readonly debugFatal: boolean
   /** Live HUD numbers; mutated in place by the render loop each frame. */
   perf = $state<PerfStats>({ fps: 0, substeps: 0, workerMs: 0 })
 
@@ -61,13 +76,14 @@ export class SimStore {
     const params = readParams()
     this.grid = parseGridParam(params.get('grid'))
     this.perfMode = params.get('perf') === '1'
+    this.debugFatal = params.get('debugFatal') === '1'
     if (this.perfMode && typeof window !== 'undefined') {
       window.__psiforgePerf = { fps: 0, substeps: 0, workerMs: 0 }
     }
   }
 
-  /** Idempotent: creates the worker (once), sends `init` + the interim
-   * `set-gaussian`, and starts playback. `destroy()` allows a later re-init. */
+  /** Idempotent: creates the worker (once), sends `init` + the double-slit
+   * scene, and starts playback. `destroy()` allows a later re-init. */
   init(): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
@@ -89,15 +105,41 @@ export class SimStore {
       hbar: DEFAULTS.hbar,
     })
     this.send({
+      type: 'potential-wall',
+      xCenter: 0,
+      thickness: 0.6,
+      value: 30,
+      gapCenters: [-3, 3],
+      gapWidths: [1.2, 1.2],
+    })
+    this.send({
       type: 'set-gaussian',
-      x0: -8,
+      x0: -10,
       y0: 0,
-      kx: 4,
+      kx: 6,
       ky: 0,
       sigmaX: 1.5,
       sigmaY: 1.5,
     })
     this.running = true
+    if (this.debugFatal && typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        if (this.worker === undefined) return
+        this.fatal = 'debugFatal (test param)'
+        this.running = false
+      }, 1_000)
+    }
+  }
+
+  /**
+   * The recovery action: sends `reset-wave` (ψ -> snapshot, t=0; the worker
+   * also un-halts) and clears the fatal banner. The caller decides whether
+   * to resume (`running = true`) — the banner's button does, the playback
+   * bar's reset keeps the current play state.
+   */
+  resetWave(): void {
+    this.fatal = undefined
+    this.send({ type: 'reset-wave' })
   }
 
   send(msg: MainToWorker): void {

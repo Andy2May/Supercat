@@ -86,7 +86,7 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       // later resume never deadlocks on a stale in-flight marker.
       advanceInFlight = false
     } else if (!advanceInFlight) {
-      const substeps = computeSubsteps(dtWall, DEFAULTS.speed, DEFAULTS.dt)
+      const substeps = computeSubsteps(dtWall, store.speed, DEFAULTS.dt)
       if (substeps > 0) {
         advanceInFlight = true
         postedAt = now

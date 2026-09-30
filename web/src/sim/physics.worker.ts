@@ -97,6 +97,10 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
         case 'set-gaussian': {
           if (sim === undefined) throw new Error('set-gaussian before init')
           sim.set_gaussian(msg.x0, msg.y0, msg.kx, msg.ky, msg.sigmaX, msg.sigmaY)
+          // set_gaussian resets t = 0; ship the fresh state right away so a
+          // dropped packet is visible (and t = 0 observable) even while the
+          // simulation is paused. advance(0) is the no-step t getter.
+          postFrame(sim.advance(0))
           break
         }
         case 'advance': {
