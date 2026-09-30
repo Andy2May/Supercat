@@ -13,27 +13,64 @@ import { FRAGMENT_SHADER_SRC, VERTEX_SHADER_SRC } from './shaders.js'
  * the canvas top; see shaders.ts for how the quad wires it.
  */
 export class HeatmapRenderer {
-  private readonly canvas: HTMLCanvasElement
-  private readonly gl: WebGL2RenderingContext
-  private readonly program: WebGLProgram
-  private readonly vao: WebGLVertexArrayObject
-  private readonly vertexBuffer: WebGLBuffer
-  private readonly fieldTexture: WebGLTexture
-  private readonly potentialTexture: WebGLTexture
-  private readonly uPotentialMax: WebGLUniformLocation | null
-  private readonly uMaxDensity: WebGLUniformLocation | null
-  private readonly uGridSize: WebGLUniformLocation | null
+  // Every GL handle below is (re)created by setup() — non-readonly because
+  // rebuild() replaces them all after a context restore, and `!` because
+  // strictPropertyInitialization cannot see the constructor's setup() call.
+  private canvas: HTMLCanvasElement
+  private gl: WebGL2RenderingContext
+  private program!: WebGLProgram
+  private vao!: WebGLVertexArrayObject
+  private vertexBuffer!: WebGLBuffer
+  private fieldTexture!: WebGLTexture
+  private potentialTexture!: WebGLTexture
+  private uPotentialMax!: WebGLUniformLocation | null
+  private uMaxDensity!: WebGLUniformLocation | null
+  private uGridSize!: WebGLUniformLocation | null
   /** Grid dims (nx, ny) of the last upload — feeds the shader's texel step. */
   private gridW = 1
   private gridH = 1
+  /**
+   * True whenever GL resources were just (re)created: fresh textures hold
+   * only 1x1 stubs, so the next upload of each texture must fully
+   * reallocate via texImage2D. Every upload already takes that full path;
+   * the flag records the requirement so Task 6's in-place texSubImage2D
+   * fast path can branch on it (until then it is cleared by the uploads
+   * that satisfy it — Task 6 will own per-texture allocation tracking).
+   */
+  private needsFullUpload = true
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas
+    this.gl = HeatmapRenderer.acquireGl(canvas)
+    this.setup()
+  }
+
+  /**
+   * Context-loss recovery (no automated test — hand-verified via
+   * about:gpu / WEBGL_lose_context): after `webglcontextrestored` every
+   * resource above is gone. Re-acquires the (new) context for the canvas
+   * and rebuilds program, quad and textures from scratch — exactly what
+   * the constructor built. Textures come back as 1x1 stubs; the render
+   * loop re-uploads the field with the next frame and the potential from
+   * its cached copy, both as full texImage2D (`needsFullUpload`).
+   */
+  rebuild(canvas: HTMLCanvasElement): void {
+    this.canvas = canvas
+    this.gl = HeatmapRenderer.acquireGl(canvas)
+    this.setup()
+  }
+
+  private static acquireGl(canvas: HTMLCanvasElement): WebGL2RenderingContext {
     const gl = canvas.getContext('webgl2', { antialias: false })
     if (gl === null) {
       throw new Error('NO_WEBGL2')
     }
-    this.canvas = canvas
-    this.gl = gl
+    return gl
+  }
+
+  /** Creates every GL resource on the current context (boot + rebuild). */
+  private setup(): void {
+    const gl = this.gl
 
     this.program = this.buildProgram()
     this.uPotentialMax = gl.getUniformLocation(this.program, 'u_potentialMax')
@@ -61,40 +98,49 @@ export class HeatmapRenderer {
 
     this.fieldTexture = this.createNearestTexture(gl.RG32F, gl.RG)
     this.potentialTexture = this.createNearestTexture(gl.R32F, gl.RED)
+
+    this.needsFullUpload = true
   }
 
   /** Replaces the field texture: (rho, phase) interleaved, row-major j*nx+i. */
   uploadField(data: Float32Array, nx: number, ny: number): void {
     this.gridW = nx
     this.gridH = ny
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.fieldTexture)
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
+    const gl = this.gl
+    gl.bindTexture(gl.TEXTURE_2D, this.fieldTexture)
+    // Full (re)allocation — also the forced path a context restore demands
+    // (needsFullUpload): after rebuild() the texture is a fresh 1x1 stub.
+    gl.texImage2D(
+      gl.TEXTURE_2D,
       0,
-      this.gl.RG32F,
+      gl.RG32F,
       nx,
       ny,
       0,
-      this.gl.RG,
-      this.gl.FLOAT,
+      gl.RG,
+      gl.FLOAT,
       data,
     )
+    this.needsFullUpload = false
   }
 
   /** Replaces the potential texture: one f32 per grid point, row-major. */
   uploadPotential(data: Float32Array, nx: number, ny: number): void {
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.potentialTexture)
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
+    const gl = this.gl
+    gl.bindTexture(gl.TEXTURE_2D, this.potentialTexture)
+    // Full (re)allocation — see uploadField for the needsFullUpload note.
+    gl.texImage2D(
+      gl.TEXTURE_2D,
       0,
-      this.gl.R32F,
+      gl.R32F,
       nx,
       ny,
       0,
-      this.gl.RED,
-      this.gl.FLOAT,
+      gl.RED,
+      gl.FLOAT,
       data,
     )
+    this.needsFullUpload = false
   }
 
   /**
@@ -120,6 +166,36 @@ export class HeatmapRenderer {
     gl.bindVertexArray(null)
 
     debugState.frames++
+    if (debugState.rowBrightness.size > 0) {
+      this.probeRows(debugState.rowBrightness)
+    }
+  }
+
+  /**
+   * Debug row probe (e2e y-orientation trap): mean brightness [0, 1] of the
+   * registered screen rows, read from the frame just drawn — readPixels is
+   * only valid in-frame (the default framebuffer is cleared after
+   * compositing), which is why callers read the cache instead. `yFrac`
+   * counts from the TOP of the canvas, matching how tests specify drawn
+   * strokes; readPixels counts y from the bottom, hence the 1 - yFrac flip
+   * here (the one deliberate y remap — everything else shares screen y).
+   * Only rows someone registered are read; empty in normal use.
+   */
+  private probeRows(rows: Map<number, number>): void {
+    const gl = this.gl
+    const width = gl.drawingBufferWidth
+    const height = gl.drawingBufferHeight
+    if (width === 0 || height === 0) return
+    const pixels = new Uint8Array(width * 4)
+    for (const yFrac of rows.keys()) {
+      const y = Math.min(height - 1, Math.max(0, Math.round((1 - yFrac) * (height - 1))))
+      gl.readPixels(0, y, width, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+      let sum = 0
+      for (let i = 0; i < width; i++) {
+        sum += (pixels[i * 4] + pixels[i * 4 + 1] + pixels[i * 4 + 2]) / 3
+      }
+      rows.set(yFrac, sum / width / 255)
+    }
   }
 
   /** Sizes the drawing buffer to CSS dimensions scaled by devicePixelRatio. */

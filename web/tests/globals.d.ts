@@ -19,5 +19,7 @@ declare global {
   interface Window {
     __psiforge?: PsiforgeDebugState
     __psiforgePerf?: PsiforgePerfStats
+    /** Row-brightness probe (src/render/debugHook.ts): register + read. */
+    __psiforgeReadRow?: (yFrac: number) => number
   }
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../i18n/index.js'
+  import { getLang, lang, t } from '../i18n/index.js'
   import { startSimLoop } from '../render/simLoop.js'
   import { dragToPacket } from '../sim/packet.js'
   import { DEFAULTS, screenToGrid } from '../sim/simParams.js'
@@ -15,6 +15,18 @@
      */
     onRenderFailed = () => {},
   }: { onRenderFailed?: (error: unknown) => void } = $props()
+
+  // Local mirror of the language store (same pattern as App.svelte): the
+  // derived label below re-translates the moment `setLang` fires.
+  let active = $state(getLang())
+  lang.subscribe((value) => {
+    active = value
+  })
+
+  const canvasLabel = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    return t('app.canvasLabel')
+  })
 
   let canvas = $state<HTMLCanvasElement | undefined>(undefined)
   let overlay = $state<HTMLCanvasElement | undefined>(undefined)
@@ -184,6 +196,9 @@
    * worker resets t = 0 on set-gaussian and frames the state immediately).
    */
   function dropPacket(anchor: Pt, drag: Pt): void {
+    // A fatal worker state means nobody will ever answer: never send a
+    // packet into a dead simulation (nor auto-resume it via running).
+    if (simStore.fatal !== undefined) return
     const element = canvas
     if (element === undefined) return
     const minDrag = (2 / element.clientWidth) * DEFAULTS.extent
@@ -348,7 +363,7 @@
   <canvas
     bind:this={canvas}
     data-testid="sim-canvas"
-    aria-label={t('app.canvasLabel')}
+    aria-label={canvasLabel}
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}
     onpointerup={onPointerUp}

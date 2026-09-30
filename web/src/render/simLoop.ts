@@ -48,6 +48,44 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
    */
   let displayMax = 0
 
+  /**
+   * True between webglcontextlost and webglcontextrestored: every renderer
+   * call is skipped (GL calls on a lost context are silent no-ops, but
+   * skipping keeps the intent loud). The worker keeps advancing; only
+   * drawing pauses.
+   */
+  let contextLost = false
+  /**
+   * Last potential the worker shipped, kept ONLY for context-loss recovery:
+   * the worker re-sends the potential just when potential_version changes,
+   * and a context loss changes nothing — without this cache the V overlay
+   * would stay on the rebuilt 1x1 stub texture until the next potential
+   * edit. The buffers are transferred (main owns them), never mutated.
+   */
+  let lastPotential: Float32Array | undefined
+
+  // Context-loss recovery (hand-verified — about:gpu or WEBGL_lose_context;
+  // no CI story for killing a real context). preventDefault on `lost` is
+  // what makes the browser attempt the restore at all.
+  const onContextLost = (event: Event): void => {
+    event.preventDefault()
+    contextLost = true
+  }
+  const onContextRestored = (): void => {
+    contextLost = false
+    renderer.rebuild(canvas)
+    // Drop the stale overlay scale, then re-upload the cached potential and
+    // re-derive the scale from it (full texImage2D — rebuild set
+    // needsFullUpload). The field re-uploads with the next frame anyway.
+    potentialMax = 0
+    if (lastPotential !== undefined) {
+      renderer.uploadPotential(lastPotential, store.grid, store.grid)
+      potentialMax = maxAbs(lastPotential)
+    }
+  }
+  canvas.addEventListener('webglcontextlost', onContextLost)
+  canvas.addEventListener('webglcontextrestored', onContextRestored)
+
   const offFrame = store.onFrame((frame) => {
     if (disposed) return
     advanceInFlight = false
@@ -57,13 +95,18 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     lastDrawAt = now
 
     displayMax = Math.max(frame.maxDensity, displayMax * 0.97)
-    renderer.resize(canvas.clientWidth, canvas.clientHeight)
-    renderer.uploadField(frame.densityPhase, store.grid, store.grid)
     if (frame.potential !== undefined) {
-      potentialMax = maxAbs(frame.potential)
-      renderer.uploadPotential(frame.potential, store.grid, store.grid)
+      lastPotential = frame.potential
     }
-    renderer.draw(potentialMax, displayMax)
+    if (!contextLost) {
+      renderer.resize(canvas.clientWidth, canvas.clientHeight)
+      renderer.uploadField(frame.densityPhase, store.grid, store.grid)
+      if (frame.potential !== undefined) {
+        potentialMax = maxAbs(frame.potential)
+        renderer.uploadPotential(frame.potential, store.grid, store.grid)
+      }
+      renderer.draw(potentialMax, displayMax)
+    }
 
     debugState.t = frame.t
     debugState.norm = frame.norm
@@ -112,6 +155,8 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     disposed = true
     cancelAnimationFrame(raf)
     offFrame()
+    canvas.removeEventListener('webglcontextlost', onContextLost)
+    canvas.removeEventListener('webglcontextrestored', onContextRestored)
     renderer.dispose()
   }
 }

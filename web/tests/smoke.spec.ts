@@ -239,3 +239,66 @@ test('packet tool: a drag drops a fresh gaussian (t resets, |psi|^2 repopulates)
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })
+
+/**
+ * Y-orientation trap (ledger ruling "Y no-flip"): input space and display
+ * space share one y axis — a barrier drawn in the TOP quarter of the canvas
+ * must brighten the TOP quarter of the drawn image. The row probe
+ * (`window.__psiforgeReadRow`, cached inside renderer.draw via readPixels —
+ * the default framebuffer is only readable in-frame) compares mean
+ * brightness at symmetric screen rows; if anyone flips the quad's v_uv
+ * wiring or the texture upload, the barrier lands at 75% and this goes red.
+ */
+test('canvas y-axis points up: a barrier drawn in the top quarter stays on screen top', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(10)
+
+  // Register both probe rows first: __psiforgeReadRow returns -1 until a
+  // draw has run after the registration (values are cached per draw).
+  await page.evaluate(() => {
+    window.__psiforgeReadRow?.(0.25)
+    window.__psiforgeReadRow?.(0.75)
+  })
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__psiforgeReadRow?.(0.25) ?? -1),
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThanOrEqual(0)
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__psiforgeReadRow?.(0.75) ?? -1),
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThanOrEqual(0)
+
+  // Draw a horizontal barrier across the top quarter of the canvas.
+  await page.getByTestId('tool-barrier').click()
+  const box = await page.getByTestId('sim-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.move(box!.x + box!.width * 0.4, box!.y + box!.height * 0.25)
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width * 0.6, box!.y + box!.height * 0.25, {
+    steps: 4,
+  })
+  await page.mouse.up()
+
+  // Let a worker frame ship the new potential and the renderer draw it.
+  await page.waitForTimeout(500)
+
+  // The strip at 25% height must be brighter than the mirror strip at 75%
+  // (the default scene is y-symmetric, so without the barrier they match).
+  const top = await page.evaluate(() => window.__psiforgeReadRow?.(0.25) ?? -1)
+  const bottom = await page.evaluate(() => window.__psiforgeReadRow?.(0.75) ?? -1)
+  expect(top).toBeGreaterThan(0)
+  expect(top).toBeGreaterThan(bottom)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
