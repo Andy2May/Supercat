@@ -31,6 +31,20 @@ export const vi: Record<string, string> = {
   'mode.advanced': 'Nâng cao',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Chuyển sang {mode}',
+  // Observables strip (Task 11, advanced mode): sparkline labels are math
+  // notation (identical across languages by design), the note explains that
+  // a post-measurement energy jump is real physics (glossary wires the
+  // terms in Task 15).
+  'obs.barLabel': 'Bảng quan sát được theo thời gian',
+  'obs.xMean': '⟨x⟩',
+  'obs.yMean': '⟨y⟩',
+  'obs.sigmaProduct': 'σx·σpx',
+  'obs.sigmaProductY': 'σy·σpy',
+  'obs.energy': 'E',
+  'obs.energyJumpNote': 'E có thể nhảy vọt sau phép đo — điều đó đúng vật lý',
+  'obs.chart.means': 'Đồ thị ⟨x⟩ và ⟨y⟩ theo thời gian',
+  'obs.chart.sigma': 'Đồ thị σx·σpx và σy·σpy theo thời gian',
+  'obs.chart.energy': 'Đồ thị năng lượng E theo thời gian',
   // Landing/routing (Task 9): back-link out of a simulation, narration card
   // buttons, and the five preset tiles' copy. Card strings are 3-5 lines
   // separated by '\n' (one <p> per line) and must stay parallel with en.ts.

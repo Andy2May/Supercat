@@ -13,8 +13,10 @@
  * preset's potential + gaussian, then applies its autoplay flag.
  */
 import { DEFAULTS, GRID_SIZES, type GridSize } from './simParams.js'
-import type { FrameMessage, MainToWorker, WorkerToMain } from './protocol.js'
+import { modeStore } from './modeStore.svelte.js'
+import type { FrameMessage, MainToWorker, ObservablesFrame, WorkerToMain } from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
+import { ringPush } from './sparkline.js'
 
 /** Perf HUD sample: fps (1 s EMA), substeps of the last advance, and the
  * post-advance -> frame-arrival latency in ms. */
@@ -76,6 +78,14 @@ export class SimStore {
   perf = $state<PerfStats>({ fps: 0, substeps: 0, workerMs: 0 })
 
   /**
+   * Observables side-channel history (Task 11): every frame that carries
+   * `obs` appends `{t, ...obs}` through a 600-sample ring (ringPush). The
+   * ObservablesBar sparklines read it; `init`/`destroy` reset it so a preset
+   * switch never shows the previous scene's curves (Review Focus 3).
+   */
+  observablesHistory = $state<(ObservablesFrame & { t: number })[]>([])
+
+  /**
    * Bumped by every `init` (plain, not reactive — only the render loop's
    * plain rAF tick reads it). Lets `simLoop` detect a destroy()+init()
    * worker swap mid-session and drop in-flight advance state instead of
@@ -104,14 +114,16 @@ export class SimStore {
   /** Idempotent: creates the worker (once), sends `init` + the preset's
    * potential and packet, and applies the preset's autoplay flag.
    * `destroy()` allows a later re-init. A fresh init resets every reactive
-   * field (t, norm, frames, fatal) so a re-init with a different preset
-   * never shows the previous scene's state (Review Focus 3/5). */
+   * field (t, norm, frames, fatal, observablesHistory) so a re-init with a
+   * different preset never shows the previous scene's state (Review Focus
+   * 3/5). */
   init(preset: PresetConfig): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
     this.t = 0
     this.norm = 0
     this.frames = 0
+    this.observablesHistory = []
     // Parked T8 finding: without this, a preset switch inherits the previous
     // scene's HUD numbers until the next frame overwrites them (and under
     // `?perf=1` the window mirror would too).
@@ -145,6 +157,14 @@ export class SimStore {
     this.send(potentialMessage(preset.potential))
     if (preset.packet !== undefined) {
       this.send({ type: 'set-gaussian', ...preset.packet })
+    }
+    // Boot-time half of the observables cadence wiring (Task 11): a reload
+    // straight into advanced mode must not depend on App's mode-flip effect
+    // having run. The worker's default is off, so explore stays quiet here;
+    // App's effect covers live advanced <-> explore toggles (and re-sends
+    // per preset switch — the handler is idempotent).
+    if (modeStore.mode === 'advanced') {
+      this.send({ type: 'set-observables-cadence', on: true })
     }
     this.running = preset.autoplay
     if (this.debugFatal && typeof window !== 'undefined') {
@@ -189,6 +209,7 @@ export class SimStore {
     this.worker?.terminate()
     this.worker = undefined
     this.running = false
+    this.observablesHistory = []
   }
 
   private receive(msg: WorkerToMain): void {
@@ -200,6 +221,11 @@ export class SimStore {
     this.t = msg.t
     this.norm = msg.norm
     this.frames++
+    if (msg.obs !== undefined) {
+      // Mutating the $state proxy array through ringPush notifies the
+      // ObservablesBar's redraw effect (push drops the oldest past 600).
+      ringPush(this.observablesHistory, { t: msg.t, ...msg.obs })
+    }
     for (const cb of this.frameListeners) cb(msg)
   }
 }

@@ -9,7 +9,13 @@
  * message-arrival order — `init` is always processed before the first
  * `advance` behind it.
  */
-import type { MainToWorker, WorkerToMain } from './protocol.js'
+import {
+  shouldSendObs,
+  toObservables,
+  type MainToWorker,
+  type ObservablesFrame,
+  type WorkerToMain,
+} from './protocol.js'
 import { loadWasm, type WasmModule } from './wasm.js'
 
 /**
@@ -48,6 +54,16 @@ const recyclePool: Float32Array[] = []
  */
 let scanMaxDensity = true
 let lastMaxDensity = 0
+/**
+ * Observables side-channel (Task 11): `set-observables-cadence` flips this
+ * flag; while on, every OBSERVABLES_CADENCE-th postFrame attaches an `obs`
+ * block (a plain object — structured-cloned, never in the transfer list,
+ * so the densityPhase recycle channel is untouched). The frame counter
+ * resets when the flag turns on so the first frame after the toggle
+ * carries obs immediately.
+ */
+let obsOn = false
+let frameCount = 0
 
 function fatal(message: string): void {
   halted = true
@@ -103,8 +119,19 @@ function postFrame(t: number): void {
     lastSentPotentialVersion = potentialVersion
   }
 
+  // Observables side-channel: decided before the counter ticks so a fresh
+  // flag-on (counter reset to 0) sends on this very frame. Never runs while
+  // halted — a dead sim must not pay the FFT, and its numbers would be the
+  // stale pre-fatal state anyway. The plain object rides the structured
+  // clone; nothing here touches `transfer`.
+  let obs: ObservablesFrame | undefined
+  if (!halted && shouldSendObs(frameCount, obsOn)) {
+    obs = toObservables(sim.observables())
+  }
+  frameCount++
+
   self.postMessage(
-    { type: 'frame', densityPhase, t, norm, maxDensity, potentialVersion, potential },
+    { type: 'frame', densityPhase, t, norm, maxDensity, potentialVersion, potential, obs },
     transfer,
   )
 }
@@ -164,6 +191,14 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           halted = false
           scanMaxDensity = true
           postFrame(0)
+          break
+        }
+        case 'set-observables-cadence': {
+          obsOn = msg.on
+          // Land the flag change on the cadence grid: the next frame (count
+          // 0) carries obs, so toggling advanced never waits 4 frames for
+          // first data.
+          frameCount = 0
           break
         }
         case 'restore-potential':

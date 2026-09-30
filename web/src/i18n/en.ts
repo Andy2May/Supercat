@@ -31,6 +31,20 @@ export const en: Record<string, string> = {
   'mode.advanced': 'Advanced',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Switch to {mode}',
+  // Observables strip (Task 11, advanced mode): sparkline labels are math
+  // notation (identical across languages by design), the note explains that
+  // a post-measurement energy jump is real physics (glossary wires the
+  // terms in Task 15).
+  'obs.barLabel': 'Live observables readout',
+  'obs.xMean': '⟨x⟩',
+  'obs.yMean': '⟨y⟩',
+  'obs.sigmaProduct': 'σx·σpx',
+  'obs.sigmaProductY': 'σy·σpy',
+  'obs.energy': 'E',
+  'obs.energyJumpNote': 'E can jump after a measurement — that is correct physics',
+  'obs.chart.means': '⟨x⟩ and ⟨y⟩ over time',
+  'obs.chart.sigma': 'σx·σpx and σy·σpy over time',
+  'obs.chart.energy': 'Energy E over time',
   // Landing/routing (Task 9): back-link out of a simulation, narration card
   // buttons, and the five preset tiles' copy. Card strings are 3-5 lines
   // separated by '\n' (one <p> per line) and must stay parallel with vi.ts.

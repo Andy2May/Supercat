@@ -7,6 +7,7 @@
   import { simStore } from './sim/simStore.svelte.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
+  import ObservablesBar from './ui/ObservablesBar.svelte'
   import PlaybackBar from './ui/PlaybackBar.svelte'
   import PresetCard from './ui/PresetCard.svelte'
   import SimCanvas from './ui/SimCanvas.svelte'
@@ -82,6 +83,23 @@
     return () => simStore.destroy()
   })
 
+  // Observables cadence wiring (Task 11): the worker computes observables
+  // only while told to, so the flag follows the experience mode — advanced
+  // streams obs blocks (the ObservablesBar), explore goes quiet. Re-runs on
+  // preset switches too: a fresh worker always needs its flag re-sent
+  // (SimStore.init already sends it while advanced; this re-send is
+  // idempotent and covers any effect-ordering edge at boot). The worker
+  // resets its frame counter on this message, so a fresh "on" ships obs on
+  // the very next frame — no 4-frame dead delay.
+  $effect(() => {
+    if (route.view !== 'sim') return
+    route.id // dependency: preset switch re-inits the worker
+    simStore.send({
+      type: 'set-observables-cadence',
+      on: modeStore.mode === 'advanced',
+    })
+  })
+
   // Set when renderer startup throws (SimCanvas hands the error over);
   // undefined means the render loop is alive. Only the renderer's
   // NO_WEBGL2 sentinel means "no WebGL2" — anything else (shader/link
@@ -120,6 +138,9 @@
       {/key}
       <SimCanvas onRenderFailed={(error) => (renderError = error)} />
       <PlaybackBar />
+      {#if modeStore.mode === 'advanced'}
+        <ObservablesBar />
+      {/if}
     {/if}
     {#if simStore.fatal !== undefined}
       <ErrorBanner message={simStore.fatal} />
