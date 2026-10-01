@@ -1,20 +1,40 @@
 @import './fonts.css';
 
+/* ---- Design tokens (UI redesign T2, spec §4) ---------------------------
+   Dark-only instrument bench: cold blue-tinted chrome around a warm physics
+   canvas. These custom properties are the single global source — components
+   consume tokens, never scattered hex. Physics colors (inferno, barrier
+   #F2730D, well #1F9EB8, packet #E6C040, sparkline trio) deliberately live
+   with the canvas/renderer components and are NOT part of this scale. */
 :root {
-  color-scheme: light dark;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  color-scheme: dark;
+
+  /* Surfaces: page -> panel/bar -> raised (hover, slider track, input) */
+  --bg-0: #0B0E14;
+  --bg-1: #0D1118;
+  --bg-2: #11151D;
+
+  /* Hairlines: 1px separators; -strong for raised surfaces */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text: primary -> secondary -> micro-label (all >=4.5:1 on --bg-0) */
+  --text-1: #E8ECF1;
+  --text-2: #9AA5B5;
+  --text-3: #76808F;
+
+  /* The single accent: primary actions, active state, focus ring, links.
+     --accent-ink is the text color on accent fills. */
+  --accent: #5FD4E6;
+  --accent-ink: #07131A;
+
   line-height: 1.5;
   text-align: center;
 }
 
-/* Temporary until T2 formalizes the type stack: make the app actually render
-   in the self-hosted Space Grotesk so the woff2 files are exercised. */
 body {
+  background: var(--bg-0);
+  color: var(--text-1);
   font-family:
     'Space Grotesk',
     system-ui,
@@ -39,18 +59,38 @@ h1 {
   margin: 0;
 }
 
+/* Button base: hairline border, 8px control radius. States per spec §4.4 —
+   hover brightens the border toward the accent (borders may carry the
+   accent; content never does), active presses down, keyboard focus gets a
+   1px accent ring at 2px offset, disabled dims. */
 button {
   font: inherit;
-  padding: 0.4rem 0.9rem;
-  border-radius: 0.5rem;
-  border: 1px solid currentColor;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
   background: transparent;
   color: inherit;
   cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 button:hover {
-  opacity: 0.8;
+  border-color: var(--accent);
+}
+
+button:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+button:disabled {
+  opacity: 0.45;
+}
+
+button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Square stage: the simulation domain is square, so the canvas keeps a 1:1
@@ -66,8 +106,8 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 0.5rem;
-  background: #000;
+  border-radius: 8px;
+  background: var(--bg-1);
 }
 
 /* Pointer drawing: the sim canvas owns all pointer input (capture during a
@@ -90,7 +130,8 @@ canvas {
   gap: 0.5rem;
 }
 
-/* Perf HUD (`?perf=1`): fixed top-right overlay, monospace numbers. */
+/* Perf HUD (`?perf=1`): fixed top-right overlay, panel surface + hairline
+   (no glass in the workspace — spec §4.4), monospace numbers. */
 .hud {
   position: fixed;
   top: 0.75rem;
@@ -99,18 +140,21 @@ canvas {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 10px;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: 0.8rem;
   text-align: left;
-  background: color-mix(in srgb, canvas 75%, transparent);
-  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  color: var(--text-2);
+  background: var(--bg-1);
+  border: 1px solid var(--line);
   pointer-events: none;
   z-index: 10;
 }
 
+/* Fixed light red that reads on the dark ground — dark-only base, so no
+   scheme branch is needed. */
 .error {
-  color: #b91c1c;
+  color: #f87171;
   margin-top: 1.5rem;
 }
 
@@ -128,12 +172,12 @@ canvas {
 }
 
 .term:focus-visible {
-  outline: 1px solid currentColor;
+  outline: 1px solid var(--accent);
   outline-offset: 2px;
   border-radius: 0.15rem;
 }
 
-/* Dark card, light text: readable over both the heatmap and light mode.
+/* Raised dark card (--bg-2 + hairline) floating over the warm canvas.
    Hidden by default; hover OR keyboard focus (:focus-within — the span is
    tabindex=0) reveals it. */
 .term .tip {
@@ -145,14 +189,14 @@ canvas {
   width: max-content;
   max-width: 260px;
   padding: 0.45rem 0.6rem;
-  border-radius: 0.4rem;
+  border-radius: 8px;
   font-size: 0.78rem;
   line-height: 1.4;
   text-align: left;
   white-space: normal;
-  color: #f1f5f9;
-  background: #0f172a;
-  border: 1px solid rgba(241, 245, 249, 0.35);
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   z-index: 30; /* above the stage canvas + overlay and the perf HUD (10) */
   pointer-events: none;
@@ -171,10 +215,4 @@ canvas {
    path via a focusin listener on the host button. */
 button:focus-visible .term .tip {
   display: block;
-}
-
-@media (prefers-color-scheme: dark) {
-  .error {
-    color: #f87171;
-  }
 }
