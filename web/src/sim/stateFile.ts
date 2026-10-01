@@ -16,7 +16,12 @@
  *     with the file's own nx/ny (`'shape'`), and anything structurally
  *     wrong (`'corrupt'`: non-object, missing/non-finite fields, non-b64
  *     payload, byte length not a multiple of 4, NaN/±Infinity inside the
- *     decoded samples).
+ *     decoded samples, or an ALL-ZERO ψ — Σ|ψ_k|² = 0. A zero-norm
+ *     wavefunction passes wasm's deserialize (its normalize is a no-op at
+ *     norm 0), but the very next advance trips the propagator's norm
+ *     guard — a FATAL — and the loaded snapshot is the same zeros, so
+ *     "Reset & run again" would re-fatal in a loop. The codec rejects it
+ *     up front: renormalization is impossible, so the file is unusable).
  *
  * Everything round-trips BIT-EXACTLY: the bytes of an f32 array never pass
  * through a number→text conversion, only through base64, so negative
@@ -189,6 +194,23 @@ export function decodeState(json: unknown): RawState {
       'shape',
       `state file: dimension mismatch — ${potential.length}/${psi.length} samples for ` +
         `${scalars.nx}x${scalars.ny} (want nx*ny / 2*nx*ny)`,
+    )
+  }
+
+  // Zero-norm ψ guard (fix round 1): Σ|ψ_k|² over the decoded f32 samples,
+  // accumulated in f64 so even a lone subnormal stays non-zero. Exactly 0
+  // iff every sample is ±0 — see the module doc for why that must never
+  // reach wasm (renormalize is a no-op at 0, the next advance fatals, and
+  // the all-zeros snapshot makes "Reset & run again" re-fatal forever).
+  let normSq = 0
+  for (let i = 0; i < psi.length; i++) {
+    const v = psi[i]
+    normSq += v * v
+  }
+  if (normSq === 0) {
+    throw new StateFileError(
+      'corrupt',
+      'state file: psi has zero norm — renormalization is impossible',
     )
   }
 

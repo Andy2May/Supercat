@@ -179,6 +179,38 @@ describe('decodeState', () => {
     expect(() => decodeState({ ...saved, potential: longPotential })).toThrow(StateFileError)
   })
 
+  it('rejects an ALL-ZEROS psi with reason corrupt (zero norm is unloadable)', () => {
+    // Craft: every field valid (finite, right lengths), ψ all ±0. It must
+    // NOT reach wasm — deserialize would accept it (normalize is a no-op at
+    // norm 0) and the next advance would trip the fatal norm guard, with a
+    // snapshot of the same zeros making "reset & run again" re-fatal
+    // forever. The codec is the boundary that says no.
+    const saved = encodeState(makeRaw())
+    const zeros = new Float32Array(2 * NX * NY)
+    const bytes = new Uint8Array(zeros.buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    const crafted = { ...saved, psi: btoa(binary) }
+
+    let error: unknown
+    try {
+      decodeState(crafted)
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeInstanceOf(StateFileError)
+    const stateError = error as StateFileError
+    expect(stateError.reason).toBe('corrupt')
+    expect(stateError.message.toLowerCase()).toContain('norm')
+  })
+
+  it('accepts a psi with a single non-zero sample (subnormal norm is a norm)', () => {
+    const psi = new Float32Array(2 * NX * NY)
+    psi[0] = 1e-42 // f32 subnormal — squares to a representable f64
+    const decoded = decodeState(encodeState(makeRaw({ psi })))
+    expectSameBits(decoded.psi, psi)
+  })
+
   it('rejects garbage payloads with reason "corrupt"', () => {
     for (const garbage of [null, 42, 'hello', [], true]) {
       let error: unknown

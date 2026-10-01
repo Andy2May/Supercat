@@ -181,11 +181,17 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     if (disposed) return
     advanceInFlight = false
 
+    // Grid mirror for the debug hook (Task 17): updated BEFORE the guard
+    // so dropped frames reflect the store's grid too — an e2e watching
+    // `__psiforge.grid` sees a cross-grid load switch it and (on a
+    // rejected load) the store roll it back, regardless of what draws.
+    debugState.grid = store.grid
+
     // Grid-consistency guard (Task 17): a loaded state file can carry a
-    // different grid than the session booted with — App updates store.grid
-    // the moment a decoded file is sent, so any frame still sized for the
-    // OLD grid is a straggler from the superseded sim (an advance that was
-    // in flight across the load). Uploading it under the new dims would
+    // different grid than the session booted with — the store switches
+    // grid the moment a decoded file is sent, so any frame still sized for
+    // the OLD grid is a straggler from the superseded sim (an advance that
+    // was in flight across the load). Uploading it under the new dims would
     // hand texImage2D a wrongly-sized buffer; drop it instead — the load's
     // own confirmation frame follows immediately.
     if (frame.densityPhase.length !== 2 * store.grid * store.grid) {

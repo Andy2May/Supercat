@@ -325,14 +325,14 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           break
         }
         case 'deserialize-state': {
-          if (sim === undefined) throw new Error('deserialize-state before init')
           // A bad FILE is a caller problem, not a worker fault: every
-          // failure below (fresh-sim construction with impossible scalars,
-          // wasm's dimension/non-finite rejections) lands on load-error so
-          // the live simulation keeps running untouched — never on fatal.
-          // (wasm rejects atomically: a failed deserialize leaves the
-          // target sim exactly as it was.)
+          // failure below (the before-init guard, fresh-sim construction
+          // with impossible scalars, wasm's dimension/non-finite
+          // rejections) lands on load-error so the live simulation keeps
+          // running untouched — never on fatal. (wasm rejects atomically:
+          // a failed deserialize leaves the target sim exactly as it was.)
           try {
+            if (sim === undefined) throw new Error('deserialize-state before init')
             // Grid rule: wasm's deserialize only enforces nx/ny —
             // extent/dt/m/ħ are validated but NOT applied, and the
             // propagator is never rebuilt in place. A file saved on a

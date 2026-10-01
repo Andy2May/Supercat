@@ -67,6 +67,19 @@
     active
     return t('import.json')
   })
+  // Load-error banner (Task 17 fix round 1): the localized headline is
+  // composed at render time (the stored detail keeps the worker's raw
+  // wasm text — mirroring the fatal banner — so only the headline
+  // re-translates on a language flip), and the dismiss control's
+  // accessible name is localized (the visible glyph stays "×").
+  const loadFailedHeadline = $derived.by(() => {
+    active
+    return t('loadFailed')
+  })
+  const dismissLabel = $derived.by(() => {
+    active
+    return t('loadFailed.dismiss')
+  })
 
   // WebGL2 gate, probed once: without it the renderer cannot draw, so the
   // app is replaced by the WebGlMissing page and no worker is ever created.
@@ -173,18 +186,22 @@
     return off
   })
 
-  /** Load-failure copy: the localized headline plus, when the codec said
-   * why, the matching reason detail. */
-  function loadFailedMessage(error: unknown): string {
+  /** Load-failure DETAIL: the codec's classified reason, localized. The
+   * banner headline (`loadFailed`) is composed at render time so the whole
+   * message re-translates on a language flip; worker-side rejections keep
+   * their raw wasm text as the detail (same deal as the fatal banner). */
+  function loadErrorDetail(error: unknown): string {
     if (error instanceof StateFileError) {
-      return `${t('loadFailed')} — ${t(`loadFailed.${error.reason}`)}`
+      return t(`loadFailed.${error.reason}`)
     }
-    return t('loadFailed')
+    // JSON.parse / read failures: no classification, but still a broken
+    // file.
+    return t('loadFailed.corrupt')
   }
 
-  /** Load: read -> parse -> decode -> hand to the worker (arrays
-   * transferred). Any throw on the way is a NON-fatal loadError banner —
-   * the running simulation is untouched. */
+  /** Load: read -> parse -> decode -> hand to the worker via the store
+   * (which owns the cross-grid bookkeeping). Any throw on the way is a
+   * NON-fatal loadError banner — the running simulation is untouched. */
   async function onStateFile(event: Event): Promise<void> {
     const input = event.currentTarget
     const file = input instanceof HTMLInputElement ? (input.files?.[0] ?? undefined) : undefined
@@ -200,33 +217,9 @@
       if (raw.nx !== raw.ny) {
         throw new StateFileError('shape', `state file: non-square grid ${raw.nx}x${raw.ny}`)
       }
-      // A loaded file may live on a different grid than this session booted
-      // with — the render loop sizes every texture upload from store.grid,
-      // so it must learn the file's grid BEFORE the load's confirmation
-      // frame arrives (straggler old-grid frames are dropped by a guard in
-      // simLoop).
-      simStore.grid = raw.nx
-      // Optimistic clear: a worker-side rejection re-sets loadError via its
-      // load-error reply; the next frame after a successful load confirms.
-      simStore.loadError = undefined
-      simStore.send(
-        {
-          type: 'deserialize-state',
-          nx: raw.nx,
-          ny: raw.ny,
-          extentX: raw.extentX,
-          extentY: raw.extentY,
-          dt: raw.dt,
-          m: raw.m,
-          hbar: raw.hbar,
-          t: raw.t,
-          potential: raw.potential,
-          psi: raw.psi,
-        },
-        [raw.potential.buffer, raw.psi.buffer],
-      )
+      simStore.loadState(raw)
     } catch (error) {
-      simStore.loadError = loadFailedMessage(error)
+      simStore.loadError = loadErrorDetail(error)
     }
   }
 </script>
@@ -288,12 +281,16 @@
     {:else if simStore.loadError !== undefined}
       <!-- Non-fatal load error (Task 17): a rejected state file. Amber, not
            red — the simulation keeps running; dismiss or load another file
-           (a successful load clears it). -->
+           (a successful load clears it). Localized headline + raw detail,
+           the same shape as the fatal banner. -->
       <div class="load-error" role="alert" data-testid="load-error">
-        <span>{simStore.loadError}</span>
+        <span>
+          <strong>{loadFailedHeadline}</strong>
+          {simStore.loadError}
+        </span>
         <button
           data-testid="load-error-dismiss"
-          aria-label="×"
+          aria-label={dismissLabel}
           onclick={() => (simStore.loadError = undefined)}
         >
           ×

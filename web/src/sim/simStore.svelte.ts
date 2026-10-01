@@ -24,6 +24,7 @@ import type {
 } from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
 import { ringPush } from './sparkline.js'
+import type { RawState } from './stateFile.js'
 
 /** Perf HUD sample: fps (1 s EMA), substeps of the last advance, and the
  * post-advance -> frame-arrival latency in ms. */
@@ -186,6 +187,16 @@ export class SimStore {
    * survives any number of mount/unmount cycles.
    */
   private readonly stateListeners = new Set<(state: StateMessage) => void>()
+  /**
+   * Grid to RESTORE if the in-flight cross-grid state load is rejected
+   * (Task 17 fix round 1): `loadState` switches `grid` to the file's grid
+   * up front (the render loop sizes every upload from it), so a rejection
+   * must put the session grid back — otherwise the still-running old-grid
+   * sim would have every frame dropped by the render loop's grid guard
+   * and the canvas would freeze forever. Cleared by the load's
+   * confirmation frame (sized for the NEW grid) or by `init`.
+   */
+  private pendingGridRestore: number | undefined
 
   constructor() {
     const params = readParams()
@@ -212,6 +223,7 @@ export class SimStore {
     if (this.worker !== undefined) return
     this.fatal = undefined
     this.loadError = undefined
+    this.pendingGridRestore = undefined
     this.lastMeasurement = undefined
     this.t = 0
     this.norm = 0
@@ -306,6 +318,42 @@ export class SimStore {
   }
 
   /**
+   * Hands a decoded state file to the worker (Task 17) and owns the grid
+   * bookkeeping a CROSS-GRID load needs: `grid` switches to the file's
+   * grid right here (the render loop sizes every texture upload from it
+   * and drops straggler old-grid frames), with the previous grid
+   * remembered in `pendingGridRestore` and restored if the worker's
+   * answer is a `load-error` — a rejected construct/deserialize must
+   * leave the session exactly as it was, or the still-running old-grid
+   * sim would never draw again.
+   */
+  loadState(raw: RawState): void {
+    this.loadError = undefined // optimistic; a rejection re-sets it
+    if (raw.nx !== this.grid) {
+      this.pendingGridRestore = this.grid
+      this.grid = raw.nx
+    } else {
+      this.pendingGridRestore = undefined
+    }
+    this.send(
+      {
+        type: 'deserialize-state',
+        nx: raw.nx,
+        ny: raw.ny,
+        extentX: raw.extentX,
+        extentY: raw.extentY,
+        dt: raw.dt,
+        m: raw.m,
+        hbar: raw.hbar,
+        t: raw.t,
+        potential: raw.potential,
+        psi: raw.psi,
+      },
+      [raw.potential.buffer, raw.psi.buffer],
+    )
+  }
+
+  /**
    * Posts to the worker; `transfer` (the recycle channel's returned frame
    * buffer) moves backing stores zero-copy instead of structured-cloning
    * them.
@@ -358,9 +406,28 @@ export class SimStore {
     }
     if (msg.type === 'load-error') {
       // A rejected state file (Task 17): informational only — the worker
-      // kept the live simulation running, so nothing else moves.
+      // kept the live simulation running. A cross-grid attempt had moved
+      // `grid` to the file's grid; put it back so the old sim's frames
+      // pass the render loop's grid guard again (fix round 1: without
+      // this, every frame was dropped and the canvas froze forever).
+      if (this.pendingGridRestore !== undefined) {
+        this.grid = this.pendingGridRestore
+        this.pendingGridRestore = undefined
+      }
       this.loadError = msg.message
       return
+    }
+    // The confirmation frame of a pending cross-grid load: sized for the
+    // NEW grid (which `loadState` already installed in `this.grid`), so
+    // the attempt landed — the rollback marker is spent. A straggler
+    // old-grid frame can never match this size (that's the guard's own
+    // criterion), and worker messages keep arrival order, so this cannot
+    // fire early.
+    if (
+      this.pendingGridRestore !== undefined &&
+      msg.densityPhase.length === 2 * this.grid * this.grid
+    ) {
+      this.pendingGridRestore = undefined
     }
     this.t = msg.t
     this.norm = msg.norm

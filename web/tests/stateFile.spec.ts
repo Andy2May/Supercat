@@ -36,6 +36,17 @@ function simTime(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.t ?? 0)
 }
 
+/** The store's session grid from the debug hook (mirrored per frame,
+ * dropped frames included — see simLoop's grid mirror). */
+function grid(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => window.__psiforge?.grid ?? 0)
+}
+
+/** f32 array -> base64 (file payload crafting). */
+function f32B64(values: Float32Array): string {
+  return Buffer.from(values.buffer, values.byteOffset, values.byteLength).toString('base64')
+}
+
 /** Boots a running sim in ADVANCED mode (fresh contexts start in explore)
  * and waits for real wasm frames. */
 async function bootAdvanced(page: import('@playwright/test').Page): Promise<void> {
@@ -103,8 +114,66 @@ test('advanced: Save downloads a state JSON; Load restores the saved t', async (
   const tRestored = await simTime(page)
   expect(Math.abs(tRestored - tSaved)).toBeLessThan(0.5)
 
-  // No load error on the happy path, and the loop is unharmed.
+  // No load error on the happy path, and the loop is unharmed. The
+  // session grid never moved (same-grid file).
   await expect(page.getByTestId('load-error')).toBeHidden()
+  expect(await grid(page)).toBe(256)
+  const f1 = await frames(page)
+  await page.waitForTimeout(600)
+  expect(await frames(page)).toBeGreaterThan(f1)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('a rejected CROSS-GRID file rolls the session grid back — the old sim keeps rendering', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+  await bootAdvanced(page)
+  expect(await grid(page)).toBe(256)
+
+  // A file the codec ACCEPTS (finite scalars, right lengths, non-zero ψ)
+  // but the worker must REJECT: grid 128 against the live 256 forces a
+  // fresh-sim construction, and dt = 0 is an impossible scalar — wasm's
+  // constructor refuses. This is exactly the trap of fix round 1: without
+  // the rollback, the store would keep the dead 128 grid and drop every
+  // frame of the still-running 256 sim forever.
+  const nx = 128
+  const psi = new Float32Array(2 * nx * nx)
+  psi[0] = 1 // non-zero norm so decodeState lets it through
+  const crossGrid = {
+    version: 1,
+    nx,
+    ny: nx,
+    extentX: 40,
+    extentY: 40,
+    dt: 0, // impossible: constructor requires dt > 0
+    m: 1,
+    hbar: 1,
+    t: 1,
+    potential: f32B64(new Float32Array(nx * nx)),
+    psi: f32B64(psi),
+  }
+
+  await page.getByTestId('import-json-input').setInputFiles({
+    name: 'psiforge-state-cross-grid.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(crossGrid)),
+  })
+
+  // The rejection surfaces on the non-fatal banner (with the raw wasm
+  // detail behind the localized headline), never as a fatal.
+  const banner = page.getByTestId('load-error')
+  await expect(banner).toBeVisible()
+  await expect(page.getByTestId('error-banner')).toBeHidden()
+
+  // The session grid is back to 256 — and the old simulation keeps
+  // RENDERING (the draw counter moves; the grid guard would otherwise
+  // drop every frame and freeze the canvas).
+  await expect
+    .poll(() => grid(page), { timeout: 5_000 })
+    .toBe(256)
   const f1 = await frames(page)
   await page.waitForTimeout(600)
   expect(await frames(page)).toBeGreaterThan(f1)

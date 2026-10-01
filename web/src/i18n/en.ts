@@ -27,6 +27,7 @@ export const en: Record<string, string> = {
   'loadFailed.version': 'unsupported file version',
   'loadFailed.shape': 'wrong grid dimensions',
   'loadFailed.corrupt': 'corrupt file',
+  'loadFailed.dismiss': 'Dismiss',
   'error.resetAndRun': 'Reset & run again',
   'webgl.missingTitle': 'WebGL2 not supported',
   'perf.fps': 'FPS',

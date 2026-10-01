@@ -27,6 +27,7 @@ export const vi: Record<string, string> = {
   'loadFailed.version': 'phiên bản file không hỗ trợ',
   'loadFailed.shape': 'sai kích thước lưới',
   'loadFailed.corrupt': 'file hỏng',
+  'loadFailed.dismiss': 'Đóng',
   'error.resetAndRun': 'Reset & chạy lại',
   'webgl.missingTitle': 'Không hỗ trợ WebGL2',
   'perf.fps': 'FPS',

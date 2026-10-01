@@ -15,6 +15,14 @@ export interface PsiforgeDebugState {
   maxDensity: number
   potentialVersion: number
   /**
+   * The store's current session grid (Task 17 fix round 1): mirrored on
+   * every worker frame INCLUDING dropped ones (before the render loop's
+   * grid-consistency guard), so an e2e can see a cross-grid state load
+   * switch it — and, critically, see the rollback when the load is
+   * rejected. 0 until the first frame.
+   */
+  grid: number
+  /**
    * Field-upload path counters (Task 12 review fix R1): how many times the
    * render loop sent the POSITION field (densityPhase) vs the MOMENTUM
    * scratch buffer to `uploadField`. Momentum view must upload ZERO
@@ -50,6 +58,7 @@ function createDebugState(): PsiforgeDebugState {
     norm: 0,
     maxDensity: 0,
     potentialVersion: 0,
+    grid: 0,
     fieldUploads: { position: 0, momentum: 0 },
     rowBrightness: new Map(),
   }
