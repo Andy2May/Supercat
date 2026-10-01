@@ -242,10 +242,14 @@
   }
 </script>
 
-{#if !webglOk}
-  <WebGlMissing />
-{:else if route.view === 'landing'}
+{#if route.view === 'landing'}
+  <!-- Landing BEFORE the WebGL2 gate (UI redesign T9): the landing owns its
+       own gate (hasWebGl2 inside — a static backdrop replaces the live sim),
+       so a no-WebGL2 browser still gets the full marketing page and its
+       tiles; only the SIMULATOR view keeps the WebGlMissing dead end. -->
   <Landing />
+{:else if !webglOk}
+  <WebGlMissing />
 {:else}
   <main>
     <TopBar id={route.id} />

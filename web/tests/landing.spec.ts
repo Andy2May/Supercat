@@ -1,14 +1,24 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Landing + hash routing (Task 9). Playwright's Desktop Chrome runs with an
- * en-US locale, so `navigator.language` boots the app in English — the
- * assertions below match the English copy on purpose.
+ * Landing "theater" + hash routing (UI redesign T9). Playwright's Desktop
+ * Chrome runs with an en-US locale, so `navigator.language` boots the app in
+ * English — the assertions below match the English copy on purpose.
  *
- * Viewport 1280×800 (not the project's 720): the narration card assertions
- * below expect the panel OPEN, and NarrationPanel's R4 rule (UI redesign
- * T5) boots it open only while innerHeight >= 800 — at 720 it would be the
- * collapsed ⓘ stub instead.
+ * Viewport 1280×800: the film strip is the vertical right rail only while
+ * innerWidth >= 1024, and NarrationPanel's R4 rule boots the card open only
+ * while innerHeight >= 800.
+ *
+ * The landing runs a REAL physics worker as its background (ruling 1: the
+ * landing owns init/destroy while mounted), so the debug hook's `frames`
+ * counter advances on the landing too — the worker-handover tests below use
+ * exactly that to pin the destroy-then-init handover in both directions:
+ *
+ *   landing -> sim: a hovered SANDBOX background (autoplay off, t frozen)
+ *   must give way to a RUNNING sim (t > 0) — a leaked landing worker would
+ *   stay frozen, a killed fresh init would never draw;
+ *   sim -> landing: the back-link must boot the landing's own background
+ *   (frames keep advancing) — a cleanup racing the init would freeze it.
  */
 test.use({ viewport: { width: 1280, height: 800 } })
 const EN = {
@@ -16,6 +26,7 @@ const EN = {
   tunneling: 'Tunneling',
   'free-packet': 'Free wave packet',
   harmonic: 'Harmonic oscillator',
+  sandbox: 'Free play',
 } as const
 
 /** Attaches the no-error collectors every scenario asserts at the end. */
@@ -37,78 +48,234 @@ function frames(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.frames ?? 0)
 }
 
-test('landing: five preset tiles in registry order, each linking to its sim', async ({
+/** Polls the debug hook for the latest frame's sim time. */
+function simTime(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => window.__psiforge?.t ?? 0)
+}
+
+test('theater landing: five preset tiles in registry order, hero + nav + strip + status', async ({
   page,
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/')
 
-  // App title + tagline reuse the existing i18n keys.
-  await expect(page.locator('h1')).toContainText('Psiforge')
-  await expect(page.getByText('Quantum wave physics')).toBeVisible()
-
-  // Five tiles, visible, in LANDING_ORDER.
+  // Five tiles, in LANDING_ORDER, each a hash link to its simulation.
   const tiles = page.getByTestId('preset-tile')
   await expect(tiles).toHaveCount(5)
-  await expect(tiles.first()).toBeVisible()
   const order = await tiles.evaluateAll((els) =>
     els.map((el) => (el as HTMLElement).dataset.preset),
   )
-  expect(order).toEqual([
-    'double-slit',
-    'tunneling',
-    'free-packet',
-    'harmonic',
-    'sandbox',
-  ])
-
-  // Each tile is a hash link to its simulation.
+  expect(order).toEqual(['double-slit', 'tunneling', 'free-packet', 'harmonic', 'sandbox'])
   await expect(page.locator('[data-preset="tunneling"]')).toHaveAttribute(
     'href',
     '#/sim/tunneling',
   )
-  await expect(page.locator('[data-preset="sandbox"]')).toHaveAttribute(
-    'href',
-    '#/sim/sandbox',
-  )
+  await expect(page.locator('[data-preset="sandbox"]')).toHaveAttribute('href', '#/sim/sandbox')
 
+  // The composition: hero (kicker + two title lines + CTAs), glass nav,
+  // strip, status line — and the live background canvas behind it all.
+  await expect(page.getByTestId('landing-hero')).toBeVisible()
+  const heading = page.getByTestId('landing-hero').getByRole('heading', { level: 1 })
+  await expect(heading).toContainText('See the')
+  await expect(heading).toContainText('invisible.')
+  await expect(page.getByTestId('landing-nav')).toBeVisible()
+  await expect(page.getByTestId('landing-strip')).toBeVisible()
+  const status = page.getByTestId('landing-status')
+  await expect(status).toBeVisible()
+  await expect(status).toContainText(`NOW SHOWING · ${EN['double-slit']}`)
+  await expect(status).toContainText('|ψ|² · ħ = m = 1')
+  await expect(page.getByTestId('sim-canvas')).toBeVisible()
+
+  // The live dot blinks (scoped keyframe name — anything but `none`).
+  const dotAnimation = await page
+    .getByTestId('status-dot')
+    .evaluate((el) => getComputedStyle(el).animationName)
+  expect(dotAnimation).not.toBe('none')
+  expect(dotAnimation).toContain('blink')
+
+  expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })
 
-test('clicking the tunneling tile: sim boots, narration card shows, frames advance', async ({
+test('live background: boots on visit and swaps to a hovered preset (destroy + init)', async ({
   page,
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/')
-  await page.locator('[data-preset="tunneling"]').click()
 
-  await expect(page).toHaveURL(/#\/sim\/tunneling$/)
-  const card = page.getByTestId('preset-card')
-  await expect(card).toBeVisible()
-  await expect(card).toContainText(EN.tunneling)
-
-  // The physics worker feeds the render loop for the new preset.
+  // The default double-slit background actually runs.
   await expect
     .poll(() => frames(page), { timeout: 10_000 })
     .toBeGreaterThan(10)
 
-  // Collapse hides the card; the info button re-opens it with the same
-  // narration. Collapsing must not disturb the simulation.
+  // Hovering the strip switches the backdrop (150 ms debounce) — the status
+  // line follows the newly-inited scene.
+  await page.locator('[data-preset="harmonic"]').hover()
+  await expect
+    .poll(() => page.getByTestId('landing-status').innerText(), { timeout: 5_000 })
+    .toContain(`NOW SHOWING · ${EN.harmonic}`)
+
+  // The swapped-in worker keeps feeding frames (no dead handover).
   const before = await frames(page)
-  await page.getByTestId('preset-card-toggle').click()
-  await expect(page.getByTestId('preset-card')).toBeHidden()
-  await expect(page.getByTestId('preset-info')).toBeVisible()
-  await page.getByTestId('preset-info').click()
-  await expect(page.getByTestId('preset-card')).toBeVisible()
-  await expect(page.getByTestId('preset-card')).toContainText(EN.tunneling)
   await expect
     .poll(() => frames(page), { timeout: 5_000 })
-    .toBeGreaterThan(before)
+    .toBeGreaterThan(before + 5)
 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
+})
+
+test('rapid hover sweep across all five tiles: last preset wins, no worker races', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+  await expect(page.getByTestId('preset-tile')).toHaveCount(5)
+
+  // A fast sweep (< 1 s total): every mouseenter lands inside the debounce
+  // window of the previous one, so only the LAST preset may boot. Raw
+  // mouse moves (not .hover, whose actionability waits would blow the
+  // budget while the hero entrance is still settling).
+  const sweep = Date.now()
+  for (const id of ['double-slit', 'tunneling', 'free-packet', 'harmonic', 'sandbox']) {
+    const box = await page.locator(`[data-preset="${id}"]`).boundingBox()
+    expect(box).not.toBeNull()
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  }
+  expect(Date.now() - sweep).toBeLessThan(1_000)
+
+  await page.waitForTimeout(400) // debounce + destroy/init settle
+  await expect(page.getByTestId('landing-status')).toContainText(`NOW SHOWING · ${EN.sandbox}`)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('landing -> sim handover: a hovered sandbox background yields to a RUNNING double-slit', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+
+  // Hover the sandbox: it boots with autoplay OFF, so its sim time freezes
+  // at 0 — a perfect marker for "the landing worker must be gone" below.
+  await page.locator('[data-preset="sandbox"]').hover()
+  await expect
+    .poll(() => page.getByTestId('landing-status').innerText(), { timeout: 5_000 })
+    .toContain(`NOW SHOWING · ${EN.sandbox}`)
+  await page.waitForTimeout(300)
+  expect(await simTime(page)).toBe(0)
+
+  // Click through to the double-slit simulation. If the landing's worker
+  // leaked into the sim view, t stays frozen at 0; if the landing's cleanup
+  // destroyed the sim's fresh init, no frame is ever drawn again.
+  await page.locator('[data-preset="double-slit"]').click()
+  await expect(page).toHaveURL(/#\/sim\/double-slit$/)
+  const card = page.getByTestId('preset-card')
+  await expect(card).toBeVisible()
+  await expect(card).toContainText(EN['double-slit'])
+  await expect
+    .poll(() => simTime(page), { timeout: 10_000 })
+    .toBeGreaterThan(0.5)
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(10)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('back-link returns to landing: its own background boots; the next preset shows ITS card', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/#/sim/harmonic')
+  await expect(page.getByTestId('preset-card')).toContainText(EN.harmonic)
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(10)
+
+  // Back-link lands on '#/': the landing mounts and boots its OWN
+  // background (a cleanup racing the init would leave it frozen instead).
+  await page.getByTestId('back-link').click()
+  await expect(page).toHaveURL(/#\/$/)
+  await expect(page.getByTestId('preset-tile')).toHaveCount(5)
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(await frames(page) + 5)
+
+  // Entering free-packet must show the FREE-PACKET narration — not the
+  // harmonic card the previous visit left behind (stale-state trap).
+  await page.locator('[data-preset="free-packet"]').click()
+  const card = page.getByTestId('preset-card')
+  await expect(card).toContainText(EN['free-packet'])
+  await expect(card).not.toContainText(EN.harmonic)
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(10)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('no WebGL2: static fallback landing renders, tiles still navigate (sim shows the dead end)', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  // Kill WebGL2 contexts only; everything else (2d, probes) stays intact.
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type === 'webgl2') return null
+      return original.call(this, type, ...rest)
+    } as typeof HTMLCanvasElement.prototype.getContext
+  })
+
+  await page.goto('/')
+
+  // The full landing renders over the static backdrop — no sim canvas, and
+  // hero + strip + status stay functional.
+  await expect(page.getByTestId('landing-fallback')).toBeVisible()
+  await expect(page.getByTestId('sim-canvas')).toHaveCount(0)
+  await expect(page.getByTestId('landing-hero')).toBeVisible()
+  await expect(page.getByTestId('preset-tile')).toHaveCount(5)
+  await expect(page.getByTestId('landing-status')).toContainText(
+    `NOW SHOWING · ${EN['double-slit']}`,
+  )
+
+  // Tile click still navigates; the SIMULATOR view keeps its dead end.
+  await page.locator('[data-preset="sandbox"]').click()
+  await expect(page).toHaveURL(/#\/sim\/sandbox$/)
+  await expect(page.getByTestId('webgl-missing')).toBeVisible()
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('prefers-reduced-motion: the status dot does not blink', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+
+  const animationName = await page
+    .getByTestId('status-dot')
+    .evaluate((el) => getComputedStyle(el).animationName)
+  expect(animationName).toBe('none')
+
+  // The hero entrance stands down too (ruling 4).
+  const heroAnimation = await page
+    .getByTestId('landing-hero')
+    .evaluate((el) => getComputedStyle(el.querySelector('.hero-in')!).animationName)
+  expect(heroAnimation).toBe('none')
 })
 
 test('direct load of #/sim/harmonic boots that preset', async ({ page }) => {
@@ -125,44 +292,7 @@ test('direct load of #/sim/harmonic boots that preset', async ({ page }) => {
   expect(pageErrors).toEqual([])
 })
 
-test('back-link returns to landing; entering free-packet shows ITS card (stale-state trap)', async ({
-  page,
-}) => {
-  const { consoleErrors, pageErrors } = expectNoErrors(page)
-
-  await page.goto('/#/sim/harmonic')
-  await expect(page.getByTestId('preset-card')).toContainText(EN.harmonic)
-  await expect
-    .poll(() => frames(page), { timeout: 10_000 })
-    .toBeGreaterThan(10)
-
-  // Back-link lands on '#/' and tears the simulation down: no further
-  // frames may be drawn while the landing view is showing.
-  await page.getByTestId('back-link').click()
-  await expect(page).toHaveURL(/#\/$/)
-  await expect(page.getByTestId('preset-tile')).toHaveCount(5)
-  await page.waitForTimeout(500)
-  const atLanding = await frames(page)
-  await page.waitForTimeout(600)
-  expect(await frames(page)).toBe(atLanding)
-
-  // Entering free-packet must show the FREE-PACKET narration — not the
-  // harmonic card the previous visit left behind.
-  await page.locator('[data-preset="free-packet"]').click()
-  const card = page.getByTestId('preset-card')
-  await expect(card).toContainText(EN['free-packet'])
-  await expect(card).not.toContainText(EN.harmonic)
-  await expect
-    .poll(() => frames(page), { timeout: 10_000 })
-    .toBeGreaterThan(atLanding)
-
-  expect(consoleErrors).toEqual([])
-  expect(pageErrors).toEqual([])
-})
-
-test('direct hash switch between presets keeps the loop alive (worker swap)', async ({
-  page,
-}) => {
+test('direct hash switch between presets keeps the loop alive (worker swap)', async ({ page }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/#/sim/harmonic')
@@ -189,9 +319,7 @@ test('direct hash switch between presets keeps the loop alive (worker swap)', as
   expect(pageErrors).toEqual([])
 })
 
-test('a garbage preset hash falls back to the double-slit simulation', async ({
-  page,
-}) => {
+test('a garbage preset hash falls back to the double-slit simulation', async ({ page }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
   await page.goto('/#/sim/nonsense')

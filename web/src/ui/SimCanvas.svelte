@@ -17,7 +17,21 @@
      * from a shader/link bug; the error is logged here either way.
      */
     onRenderFailed = () => {},
-  }: { onRenderFailed?: (error: unknown) => void } = $props()
+    /**
+     * 'landing' (UI redesign T9): the landing's decorative full-bleed
+     * background — the stage fills its (non-square) parent with no
+     * max-width/radius/border (the renderer stretches its quad over the
+     * letterbox; acceptable for a backdrop, the sim view keeps the square
+     * stage), pointer handlers stay unattached (no painting, no measuring,
+     * touch-action returns to the browser default) and the t-label + V-legend
+     * never mount. 'app' (default) is byte-identical to the pre-variant
+     * component.
+     */
+    variant = 'app',
+  }: { onRenderFailed?: (error: unknown) => void; variant?: 'app' | 'landing' } = $props()
+
+  /** Landing shorthand used by the template (handlers + label gating). */
+  const interactive = $derived(variant !== 'landing')
 
   // Local mirror of the language store (same pattern as App.svelte): the
   // derived label below re-translates when `setLang` fires. The subscription
@@ -71,7 +85,9 @@
    * so its colors must not be narrated there). Free-packet/sandbox boot
    * with V ≡ 0 and stay legendless until the user draws.
    */
-  const legendVisible = $derived(simStore.potentialMax > 0 && simStore.view === 'position')
+  const legendVisible = $derived(
+    interactive && simStore.potentialMax > 0 && simStore.view === 'position',
+  )
 
   let canvas = $state<HTMLCanvasElement | undefined>(undefined)
   let overlay = $state<HTMLCanvasElement | undefined>(undefined)
@@ -509,23 +525,28 @@
   })
 </script>
 
-<div class="stage">
+<div class="stage" class:landing={variant === 'landing'}>
   <canvas
     bind:this={canvas}
     data-testid="sim-canvas"
     aria-label={canvasLabel}
-    onpointerdown={onPointerDown}
-    onpointermove={onPointerMove}
-    onpointerup={onPointerUp}
-    onpointercancel={onPointerCancel}
+    onpointerdown={interactive ? onPointerDown : undefined}
+    onpointermove={interactive ? onPointerMove : undefined}
+    onpointerup={interactive ? onPointerUp : undefined}
+    onpointercancel={interactive ? onPointerCancel : undefined}
   ></canvas>
-  <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
+  {#if interactive}
+    <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
+  {/if}
   <!-- Sim-time readout (UI redesign T8): pure DOM text over the frame's
        top-left corner, reading the existing simStore.t rune — the render
-       loop is untouched, Svelte just patches this text node per frame. -->
-  <div class="t-label" data-testid="t-label" aria-hidden="true">
-    |ψ|² · t = {simStore.t.toFixed(1)}
-  </div>
+       loop is untouched, Svelte just patches this text node per frame.
+       Landing variant: never mounted (the backdrop carries no readouts). -->
+  {#if interactive}
+    <div class="t-label" data-testid="t-label" aria-hidden="true">
+      |ψ|² · t = {simStore.t.toFixed(1)}
+    </div>
+  {/if}
   {#if legendVisible}
     <!-- Spec 7.1: the M1 review's "user mistook the orange wall for a UI
          element" — the chips name the overlay colors and the max|V| scale
@@ -550,6 +571,25 @@
 </div>
 
 <style>
+  /* Landing variant (UI redesign T9): the stage becomes the theater's
+     full-bleed backdrop — it fills its (non-square) parent, sheds the
+     app.css square sizing/margins and the canvas chrome, and touch drags
+     fall back to the browser default (the backdrop is inert, so there is
+     nothing to paint). The renderer's fullscreen quad simply stretches over
+     the letterbox — decorative by ruling, the sim view keeps the isotropic
+     square stage. */
+  .stage.landing {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .stage.landing canvas {
+    border-radius: 0;
+    touch-action: auto;
+  }
+
   /* Sim-time label (UI redesign T8, mockup .ws-tlabel): mono micro-copy at
      the stage's top-left, accent-tinted. Never a pointer target, hidden
      from AT (the readouts own the accessible numbers). */
