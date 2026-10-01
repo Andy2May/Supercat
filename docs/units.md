@@ -13,13 +13,14 @@ solver never asks what a "meter" or a "second" is.
 
 ## Natural units: ħ = m = 1
 
-By default everything runs with `m = 1`, `ħ = 1`, positions on a domain of
-side `L` (the app uses a 40 × 40 box: x, y ∈ [−20, 20]), and time in steps
-of `T = m·L²/ħ`. What that means when reading numbers:
+By default everything runs with `m = 1`, `ħ = 1` and positions in domain
+units — the app's box spans 40 per side (x, y ∈ [−20, 20]). The natural
+scales are set by one domain unit `ℓ`: one energy unit is `ħ²/(m·ℓ²)` and
+one time unit is `m·ℓ²/ħ` — numerically 1 with ħ = m = 1, so the equation
+above is exact as written. What that means when reading numbers:
 
 - Position readouts ⟨x⟩, ⟨y⟩ and measurement outcomes are in domain units
   (±20 at the walls of the default box).
-- One unit of energy is `ħ²/(m·L²)`; one unit of time is `m·L²/ħ`.
 - Probabilities stay consistent: the norm is the Riemann sum
   `‖ψ‖ = sqrt(Σ |ψᵢ|² · dA)` with `dA = dx·dy`, so a normalized `|ψ|²` is
   exactly probability per unit area.
@@ -59,11 +60,13 @@ speed means more physics computed per frame, not a coarser simulation.
 ## The momentum (k-space) view
 
 The k-axes follow the `numpy.fft.fftfreq` convention scaled by 2π:
-`k_j = 2π/(n·dx) · j'`, with `j' = j` below `n/2` and `j' = j − n` above —
-bin 0 is the zero wavenumber. The display is fftshift-ed, so **k = 0 sits
+`k_j = 2π/(n·dx) · j'`, with `j' = j` below `n/2` and `j' = j − n` from
+`n/2` up — bin 0 is the zero wavenumber. The display is fftshift-ed, so **k = 0 sits
 at the center** and |k| grows outward along both axes. k is the wavenumber;
 a bin's momentum is `p = ħ·k` (numerically equal, since ħ = 1). The |k|
-slider tops out at 15, inside the range every grid size resolves.
+slider tops out at 15, within the range the default 256² grid resolves
+(wavenumbers up to `π/dx` ≈ 20; the 512² grid reaches ≈ 40) — the optional
+128² grid resolves only to ≈ 10, where a |k| = 15 packet aliases.
 
 ## Passing other values (core API)
 
@@ -86,6 +89,6 @@ let wf = Wavefunction::new(grid, psi, 5.68563, 0.658212)?;
 ```
 
 Sanity check: `ħ²/(2m) = 0.03810 eV·nm²` — the textbook electron value.
-Staying in natural units instead, rescale outputs by `ħ²/(m·L²)` per energy
-unit and `m·L²/ħ` per time unit (electron-nm: 1 E-unit = 76.20 meV,
-1 T-unit = 8.638 fs).
+Staying in natural units instead, rescale outputs by `ħ²/(m·ℓ²)` per energy
+unit and `m·ℓ²/ħ` per time unit, with `ℓ` one domain unit (electron-nm:
+ℓ = 1 nm gives 1 E-unit = 76.20 meV, 1 T-unit = 8.638 fs).
