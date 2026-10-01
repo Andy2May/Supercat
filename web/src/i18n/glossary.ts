@@ -21,12 +21,12 @@ export interface GlossaryEntry {
 
 export const GLOSSARY: Record<string, GlossaryEntry> = {
   density: {
-    vi: '|ψ|² — mật độ xác suất: chỗ sáng là nơi khả năng tìm thấy hạt cao; sáng gấp đôi nghĩa là xác suất gấp đôi. Bản thân ψ không đo được, chỉ bình phương độ lớn của nó mới có ý nghĩa vật lý (quy tắc Born).',
-    en: '|ψ|² is the probability density: bright areas are where the particle is likely to be found; twice as bright means twice the probability. ψ itself cannot be measured — only its squared magnitude has physical meaning (Born rule).',
+    vi: '|ψ|² — mật độ xác suất: chỗ sáng là nơi khả năng tìm thấy hạt cao; sáng gấp đôi nghĩa là mật độ xác suất gấp đôi. Bản thân ψ không đo được, chỉ bình phương độ lớn của nó mới có ý nghĩa vật lý (quy tắc Born).',
+    en: '|ψ|² is the probability density: bright areas are where the particle is likely to be found; twice as bright means twice the probability density. ψ itself cannot be measured — only its squared magnitude has physical meaning (Born rule).',
   },
   phase: {
-    vi: 'Pha là "kim đồng hồ" ẩn của sóng tại mỗi điểm, quay đều theo thời gian. Hai nơi có pha khác nhau giao thoa với nhau — đó là nguồn gốc của các vạch sáng và tối.',
-    en: 'Phase is the wave\'s hidden "clock hand" at each point, rotating steadily in time. Places with different phases interfere with each other — that is where the bright and dark fringes come from.',
+    vi: 'Pha là "kim đồng hồ" ẩn của sóng tại mỗi điểm, quay đều theo thời gian. Khi các phần sóng có pha khác nhau chồng lên nhau, chúng giao thoa — đó là nguồn gốc của các vạch sáng và tối.',
+    en: 'Phase is the wave\'s hidden "clock hand" at each point, rotating steadily in time. When parts of the wave with different phases overlap, they interfere — that is where the bright and dark fringes come from.',
   },
   norm: {
     vi: 'Tổng xác suất tìm thấy hạt ở đâu đó phải bằng 1 (100%) — việc "chuẩn hóa" giữ cho hàm sóng luôn tuân theo quy tắc đó. Chuẩn hóa xong, |ψ|² chính là xác suất trên một đơn vị diện tích.',
@@ -37,8 +37,8 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     en: '⟨x⟩ is the average position: measure the particle\'s position many times and the mean of the outcomes converges to this number. The center of the bright blob tracks exactly this value.',
   },
   my: {
-    vi: '⟨y⟩ là vị trí trung bình theo trục đứng — trung bình của rất nhiều phép đo vị trí theo phương y. Trong preset dao động điều hòa, điểm này chạy theo quỹ đạo tròn như viên bi lăn trong chậu.',
-    en: '⟨y⟩ is the average position along the vertical axis — the mean of many position measurements in y. In the harmonic preset this point follows a circular orbit like a ball rolling in a bowl.',
+    vi: '⟨y⟩ là vị trí trung bình theo trục đứng — trung bình của rất nhiều phép đo vị trí theo phương y. Trong preset dao động điều hòa, điểm này chạy theo quỹ đạo elip như viên bi lăn trong chậu.',
+    en: '⟨y⟩ is the average position along the vertical axis — the mean of many position measurements in y. In the harmonic preset this point follows an elliptical orbit like a ball rolling in a bowl.',
   },
   sigma: {
     vi: 'σ (độ lệch chuẩn) đo mức "phình ra" của một đại lượng: σx lớn nghĩa là vị trí hạt trải rộng, σpx lớn nghĩa là động lượng hay thay đổi. Nó là căn bậc hai của phương sai.',
@@ -53,8 +53,8 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     en: 'Momentum space is a second window onto the same particle: the axes measure momentum instead of position, with zero momentum at the center of the plot. It is the same wave function, carried back and forth by a Fourier transform.',
   },
   energy: {
-    vi: 'E là năng lượng trung bình của hạt: động năng cộng thế năng (lấy trung bình theo |ψ|²). Đây là số mà đồ thị theo dõi theo thời gian — một phép đo vị trí có thể làm nó thay đổi.',
-    en: 'E is the particle\'s average energy: kinetic plus potential (averaged against |ψ|²). This is the number the chart tracks over time — a position measurement can change it.',
+    vi: 'E là năng lượng trung bình của hạt: động năng cộng thế năng (lấy trung bình theo độ trải rộng của hàm sóng). Đây là số mà đồ thị theo dõi theo thời gian — một phép đo vị trí có thể làm nó thay đổi.',
+    en: 'E is the particle\'s average energy: kinetic plus potential (averaged over the wave function\'s spread). This is the number the chart tracks over time — a position measurement can change it.',
   },
   energyJump: {
     vi: 'Phép đo vị trí làm hàm sóng co lại thành vệt nhỏ; động lượng bung rộng theo, nên động năng — và năng lượng — nhảy vọt. Không phải lỗi — đó là bất định lượng tử.',

@@ -85,7 +85,7 @@ export const PRESETS: Record<PresetId, PresetConfig> = {
     autoplay: true,
     titleKey: 'preset.free-packet.title',
   },
-  // Coherent-state circular orbit: offset packet with tangential momentum.
+  // Coherent-state elliptical orbit: offset packet with tangential momentum.
   harmonic: {
     id: 'harmonic',
     grid: 256,
