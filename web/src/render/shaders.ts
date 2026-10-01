@@ -9,6 +9,27 @@
  * UNPACK_FLIP_Y_WEBGL, no row reordering.
  */
 
+/**
+ * V-overlay FILL colors, exported for the on-canvas legend (Task 18, spec
+ * 7.1) and interpolated into FRAGMENT_SHADER_SRC below — one source of
+ * truth, so the legend chips can never drift from what the shader paints.
+ * (The EDGE outline colors stay shader-internal: the legend chips stand for
+ * the shape fills; the edges are the same hue families, just brighter.)
+ */
+export const V_BARRIER_FILL: readonly [number, number, number] = [0.95, 0.32, 0.08]
+export const V_WELL_FILL: readonly [number, number, number] = [0.12, 0.62, 0.72]
+
+/** GLSL float triple -> CSS hex (one decimal-safe formatting pass). */
+function glToHex(rgb: readonly [number, number, number]): string {
+  return `#${rgb.map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+/** Legend chip colors: #f25214 barrier orange / #1f9eb8 well teal. */
+export const V_LEGEND_HEX = {
+  barrier: glToHex(V_BARRIER_FILL),
+  well: glToHex(V_WELL_FILL),
+} as const
+
 export const VERTEX_SHADER_SRC = `#version 300 es
 layout(location = 0) in vec2 a_pos;
 out vec2 v_uv;
@@ -119,10 +140,10 @@ void main() {
     float vScale = max(0.5 * u_potentialMax, 1e-6);
     if (v > 0.0) {
       float w = clamp(v / vScale, 0.0, 1.0);
-      color = mix(color, vec3(0.95, 0.32, 0.08), w * (0.40 + 0.45 * w));
+      color = mix(color, vec3(${V_BARRIER_FILL.join(', ')}), w * (0.40 + 0.45 * w));
     } else {
       float w = clamp(-v / vScale, 0.0, 1.0);
-      color = mix(color, vec3(0.12, 0.62, 0.72), w * (0.40 + 0.45 * w));
+      color = mix(color, vec3(${V_WELL_FILL.join(', ')}), w * (0.40 + 0.45 * w));
     }
     vec2 texel = 1.0 / max(u_gridSize, vec2(1.0));
     float vL = texture(u_potential, v_uv - vec2(texel.x, 0.0)).x;

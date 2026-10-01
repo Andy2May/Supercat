@@ -152,6 +152,16 @@ canvas {
   display: block;
 }
 
+/* A Term hosted inside a <button> (the two ViewToggle terms): keyboard
+   focus on the BUTTON reveals the tip too (Task 18, deferred T15 minor —
+   the span's own Tab stop remains the explicit focus trigger; this stop now
+   carries the explanation as well). :focus-visible only, so a mouse click
+   on the control never pops the tip. Term.svelte clamps the tip for this
+   path via a focusin listener on the host button. */
+button:focus-visible .term .tip {
+  display: block;
+}
+
 @media (prefers-color-scheme: dark) {
   .error {
     color: #f87171;

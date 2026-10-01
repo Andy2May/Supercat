@@ -73,6 +73,16 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
   let lastDrawAt = 0
   let potentialMax = 0
   /**
+   * Sets the local overlay scale AND its reactive mirror on the store (the
+   * Task-18 V legend reads `store.potentialMax`) in one move, so the two can
+   * never disagree. Called ONLY where the potential uploads — the legend
+   * updates on potential re-uploads, not per frame.
+   */
+  const setPotentialMax = (values: Float32Array): void => {
+    potentialMax = maxAbs(values)
+    store.potentialMax = potentialMax
+  }
+  /**
    * Smoothed display peak of |psi|^2 — the renderer's auto-exposure
    * reference. Follows rises instantly (a fresh packet jumps to full
    * brightness at once) and decays slowly (x0.97 per frame, ~0.4 s half-life)
@@ -164,9 +174,10 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
     // re-derive the scale from it (full texImage2D — rebuild reset the
     // allocation tracking). The field re-uploads with the next frame anyway.
     potentialMax = 0
+    store.potentialMax = 0
     if (lastPotential !== undefined) {
       renderer.uploadPotential(lastPotential, store.grid, store.grid)
-      potentialMax = maxAbs(lastPotential)
+      setPotentialMax(lastPotential)
     }
     // Re-assert the V-overlay setting for the CURRENT view (read live from
     // the store — a view flip while the context was lost, possibly while
@@ -270,7 +281,7 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
         renderer.uploadField(frame.densityPhase, store.grid, store.grid)
         debugState.fieldUploads.position++
         if (frame.potential !== undefined) {
-          potentialMax = maxAbs(frame.potential)
+          setPotentialMax(frame.potential)
           renderer.uploadPotential(frame.potential, store.grid, store.grid)
         } else if (showingMomentum && lastPotential !== undefined) {
           // One-shot on the VIEW TRANSITION back: the worker (correctly)
@@ -279,7 +290,7 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
           // force a re-upload from the Task-2 cache. `showingMomentum`
           // clears below, so this fires exactly once per switch-back, not
           // per frame.
-          potentialMax = maxAbs(lastPotential)
+          setPotentialMax(lastPotential)
           renderer.uploadPotential(lastPotential, store.grid, store.grid)
         }
       }

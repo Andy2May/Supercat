@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getLang, lang, t } from '../i18n/index.js'
+  import { V_LEGEND_HEX } from '../render/shaders.js'
   import { startSimLoop } from '../render/simLoop.js'
   import { dragToPacket } from '../sim/packet.js'
   import { DEFAULTS, screenToGrid } from '../sim/simParams.js'
@@ -34,6 +35,41 @@
     active // dependency: re-translate when the language changes
     return t('app.canvasLabel')
   })
+
+  // ------------------------------------------------------- V-overlay legend
+
+  /**
+   * V₀ readout (Task 18, spec 7.1): at most one decimal ("30", "24",
+   * "12.5") — the value is a float32 max over the uploaded potential, not
+   * an exact design constant, so pretending more precision is noise.
+   */
+  function fmtV0(value: number): string {
+    const rounded = Math.round(value * 10) / 10
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  }
+
+  /**
+   * Legend copy (Task 18): chip labels + the live scale. `potentialMax` is
+   * written by the render loop only on potential uploads, so this derived
+   * re-runs on edits, not per frame. The chip COLORS are the shader's own
+   * constants (V_LEGEND_HEX) — the legend cannot drift from the renderer.
+   */
+  const legend = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    return {
+      barrier: t('legend.barrier'),
+      well: t('legend.well'),
+      v0: t('legend.v0').replace('{v}', fmtV0(simStore.potentialMax)),
+    }
+  })
+
+  /**
+   * Shown only when there is something to explain: V non-zero somewhere
+   * AND the position view (the momentum view hides the V overlay entirely,
+   * so its colors must not be narrated there). Free-packet/sandbox boot
+   * with V ≡ 0 and stay legendless until the user draws.
+   */
+  const legendVisible = $derived(simStore.potentialMax > 0 && simStore.view === 'position')
 
   let canvas = $state<HTMLCanvasElement | undefined>(undefined)
   let overlay = $state<HTMLCanvasElement | undefined>(undefined)
@@ -482,6 +518,23 @@
     onpointercancel={onPointerCancel}
   ></canvas>
   <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
+  {#if legendVisible}
+    <!-- Spec 7.1: the M1 review's "user mistook the orange wall for a UI
+         element" — the chips name the overlay colors and V₀ anchors the
+         scale. Pointer-transparent (never a pointer target), bottom-left
+         away from the top-center toast and the below-canvas playback bar. -->
+    <div class="v-legend" data-testid="v-legend">
+      <span class="row">
+        <span class="chip" style:background={V_LEGEND_HEX.barrier}></span>
+        {legend.barrier}
+      </span>
+      <span class="row">
+        <span class="chip" style:background={V_LEGEND_HEX.well}></span>
+        {legend.well}
+      </span>
+      <span class="v0">{legend.v0}</span>
+    </div>
+  {/if}
   {#if toast !== undefined}
     <div class="toast" data-testid="measure-toast" role="status">{toast}</div>
   {/if}
@@ -502,5 +555,46 @@
     font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
     white-space: nowrap;
     pointer-events: none;
+  }
+
+  /* V-overlay legend (Task 18): dark translucent chip, bottom-left of the
+     stage (the toast owns top-center, the perf HUD the viewport's top-right,
+     the playback bar sits below the canvas). Never a pointer target. */
+  .v-legend {
+    position: absolute;
+    bottom: 0.6rem;
+    left: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-align: left;
+    pointer-events: none;
+  }
+
+  .v-legend .row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .v-legend .chip {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 0.2rem;
+    flex: none;
+  }
+
+  .v-legend .v0 {
+    margin-top: 0.15rem;
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    opacity: 0.9;
   }
 </style>

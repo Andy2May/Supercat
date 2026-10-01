@@ -130,6 +130,15 @@ export class SimStore {
    * previous scene's outcome.
    */
   lastMeasurement = $state<MeasuredOutcome | undefined>(undefined)
+  /**
+   * Max |V| over the potential texture actually uploaded to the renderer
+   * (Task 18 legend): written by the render loop ONLY where the potential
+   * uploads (preset boot, an edit, the momentum switch-back, context
+   * restore) — never per frame. 0 means "V is zero everywhere" and hides
+   * the legend. `init` resets it so a preset switch never flashes the
+   * previous scene's scale while the new scene's first frame is in flight.
+   */
+  potentialMax = $state(0)
 
   /**
    * Effective grid edge count: the `?grid=` override when valid, else the
@@ -225,6 +234,7 @@ export class SimStore {
     this.loadError = undefined
     this.pendingGridRestore = undefined
     this.lastMeasurement = undefined
+    this.potentialMax = 0
     this.t = 0
     this.norm = 0
     this.frames = 0

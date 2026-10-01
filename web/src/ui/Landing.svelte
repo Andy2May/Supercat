@@ -33,9 +33,10 @@
     }))
   })
 
-  // Thumbnails ship in Task 10; until then every thumbs/<id>.png request
-  // 404s and the img hides itself, leaving the styled aspect-ratio
-  // placeholder underneath — the grid must look intentional without photos.
+  // Thumbnails shipped with Task 10 (public/thumbs/<id>.png). The onerror
+  // fallback stays as a defensive net: if an image ever 404s or fails to
+  // decode, the img hides itself and the styled aspect-ratio placeholder
+  // underneath takes over — the grid still reads intentional.
   function hideThumb(event: Event): void {
     const img = event.currentTarget
     if (img instanceof HTMLImageElement) img.style.display = 'none'
@@ -97,7 +98,7 @@
   }
 
   /* Fixed-aspect thumbnail frame: the placeholder is the styled box itself,
-     so a missing image (Task 10 pending) still reads as a deliberate slot. */
+     so a missing image still reads as a deliberate slot. */
   .thumb {
     display: block;
     aspect-ratio: 16 / 10;

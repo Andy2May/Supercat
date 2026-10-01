@@ -21,10 +21,11 @@
    * collapses ψ in k-space. Same trigger-only contract as the measure tool
    * on the canvas — the click itself fixes nothing about the outcome.
    *
-   * The momentum and phase button labels are glossary terms (Task 15):
-   * hover (or the Term's own focus stop) shows the tooltip; the position
-   * button and the measurement trigger stay plain.
-   */
+ * The momentum and phase button labels are glossary terms (Task 15):
+ * hover, the Term's own focus stop, or keyboard focus on this button
+ * (Task 18) shows the tooltip; the position button and the measurement
+ * trigger stay plain.
+ */
 
   // Local mirror of the language store (same pattern as App.svelte): the
   // derived label block re-translates the moment `setLang` fires. The

@@ -40,6 +40,13 @@ export const en: Record<string, string> = {
   'tool.packet': 'Packet',
   'tool.height': 'Height',
   'tool.kMag': 'Momentum |k|',
+  // V-overlay legend (Task 18, spec 7.1): chip labels over the canvas naming
+  // the potential overlay's colors, plus the live scale template ('{v}' is
+  // the max |V|). Explore-friendly wording — no glossary jargon; the V₀
+  // symbol with its value is as technical as this gets.
+  'legend.barrier': 'Barrier',
+  'legend.well': 'Well',
+  'legend.v0': 'V₀ ≈ {v}',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
   // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
