@@ -38,6 +38,7 @@ export class HeatmapRenderer {
   private uShowV!: WebGLUniformLocation | null
   private uColorMode!: WebGLUniformLocation | null
   private uFade!: WebGLUniformLocation | null
+  private uContrast!: WebGLUniformLocation | null
   /**
    * Whether the potential overlay draws (u_showV, Task 12). Kept as a field
    * so a context-loss rebuild() re-applies the CURRENT setting instead of
@@ -51,6 +52,14 @@ export class HeatmapRenderer {
    * inferno default.
    */
   private colorMode: 0 | 1 = 0
+  /**
+   * Display contrast (u_contrast, Task 18 round 1): 1 = the M1 tonemap
+   * verbatim; > 1 lifts dim structure. Kept as a field for the same reason
+   * as `colorMode`: a context-loss rebuild() re-applies the current value
+   * instead of flashing back to neutral, and draw() re-asserts it so the
+   * fade-between-frames path follows live changes too.
+   */
+  private contrast = 1
   /** Grid dims (nx, ny) of the last upload — feeds the shader's texel step. */
   private gridW = 1
   private gridH = 1
@@ -107,6 +116,7 @@ export class HeatmapRenderer {
     this.uShowV = gl.getUniformLocation(this.program, 'u_showV')
     this.uColorMode = gl.getUniformLocation(this.program, 'u_colorMode')
     this.uFade = gl.getUniformLocation(this.program, 'u_fade')
+    this.uContrast = gl.getUniformLocation(this.program, 'u_contrast')
 
     gl.useProgram(this.program)
     gl.uniform1i(gl.getUniformLocation(this.program, 'u_field'), 0)
@@ -122,6 +132,9 @@ export class HeatmapRenderer {
     // Same for the colormap (Task 13): a rebuild must not flash phase mode
     // back to inferno until the next setColorMode call.
     gl.uniform1i(this.uColorMode, this.colorMode)
+    // And the contrast (Task 18): a rebuild must not drop a non-neutral
+    // gamma until the next setContrast call.
+    gl.uniform1f(this.uContrast, this.contrast)
 
     // Fullscreen quad as a triangle strip covering clip space; the shader's
     // v_uv mapping (not the vertex order) decides which edge is "up".
@@ -256,6 +269,21 @@ export class HeatmapRenderer {
   }
 
   /**
+   * Sets the display contrast (u_contrast, Task 18 round 1): 1 = neutral
+   * (the M1 tonemap verbatim), > 1 lifts dim structure by lowering the
+   * gamma. Pure render state — no worker round-trip; the render loop
+   * re-asserts it every drawn frame (cheap, idempotent), so this setter
+   * mainly keeps the field in sync for a context-loss rebuild.
+   */
+  setContrast(contrast: number): void {
+    this.contrast = contrast
+    // Defensive bind (see setShowV): uniform1f writes the CURRENTLY-bound
+    // program's uniform.
+    this.gl.useProgram(this.program)
+    this.gl.uniform1f(this.uContrast, contrast)
+  }
+
+  /**
    * Draws one frame. `potentialMax` scales the V overlay (the caller tracks
    * the potential's max magnitude; a zero value for all-zero V is safe — the
    * shader clamps its divisor away from zero). `maxDensity` is the
@@ -277,6 +305,7 @@ export class HeatmapRenderer {
     gl.uniform1f(this.uMaxDensity, maxDensity)
     gl.uniform2f(this.uGridSize, this.gridW, this.gridH)
     gl.uniform1i(this.uColorMode, this.colorMode)
+    gl.uniform1f(this.uContrast, this.contrast)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.bindVertexArray(null)
 

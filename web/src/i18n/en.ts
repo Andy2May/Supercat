@@ -64,6 +64,10 @@ export const en: Record<string, string> = {
   'view.momentumCaption': 'Momentum space kx, ky — k = 0 at the center',
   'view.toggleLabel': 'Display space',
   'view.phaseColor': 'Phase color',
+  // Contrast slider (Task 18 round 1, advanced mode only): scales the
+  // canvas tonemap's gamma — 1 is the default look, higher lifts dim
+  // structure (interference fringes) out of the colormap's dark low end.
+  'view.contrast': 'Contrast',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Switch to {mode}',
   // Observables strip (Task 11, advanced mode): sparkline labels are math
@@ -91,7 +95,8 @@ export const en: Record<string, string> = {
   'preset.double-slit.card':
     'A wave packet races into a wall with two open slits.\n' +
     'Beyond the wall, bright and dark bands line up evenly — the interference fingerprint of a single PARTICLE.\n' +
-    'Press Reset to watch again, or erase one slit shut and watch the interference vanish.',
+    'Press Reset to watch again, or erase one slit shut and watch the interference vanish.\n' +
+    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own — nothing is lost.',
   'preset.tunneling.title': 'Tunneling',
   'preset.tunneling.teaser': 'A faint tail behind the barrier: crossing where classical physics forbids.',
   'preset.tunneling.card':
@@ -103,7 +108,8 @@ export const en: Record<string, string> = {
   'preset.free-packet.card':
     'A wave packet that "sits still" spreads out on its own until it fills the whole box.\n' +
     'There is no friction — only momentum uncertainty.\n' +
-    'Let it run long enough and the density flattens out evenly.',
+    'Let it run long enough and the density flattens out evenly.\n' +
+    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own — nothing is lost.',
   'preset.harmonic.title': 'Harmonic oscillator',
   'preset.harmonic.teaser': 'The packet orbits inside the potential bowl — as classical physics predicts.',
   'preset.harmonic.card':

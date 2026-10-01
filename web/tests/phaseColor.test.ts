@@ -49,9 +49,11 @@ describe('FRAGMENT_SHADER_SRC phase colormap (structural)', () => {
   })
 
   it('keeps the mode-0 inferno path byte-equivalent in behavior', () => {
-    // The auto-exposure tonemap line feeds BOTH modes unchanged.
+    // The auto-exposure tonemap line feeds BOTH modes unchanged. The
+    // exponent is 0.45 scaled by u_contrast (Task 18 round 1) — at the
+    // default 1.0 the arithmetic is the original 0.45 gamma exactly.
     expect(FRAGMENT_SHADER_SRC).toContain(
-      'float b = pow(clamp(rho / max(u_maxDensity, 1e-6), 0.0, 1.0), 0.45)',
+      'float b = pow(clamp(rho / max(u_maxDensity, 1e-6), 0.0, 1.0), 0.45 / u_contrast)',
     )
     // All three inferno stops still mixed on b exactly as before.
     expect(FRAGMENT_SHADER_SRC).toContain('mix(vec3(0.0), c1, b * 3.0)')
@@ -61,6 +63,19 @@ describe('FRAGMENT_SHADER_SRC phase colormap (structural)', () => {
     // so with the uniform at its default 0 the arithmetic is identical.
     expect(FRAGMENT_SHADER_SRC.indexOf('if (u_colorMode == 1)')).toBeLessThan(
       FRAGMENT_SHADER_SRC.indexOf('mix(vec3(0.0), c1, b * 3.0)'),
+    )
+  })
+
+  it('declares u_contrast and applies it to the shared tonemap gamma (Task 18)', () => {
+    // Uniform declaration (float, driven by uniform1f from the renderer).
+    expect(FRAGMENT_SHADER_SRC).toContain('uniform float u_contrast;')
+    // The slider's contract: contrast DIVIDES the 0.45 gamma, and it acts
+    // on b BEFORE the colormap branch — one line, inferno and the HSV
+    // value both follow, in position and momentum views alike.
+    expect(FRAGMENT_SHADER_SRC).toContain('0.45 / u_contrast')
+    // u_contrast must be consumed before the mode-1 branch reads b.
+    expect(FRAGMENT_SHADER_SRC.indexOf('0.45 / u_contrast')).toBeLessThan(
+      FRAGMENT_SHADER_SRC.indexOf('if (u_colorMode == 1)'),
     )
   })
 })
@@ -115,6 +130,24 @@ describe('SimStore phaseColor flag', () => {
     store.destroy()
     store.init(PRESETS['sandbox'])
     expect(store.phaseColor).toBe(false)
+  })
+
+  it('contrast defaults to the neutral 1, is pure render state, and resets on init', () => {
+    const store = new RecordingStore()
+    // 1.0 = the pre-slider look EXACTLY (0.45 / 1 = 0.45 gamma).
+    expect(store.contrast).toBe(1)
+
+    store.init(PRESETS['free-packet'])
+    store.sent.length = 0
+    store.contrast = 2.5
+    store.contrast = 0.5
+    // Pure render state (same contract as phaseColor): no worker message.
+    expect(store.sent).toEqual([])
+
+    store.destroy()
+    store.init(PRESETS['double-slit'])
+    // A fresh scene boots with neutral eyes.
+    expect(store.contrast).toBe(1)
   })
 
   it('explore flip does not render HSV (spec v1 §2.1): flag survives, predicate gates it', () => {

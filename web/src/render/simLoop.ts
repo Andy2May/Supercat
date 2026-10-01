@@ -316,6 +316,10 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       // back to advanced + position resumes phase coloring with no message.
       // Idempotent + one uniform1i, so per-frame is free.
       renderer.setColorMode(effectiveColorMode(store.view, store.phaseColor, modeStore.mode))
+      // Contrast (Task 18 round 1), same recipe: read live from the store
+      // every drawn frame — idempotent, one uniform1f, covers both spaces
+      // (the shader applies it to the shared tonemap brightness).
+      renderer.setContrast(store.contrast)
       renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
       // PNG export (Task 16): consume the queue exactly here — one capture
       // per queued click, at most one per frame, inside the `!contextLost`

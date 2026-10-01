@@ -90,6 +90,11 @@ test('brush drag paints the potential: potentialVersion increases, no errors', a
 
   const before = await page.evaluate(() => window.__psiforge?.potentialVersion ?? 0)
 
+  // The 608px canvas + open narration card exceed the 720px project
+  // viewport: scroll the canvas fully into view before taking its box, or
+  // the mid-canvas drag below aims below the fold (T18 R1 — the card's
+  // wrap-around line tipped a previously 2px margin).
+  await page.getByTestId('sim-canvas').scrollIntoViewIfNeeded()
   // Drag horizontally across the middle of the WebGL canvas (the overlay
   // canvas above it is pointer-events: none, so the sim canvas is the target).
   const box = await page.getByTestId('sim-canvas').boundingBox()
@@ -215,6 +220,9 @@ test('packet tool: a drag drops a fresh gaussian (t resets, |psi|^2 repopulates)
   // Select the packet tool and drag on the canvas: press = center, drag =
   // aim. The drag spans ~35% of the canvas (>> the 2 px dead zone).
   await page.getByTestId('tool-packet').click()
+  // Same fold guard as the brush test: mid-canvas aim needs the canvas in
+  // view at the 720px project viewport.
+  await page.getByTestId('sim-canvas').scrollIntoViewIfNeeded()
   const box = await page.getByTestId('sim-canvas').boundingBox()
   expect(box).not.toBeNull()
   const y = box!.y + box!.height / 2

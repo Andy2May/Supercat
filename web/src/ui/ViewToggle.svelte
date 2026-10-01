@@ -21,11 +21,17 @@
    * collapses ψ in k-space. Same trigger-only contract as the measure tool
    * on the canvas — the click itself fixes nothing about the outcome.
    *
- * The momentum and phase button labels are glossary terms (Task 15):
- * hover, the Term's own focus stop, or keyboard focus on this button
- * (Task 18) shows the tooltip; the position button and the measurement
- * trigger stay plain.
- */
+   * The momentum and phase button labels are glossary terms (Task 15):
+   * hover, the Term's own focus stop, or keyboard focus on this button
+   * (Task 18) shows the tooltip; the position button and the measurement
+   * trigger stay plain.
+   *
+   * Below the group sits the contrast slider (Task 18 round 1): pure render
+   * state (`simStore.contrast`, no worker message) driving the shader's
+   * u_contrast — 1 is the default look, higher lifts the dim interference
+   * fringes out of the colormap's dark low end. Advanced-only by mount
+   * (App gates this whole component).
+   */
 
   // Local mirror of the language store (same pattern as App.svelte): the
   // derived label block re-translates the moment `setLang` fires. The
@@ -45,6 +51,7 @@
       momentum: t('view.momentum'),
       phaseColor: t('view.phaseColor'),
       measureMomentum: t('measure.momentumTool'),
+      contrast: t('view.contrast'),
     }
   })
 
@@ -105,6 +112,23 @@
   {/if}
 </div>
 
+<!-- Contrast slider (Task 18 round 1): bound straight to the store's pure
+     render state; the render loop feeds it to u_contrast every drawn
+     frame. 1.0 = the default look exactly. The <label> wraps the text, so
+     the input's accessible name is the visible "Contrast" text. -->
+<label class="contrast">
+  <span>{labels.contrast}</span>
+  <input
+    data-testid="contrast-slider"
+    type="range"
+    min="0.5"
+    max="2.5"
+    step="0.05"
+    bind:value={simStore.contrast}
+  />
+  <span class="value">{simStore.contrast.toFixed(2)}</span>
+</label>
+
 <style>
   .view-controls {
     display: inline-flex;
@@ -159,5 +183,25 @@
   .phase {
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 0.5rem;
+  }
+
+  /* Contrast slider row (Task 18 round 1), same visual grammar as the
+     playback speed slider: label, 8rem track, monospace value. */
+  .contrast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .contrast input {
+    width: 8rem;
+  }
+
+  .contrast .value {
+    min-width: 2.4rem;
+    text-align: right;
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   }
 </style>

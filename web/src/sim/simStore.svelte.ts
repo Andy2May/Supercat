@@ -112,6 +112,16 @@ export class SimStore {
    * fresh scene boots on the inferno default).
    */
   phaseColor = $state(false)
+  /**
+   * Display contrast (Task 18 round 1): the render loop feeds it to the
+   * shader's u_contrast, which divides the tonemap gamma (0.45 / contrast).
+   * PURE render state like `phaseColor` — flipping it sends nothing to the
+   * worker. 1 = the M1 look exactly; > 1 lifts dim structure (interference
+   * fringes of the reflected packet) out of the colormap's dark low end;
+   * < 1 crushes it. Advanced-mode slider only; `init` resets it — a fresh
+   * scene starts with neutral eyes.
+   */
+  contrast = $state(1)
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
   /**
@@ -240,6 +250,7 @@ export class SimStore {
     this.frames = 0
     this.view = 'position'
     this.phaseColor = false
+    this.contrast = 1
     this.observablesHistory = []
     // Parked T8 finding: without this, a preset switch inherits the previous
     // scene's HUD numbers until the next frame overwrites them (and under

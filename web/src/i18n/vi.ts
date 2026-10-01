@@ -64,6 +64,10 @@ export const vi: Record<string, string> = {
   'view.momentumCaption': 'Không gian động lượng kx, ky — k = 0 ở giữa',
   'view.toggleLabel': 'Không gian hiển thị',
   'view.phaseColor': 'Màu pha',
+  // Contrast slider (Task 18 round 1, advanced mode only): scales the
+  // canvas tonemap's gamma — 1 is the default look, higher lifts dim
+  // structure (interference fringes) out of the colormap's dark low end.
+  'view.contrast': 'Tương phản',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Chuyển sang {mode}',
   // Observables strip (Task 11, advanced mode): sparkline labels are math
@@ -91,7 +95,8 @@ export const vi: Record<string, string> = {
   'preset.double-slit.card':
     'Gói sóng lao vào tường có hai khe hở.\n' +
     'Sau tường các vạch sáng tối xếp đều — dấu vết sóng giao thoa của một HẠT.\n' +
-    'Hãy Reset xem lại từ đầu, thử vẽ tẩy bịt một khe để giao thoa biến mất.',
+    'Hãy Reset xem lại từ đầu, thử vẽ tẩy bịt một khe để giao thoa biến mất.\n' +
+    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian — không mất đi đâu.',
   'preset.tunneling.title': 'Xuyên hầm',
   'preset.tunneling.teaser': 'Hạt lọt qua bức rào cao hơn năng lượng của nó — bằng vệt mờ.',
   'preset.tunneling.card':
@@ -103,7 +108,8 @@ export const vi: Record<string, string> = {
   'preset.free-packet.card':
     'Gói sóng "ngồi yên" sẽ tự giãn ra và phủ kín hộp.\n' +
     'Không có ma sát — chỉ là bất định động lượng.\n' +
-    'Để chạy lâu sẽ thấy mật độ phẳng đều.',
+    'Để chạy lâu sẽ thấy mật độ phẳng đều.\n' +
+    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian — không mất đi đâu.',
   'preset.harmonic.title': 'Dao động điều hòa',
   'preset.harmonic.teaser': "Gói sóng chạy theo quỹ đạo elip trong 'bát' thế — đúng dự đoán cổ điển.",
   'preset.harmonic.card':

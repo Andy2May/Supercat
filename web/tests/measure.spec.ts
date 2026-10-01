@@ -56,7 +56,10 @@ test('position measurement (explore mode): tool present, click collapses, toast 
   // A plain click (down+up at one point, drag 0 px) on the canvas center.
   // The click is only a TRIGGER: the outcome comes back wherever |psi|^2
   // puts it, so no position assertion is possible (nor wanted) — only the
-  // toast's existence pins the round trip.
+  // toast's existence pins the round trip. The 608px canvas + open
+  // narration card exceed the 720px project viewport — scroll the canvas
+  // into view or the center click lands below the fold (T18 R1).
+  await page.getByTestId('sim-canvas').scrollIntoViewIfNeeded()
   const box = await page.getByTestId('sim-canvas').boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
@@ -135,6 +138,9 @@ test('view flip during the collapse fade cancels it: no cross-space mix, loop st
     .toBeGreaterThan(10)
 
   await page.getByTestId('tool-measure').click()
+  // Fold guard as in the explore-mode test: the canvas center must be in
+  // view before the trigger click.
+  await page.getByTestId('sim-canvas').scrollIntoViewIfNeeded()
   const box = await page.getByTestId('sim-canvas').boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)

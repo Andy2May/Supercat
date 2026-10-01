@@ -59,6 +59,13 @@ uniform sampler2D u_potential;
 uniform float u_potentialMax;
 // Smoothed peak |psi|^2 of the current frame — the auto-exposure reference.
 uniform float u_maxDensity;
+// Contrast (Task 18 round 1): divides the tonemap exponent's gamma — 1.0 is
+// the M1 look verbatim; > 1 lowers the gamma and lifts dim structure (the
+// interference fringes of a reflected packet against the auto-exposure
+// peak), < 1 crushes it. Applied to the shared brightness b, so the inferno
+// ramp AND the HSV phase path's VALUE both follow — position and momentum
+// views alike.
+uniform float u_contrast;
 // Grid size (nx, ny) in texels — the step for potential neighbor sampling.
 uniform vec2 u_gridSize;
 // 1 = draw the potential overlay, 0 = skip it entirely (alpha contribution
@@ -95,8 +102,9 @@ void main() {
   // spread-out late stages and dim diffraction fringes keep full contrast
   // instead of sinking into near-black under a fixed gain. The max() guard
   // keeps a zero peak (no frames yet / zero state) from dividing by zero;
-  // the 0.45 gamma lifts the low-density tail.
-  float b = pow(clamp(rho / max(u_maxDensity, 1e-6), 0.0, 1.0), 0.45);
+  // the 0.45 gamma lifts the low-density tail, and u_contrast scales it
+  // (gamma / u_contrast — 1.0 changes nothing).
+  float b = pow(clamp(rho / max(u_maxDensity, 1e-6), 0.0, 1.0), 0.45 / u_contrast);
 
   // 4-stop inferno-like colormap (black -> dark purple -> magenta-red ->
   // pale yellow): perceptually stepped and physics-standard, far stronger
