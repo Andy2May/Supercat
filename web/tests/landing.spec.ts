@@ -4,7 +4,13 @@ import { expect, test } from '@playwright/test'
  * Landing + hash routing (Task 9). Playwright's Desktop Chrome runs with an
  * en-US locale, so `navigator.language` boots the app in English — the
  * assertions below match the English copy on purpose.
+ *
+ * Viewport 1280×800 (not the project's 720): the narration card assertions
+ * below expect the panel OPEN, and NarrationPanel's R4 rule (UI redesign
+ * T5) boots it open only while innerHeight >= 800 — at 720 it would be the
+ * collapsed ⓘ stub instead.
  */
+test.use({ viewport: { width: 1280, height: 800 } })
 const EN = {
   'double-slit': 'Double slit',
   tunneling: 'Tunneling',

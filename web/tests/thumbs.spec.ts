@@ -25,6 +25,11 @@ function frames(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.frames ?? 0)
 }
 
+// 1280×800 so the narration panel boots OPEN (NarrationPanel's R4 rule:
+// open iff innerHeight >= 800) — the clean-shot step below clicks the
+// collapse control, which only exists on the open panel.
+test.use({ viewport: { width: 1280, height: 800 } })
+
 test.beforeAll(async () => {
   await mkdir(THUMBS_DIR, { recursive: true })
 })

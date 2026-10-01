@@ -14,17 +14,18 @@ import { vi as viDict } from '../src/i18n/vi.js'
  * PlaybackBar (UI redesign T7): the in-place restyle of the transport bar
  * under the canvas (mockup `ws-play`). Behavior is pinned by the brief —
  *
- * - six testids survive (`play-pause`, `step`, `reset`, `restore-potential`,
- *   `speed-slider`, `export-png` — the PNG button stays until T8 moves it)
- *   plus the toolbar role/aria-label and the export button's aria-label;
+ * - five testids survive (`play-pause`, `step`, `reset`,
+ *   `restore-potential`, `speed-slider`) plus the toolbar role/aria-label;
+ *   the PNG export button is GONE (T8 moved it to the ReadoutRail's Xuất
+ *   block, which owns `export-png` from there on — readoutRail.test.ts and
+ *   export.spec.ts pin its new home);
  * - the play/pause label AND icon flip with `simStore.running`, and ONLY
  *   that button carries the `primary` class (accent fill);
- * - step/reset/restore-potential carry small inline svg icons; export-png
- *   keeps its bare label (T8 removes the button entirely);
+ * - step/reset/restore-potential carry small inline svg icons;
  * - halted (fatal) disables play + step ONLY;
  * - handlers unchanged: play-pause toggles `running`, step pauses then sends
  *   `advance substeps:1`, reset calls `resetWave`, restore-potential sends
- *   its message, export-png calls `requestCapture`;
+ *   its message;
  * - the speed slider keeps min/max/step 0.1/5/0.1, two-way binding, and the
  *   toFixed(1) mono readout;
  * - labels re-translate on a language flip.
@@ -39,7 +40,6 @@ const TESTIDS = [
   'reset',
   'restore-potential',
   'speed-slider',
-  'export-png',
 ] as const
 
 function play(): HTMLButtonElement {
@@ -75,7 +75,7 @@ afterEach(() => {
 // ------------------------------------------------------------ testids / a11y
 
 describe('PlaybackBar structure', () => {
-  it('renders a toolbar with all six testids and their aria-labels', () => {
+  it('renders a toolbar with all five testids and its aria-label', () => {
     render(PlaybackBar)
 
     const bar = screen.getByRole('toolbar')
@@ -84,17 +84,16 @@ describe('PlaybackBar structure', () => {
     for (const id of TESTIDS) {
       expect(screen.getByTestId(id), id).toBeTruthy()
     }
-    // The export button's accessible name mirrors its visible text.
-    expect(
-      screen.getByTestId('export-png').getAttribute('aria-label'),
-    ).toBe(enDict['export.png'])
+    // T8 moved PNG export to the ReadoutRail — the transport bar must not
+    // render it (export.spec.ts would find TWO export-png buttons else).
+    expect(screen.queryByTestId('export-png')).toBeNull()
   })
 
   it('carries the primary class on the play-pause button and nowhere else', () => {
     render(PlaybackBar)
 
     expect(play().classList.contains('primary')).toBe(true)
-    for (const id of ['step', 'reset', 'restore-potential', 'export-png']) {
+    for (const id of ['step', 'reset', 'restore-potential']) {
       expect(
         screen.getByTestId(id).classList.contains('primary'),
         id,
@@ -102,7 +101,7 @@ describe('PlaybackBar structure', () => {
     }
   })
 
-  it('gives step/reset/restore-potential inline icons, export-png none', () => {
+  it('gives step/reset/restore-potential inline icons', () => {
     render(PlaybackBar)
 
     for (const id of ['step', 'reset', 'restore-potential']) {
@@ -111,8 +110,6 @@ describe('PlaybackBar structure', () => {
       expect(svg!.getAttribute('viewBox')).toBe('0 0 24 24')
       expect(svg!.querySelector('path, rect'), `${id} draws something`).toBeTruthy()
     }
-    // T8 removes this button — no icon investment in the meantime.
-    expect(screen.getByTestId('export-png').querySelector('svg')).toBeNull()
   })
 })
 
@@ -146,7 +143,7 @@ describe('play/pause flip', () => {
 // ------------------------------------------------------------------- halted
 
 describe('fatal halts play and step only', () => {
-  it('disables play + step while fatal; reset/restore/export stay enabled', async () => {
+  it('disables play + step while fatal; reset/restore stay enabled', async () => {
     simStore.fatal = 'boom'
     render(PlaybackBar)
 
@@ -155,9 +152,6 @@ describe('fatal halts play and step only', () => {
     expect((screen.getByTestId('reset') as HTMLButtonElement).disabled).toBe(false)
     expect(
       (screen.getByTestId('restore-potential') as HTMLButtonElement).disabled,
-    ).toBe(false)
-    expect(
-      (screen.getByTestId('export-png') as HTMLButtonElement).disabled,
     ).toBe(false)
 
     // Recovery: clearing the fatal re-enables both.
@@ -211,14 +205,6 @@ describe('PlaybackBar handlers', () => {
     await fireEvent.click(screen.getByTestId('restore-potential'))
     expect(send).toHaveBeenCalledWith({ type: 'restore-potential' })
   })
-
-  it('export-png queues a capture', async () => {
-    const requestCapture = vi.spyOn(simStore, 'requestCapture')
-    render(PlaybackBar)
-
-    await fireEvent.click(screen.getByTestId('export-png'))
-    expect(requestCapture).toHaveBeenCalledTimes(1)
-  })
 })
 
 // -------------------------------------------------------------- speed slider
@@ -263,9 +249,6 @@ describe('PlaybackBar labels', () => {
     expect(screen.getByTestId('reset').textContent).toContain(viDict['playback.reset'])
     expect(screen.getByTestId('restore-potential').textContent).toContain(
       viDict['playback.restorePotential'],
-    )
-    expect(screen.getByTestId('export-png').textContent).toContain(
-      viDict['export.png'],
     )
     expect(screen.getByText(viDict['playback.speed'])).toBeTruthy()
 

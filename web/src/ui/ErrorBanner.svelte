@@ -44,30 +44,25 @@
 </div>
 
 <style>
+  /* Fixed light red that reads on the dark ground — dark-only base (spec
+     §4 / §12), so no scheme branch is needed (same deal as app.css's
+     .error). */
   .banner {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 1rem;
-    margin-top: 1.25rem;
+    margin: 0 1rem 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
     text-align: left;
-    color: #b91c1c;
-    background: color-mix(in srgb, #b91c1c 12%, transparent);
-    border: 1px solid #b91c1c;
+    color: #f87171;
+    background: color-mix(in srgb, #f87171 14%, transparent);
+    border: 1px solid #f87171;
   }
 
   .banner button {
     white-space: nowrap;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .banner {
-      color: #f87171;
-      background: color-mix(in srgb, #f87171 14%, transparent);
-      border-color: #f87171;
-    }
   }
 </style>

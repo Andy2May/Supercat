@@ -3,14 +3,16 @@ import { stat } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 /**
- * PNG canvas export e2e (Task 16). The export button lives in the playback
- * bar — visible in BOTH experience modes — and queues a capture that the
- * render loop fires inside its frame callback, synchronously after draw()
- * (the preserveDrawingBuffer:false backbuffer is only readable in that
- * same task). Each scenario waits for real wasm frames first, so the
- * captured bitmap is an actual heatmap, then asserts the browser download:
- * `psiforge-<YYYYMMDD-HHmmss>.png` (local time) with real content
- * (> 5 KB — an empty/cleared canvas PNG compresses to well under that).
+ * PNG canvas export e2e (Task 16; moved to the ReadoutRail by the T8 UI
+ * redesign). The export button lives in the advanced-only right rail's
+ * "Xuất" block (it left the always-on playback bar with the redesign) and
+ * queues a capture that the render loop fires inside its frame callback,
+ * synchronously after draw() (the preserveDrawingBuffer:false backbuffer
+ * is only readable in that same task). Each scenario waits for real wasm
+ * frames first, so the captured bitmap is an actual heatmap, then asserts
+ * the browser download: `psiforge-<YYYYMMDD-HHmmss>.png` (local time)
+ * with real content (> 5 KB — an empty/cleared canvas PNG compresses to
+ * well under that).
  */
 
 /** Attaches the no-error collectors every scenario asserts at the end. */
@@ -32,17 +34,20 @@ function frames(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.frames ?? 0)
 }
 
-test('PNG export (explore mode): download fires, timestamp name, real heatmap content', async ({
+test('PNG export (advanced mode): download fires, timestamp name, real heatmap content', async ({
   page,
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
 
-  // Fresh context boots in explore — the button must be there without any
-  // mode toggle (both-modes contract).
   await page.goto('/#/sim/double-slit')
   await expect
     .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
+
+  // The export button now lives in the advanced-only ReadoutRail: explore
+  // must not render it, and entering advanced mounts it.
+  await expect(page.getByTestId('export-png')).toBeHidden()
+  await page.getByTestId('mode-toggle').click()
 
   const exportButton = page.getByTestId('export-png')
   await expect(exportButton).toBeVisible()
@@ -73,7 +78,10 @@ test('PNG export (explore mode): download fires, timestamp name, real heatmap co
   await page.waitForTimeout(600)
   expect(await frames(page)).toBeGreaterThan(f1)
 
-  // Both-modes contract: flip to advanced, the button stays visible.
+  // Mode-gating contract after the T8 move: explore unmounts the rail (and
+  // the button with it); back in advanced it returns — never duplicated.
+  await page.getByTestId('mode-toggle').click()
+  await expect(exportButton).toBeHidden()
   await page.getByTestId('mode-toggle').click()
   await expect(exportButton).toBeVisible()
 
@@ -91,6 +99,8 @@ test('each click exports exactly one file: repeated clicks yield repeated downlo
     .poll(() => frames(page), { timeout: 5_000 })
     .toBeGreaterThan(10)
 
+  // The export button is advanced-only since the T8 move.
+  await page.getByTestId('mode-toggle').click()
   const exportButton = page.getByTestId('export-png')
   await expect(exportButton).toBeVisible()
 

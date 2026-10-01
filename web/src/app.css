@@ -33,6 +33,7 @@
 }
 
 body {
+  margin: 0; /* full-bleed bench frame (T8): the 100dvh sim column must not scroll */
   background: var(--bg-0);
   color: var(--text-1);
   font-family:

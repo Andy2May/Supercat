@@ -255,6 +255,44 @@ test('packet tool: a drag drops a fresh gaussian (t resets, |psi|^2 repopulates)
 })
 
 /**
+ * 720px viewport probe (UI redesign T8): the bench frame must fit the
+ * short project viewport — the square stage caps itself by the stagewrap's
+ * HEIGHT (container-query sizing in App.svelte), so the canvas is fully
+ * on screen with no page scrolling, and NarrationPanel's R4 rule keeps
+ * the briefing collapsed (innerHeight 720 < 800 → the ⓘ stub).
+ */
+test('720px viewport: canvas fits without scrolling; narration starts collapsed', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto('/#/sim/double-slit')
+  await expect
+    .poll(() => frames(page), { timeout: 5_000 })
+    .toBeGreaterThan(10)
+
+  // R4: 720 < 800 → the panel boots as the collapsed ⓘ stub.
+  await expect(page.getByTestId('preset-card')).toBeHidden()
+  await expect(page.getByTestId('preset-info')).toBeVisible()
+
+  // The whole canvas box sits inside the viewport — nothing to scroll to.
+  const box = await page.getByTestId('sim-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.y).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(1280)
+  expect(box!.y + box!.height).toBeLessThanOrEqual(720)
+
+  // And the sim-time overlay rides the stage's top-left corner.
+  await expect(page.getByTestId('t-label')).toBeVisible()
+  await expect(page.getByTestId('t-label')).toHaveText(/^\|ψ\|² · t = \d+\.\d$/)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+/**
  * Y-orientation trap (ledger ruling "Y no-flip"): input space and display
  * space share one y axis — a barrier drawn in the TOP quarter of the canvas
  * must brighten the TOP quarter of the drawn image. The row probe

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { getLang, lang, setLang, t } from './i18n/index.js'
+  import { getLang, lang, t } from './i18n/index.js'
   import { PRESETS } from './presets/index.js'
   import { parseRoute } from './route.js'
   import { hasWebGl2 } from './sim/webglDetect.js'
@@ -10,44 +10,24 @@
   import { downloadBlob, psiforgeFilename } from './ui/download.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
-  import ObservablesBar from './ui/ObservablesBar.svelte'
+  import NarrationPanel from './ui/NarrationPanel.svelte'
   import PlaybackBar from './ui/PlaybackBar.svelte'
-  import PresetCard from './ui/PresetCard.svelte'
+  import ReadoutRail from './ui/ReadoutRail.svelte'
   import SimCanvas from './ui/SimCanvas.svelte'
-  import Toolbar from './ui/Toolbar.svelte'
-  import ViewToggle from './ui/ViewToggle.svelte'
+  import ToolRail from './ui/ToolRail.svelte'
+  import TopBar from './ui/TopBar.svelte'
   import WebGlMissing from './ui/WebGlMissing.svelte'
 
   // Local mirror of the language store: `$derived` below reads it, so every
-  // label re-translates the moment `setLang` fires.
+  // label re-translates the moment `setLang` fires. (The bar's own labels —
+  // back/mode/scene/language — mirror the store inside TopBar instead.)
   let active = $state(getLang())
   lang.subscribe((value) => {
     active = value
   })
 
-  const title = $derived.by(() => {
-    active // dependency: re-translate when the language changes
-    return t('app.title')
-  })
-  const backLabel = $derived.by(() => {
-    active
-    return t('app.backToLanding')
-  })
-  const toggleLabel = $derived.by(() => {
-    active
-    return t(active === 'vi' ? 'app.lang.switchToEn' : 'app.lang.switchToVi')
-  })
-  // Mode toggle: the button always names the mode it switches TO (the hint
-  // template '{mode}' is filled with the target mode's translated name), so
-  // the label re-derives on both a language change (`active`) and a mode
-  // flip (`modeStore.mode`).
-  const modeToggleLabel = $derived.by(() => {
-    active // dependency: re-translate when the language changes
-    const target = modeStore.mode === 'explore' ? 'mode.advanced' : 'mode.explore'
-    return t('mode.switchHint', { mode: t(target) })
-  })
   const hudLabels = $derived.by(() => {
-    active
+    active // dependency: re-translate when the language changes
     return {
       fps: t('perf.fps'),
       substeps: t('perf.substeps'),
@@ -57,15 +37,6 @@
   const momentumCaption = $derived.by(() => {
     active // dependency: re-translate when the language changes
     return t('view.momentumCaption')
-  })
-  // JSON state save/load (Task 17, advanced mode): header button labels.
-  const saveStateLabel = $derived.by(() => {
-    active
-    return t('export.json')
-  })
-  const loadStateLabel = $derived.by(() => {
-    active
-    return t('import.json')
   })
   // Load-error banner (Task 17 fix round 1): the localized headline is
   // composed at render time (the stored detail keeps the worker's raw
@@ -134,7 +105,7 @@
 
   // Observables cadence wiring (Task 11): the worker computes observables
   // only while told to, so the flag follows the experience mode — advanced
-  // streams obs blocks (the ObservablesBar), explore goes quiet. Re-runs on
+  // streams obs blocks (the ReadoutRail), explore goes quiet. Re-runs on
   // preset switches too: a fresh worker always needs its flag re-sent
   // (SimStore.init already sends it while advanced; this re-send is
   // idempotent and covers any effect-ordering edge at boot). The worker
@@ -172,9 +143,6 @@
   })
 
   // ---- JSON state save/load (Task 17, advanced mode) --------------------
-  // The hidden file input behind the "Mở" button.
-  let fileInput = $state<HTMLInputElement | undefined>(undefined)
-
   /** True while the large-grid save-size note is up (final review, spec
    * §5.7 + risk table): transient — auto-dismisses via the timer below, or
    * early through the dismiss button. Independent of loadError/fatal so it
@@ -250,13 +218,10 @@
 
   /** Load: read -> parse -> decode -> hand to the worker via the store
    * (which owns the cross-grid bookkeeping). Any throw on the way is a
-   * NON-fatal loadError banner — the running simulation is untouched. */
-  async function onStateFile(event: Event): Promise<void> {
-    const input = event.currentTarget
-    const file = input instanceof HTMLInputElement ? (input.files?.[0] ?? undefined) : undefined
-    // Reset so picking the SAME file again still fires a change event.
-    if (input instanceof HTMLInputElement) input.value = ''
-    if (file === undefined) return
+   * NON-fatal loadError banner — the running simulation is untouched.
+   * Takes the File directly: the ReadoutRail's hidden input (and its
+   * same-file-again reset) owns the picking. */
+  async function importStateFile(file: File): Promise<void> {
     try {
       const raw = decodeState(JSON.parse(await file.text()))
       // The codec validates the file against its OWN grid; THIS app is
@@ -283,51 +248,41 @@
   <Landing />
 {:else}
   <main>
-    <header>
-      <a class="back" data-testid="back-link" href="#/">{backLabel}</a>
-      <h1>{title}</h1>
-      <div class="controls">
-        <button onclick={() => setLang(active === 'vi' ? 'en' : 'vi')}>{toggleLabel}</button>
-        <button data-testid="mode-toggle" onclick={() => modeStore.toggle()}>
-          {modeToggleLabel}
-        </button>
-        {#if modeStore.mode === 'advanced'}
-          <!-- JSON state save/load (Task 17, advanced only): Save posts
-               serialize-state (the reply downloads in the onState effect);
-               Load clicks the hidden file input below. -->
-          <button data-testid="export-json" onclick={saveState}>
-            {saveStateLabel}
-          </button>
-          <button data-testid="import-json" onclick={() => fileInput?.click()}>
-            {loadStateLabel}
-          </button>
-          <input
-            data-testid="import-json-input"
-            type="file"
-            accept=".json,application/json"
-            hidden
-            bind:this={fileInput}
-            onchange={onStateFile}
-          />
-        {/if}
-      </div>
-    </header>
+    <TopBar id={route.id} />
     {#if renderError !== undefined}
       <p class="error" role="alert">{renderFailedLabel}</p>
     {:else}
-      <Toolbar />
-      {#key route.id}
-        <PresetCard id={route.id} />
-      {/key}
-      <SimCanvas onRenderFailed={(error) => (renderError = error)} />
-      {#if modeStore.mode === 'advanced' && simStore.view === 'momentum'}
-        <p class="momentum-caption" data-testid="momentum-caption">{momentumCaption}</p>
-      {/if}
-      <PlaybackBar />
-      {#if modeStore.mode === 'advanced'}
-        <ViewToggle />
-        <ObservablesBar />
-      {/if}
+      <!-- Instrument bench (UI redesign T8): left rail (tools + narration) |
+           center column (stage + momentum caption + playback) | right rail
+           (readouts + view + export, advanced only). -->
+      <div class="bench">
+        <div class="bench-main">
+          <aside class="rail-left">
+            <ToolRail compact={modeStore.mode === 'explore'} />
+            {#key route.id}
+              <NarrationPanel id={route.id} />
+            {/key}
+          </aside>
+          <section class="center">
+            <div class="stagewrap">
+              <SimCanvas onRenderFailed={(error) => (renderError = error)} />
+            </div>
+            {#if modeStore.mode === 'advanced' && simStore.view === 'momentum'}
+              <p class="momentum-caption" data-testid="momentum-caption">{momentumCaption}</p>
+            {/if}
+            <PlaybackBar />
+          </section>
+        </div>
+        {#if modeStore.mode === 'advanced'}
+          <aside class="rail-right">
+            <ReadoutRail
+              onExportPng={() => simStore.requestCapture()}
+              onSaveState={saveState}
+              onImportFile={importStateFile}
+            />
+          </aside>
+        {/if}
+      </div>
     {/if}
     {#if simStore.fatal !== undefined}
       <ErrorBanner message={simStore.fatal} />
@@ -378,71 +333,248 @@
 {/if}
 
 <style>
-  .back {
-    align-self: center;
-    font-size: 0.9rem;
-    color: inherit;
-    text-decoration: none;
-    white-space: nowrap;
+  /* ---- bench frame (UI redesign T8, mockup ws-body) ----------------------
+     App owns the frame: the full-viewport column (bar over bench), the
+     three-zone flex row, rail widths/surfaces, and the responsive folds
+     (spec §6.3). Rail INTERNS belong to their components. The scoped
+     rules below override the global app.css `main` column styles. */
+
+  main {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  .back:hover {
-    opacity: 0.8;
+  .bench {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+
+  .bench-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
+  /* Left rail (mockup .ws-rail-l): fixed 216px, panel surface, own scroll. */
+  .rail-left {
+    width: 216px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px 13px;
+    border-right: 1px solid var(--line);
+    background: var(--bg-1);
+    overflow-y: auto;
+  }
+
+  /* Narration pinned to the rail bottom (mockup .ws-narr margin-top: auto).
+     Both roots covered: the open panel and the collapsed ⓘ stub. */
+  .bench-main .rail-left :global(.narration),
+  .bench-main .rail-left :global(.collapsed) {
+    margin-top: auto;
+  }
+
+  /* Center column: the square stage, the momentum caption and the playback
+     bar, stacked. */
+  .center {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Stage host: centers the square stage in whatever room the column has
+     left. `container-type: size` lets the stage cap itself by the host's
+     HEIGHT too (below) — not just its width. */
+  .stagewrap {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    container-type: size;
+    padding: 14px;
+  }
+
+  /* The stage stays square (global .stage aspect-ratio 1/1) and centered;
+     re-size it here instead of top-margin + auto centering. */
+  .center :global(.stage) {
+    margin: 0;
+    width: min(100%, 38rem);
+  }
+
+  /* Height cap: a 38rem square would overflow short viewports (the 720px
+     probe), so the width also yields to the host's height. cq units need
+     the @supports gate — without them the fallback declaration above
+     keeps the width-only cap. */
+  @supports (width: 1cqh) {
+    .center :global(.stage) {
+      width: min(100%, 38rem, 100cqh);
+    }
   }
 
   .momentum-caption {
-    margin: 0.5rem 0 0;
+    flex: none;
+    margin: 0.4rem 0 0;
     text-align: center;
     font-size: 0.85rem;
     opacity: 0.75;
     font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   }
 
+  /* Right rail (mockup .ws-rail-r): fixed 250px, panel surface, own scroll.
+     Advanced-only — App mounts the whole aside behind the mode gate. */
+  .rail-right {
+    width: 250px;
+    flex: none;
+    padding: 14px;
+    border-left: 1px solid var(--line);
+    background: var(--bg-1);
+    overflow-y: auto;
+  }
+
+  /* Bottom-edge banners (fatal / load-error / save-note): pinned under the
+     bench at the frame's bottom. Fixed tints that read on the dark ground
+     — dark-only base, so no scheme branch is needed (same deal as
+     app.css's .error). */
   .load-error {
+    flex: none;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 1rem;
-    margin-top: 1.25rem;
+    margin: 0 1rem 0.75rem;
     padding: 0.6rem 1rem;
     border-radius: 0.5rem;
     text-align: left;
-    color: #92400e;
-    background: color-mix(in srgb, #92400e 12%, transparent);
-    border: 1px solid #92400e;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .load-error {
-      color: #fbbf24;
-      background: color-mix(in srgb, #fbbf24 14%, transparent);
-      border-color: #fbbf24;
-    }
+    color: #fbbf24;
+    background: color-mix(in srgb, #fbbf24 14%, transparent);
+    border: 1px solid #fbbf24;
   }
 
   /* Save-size note: the load-error banner's layout, but an INFORMATIONAL
      blue tint — nothing went wrong, the file is just heavy. */
   .save-note {
+    flex: none;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 1rem;
-    margin-top: 1.25rem;
+    margin: 0 1rem 0.75rem;
     padding: 0.6rem 1rem;
     border-radius: 0.5rem;
     text-align: left;
-    color: #1e40af;
-    background: color-mix(in srgb, #1e40af 12%, transparent);
-    border: 1px solid #1e40af;
+    color: #93c5fd;
+    background: color-mix(in srgb, #93c5fd 14%, transparent);
+    border: 1px solid #93c5fd;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .save-note {
-      color: #93c5fd;
-      background: color-mix(in srgb, #93c5fd 14%, transparent);
-      border-color: #93c5fd;
+  /* ---- responsive folds (spec §6.3) -------------------------------------- */
+
+  /* 768–1023px: the right rail drops below the bench as a horizontal panel
+     — its three sections grid side by side (hairlines fold away; the grid
+     gaps separate the sections). */
+  @media (max-width: 1023px) {
+    .bench {
+      flex-direction: column;
+    }
+
+    .rail-right {
+      width: auto;
+      border-left: none;
+      border-top: 1px solid var(--line);
+    }
+
+    .bench .rail-right :global(.readoutrail) {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px 18px;
+      align-items: start;
+    }
+
+    .bench .rail-right :global(.hairline) {
+      display: none;
+    }
+  }
+
+  /* <768px: the page scrolls again (no fixed frame), the tool rail becomes
+     a horizontal strip above the canvas (icon buttons only — the params
+     card and the rail micro-label fold away; ToolRail's `compact` prop
+     already hid the params in explore), and the narration moves below the
+     canvas. `display: contents` promotes the rail's children to bench-main
+     flex items so `order` can reorder them around the center column. */
+  @media (max-width: 767px) {
+    main {
+      height: auto;
+      min-height: 100dvh;
+      overflow: visible;
+    }
+
+    .bench-main {
+      flex-direction: column;
+    }
+
+    .rail-left {
+      display: contents;
+    }
+
+    .bench-main .rail-left :global(.toolrail) {
+      order: 0;
+      flex: none;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg-1);
+      overflow-x: auto;
+    }
+
+    .bench-main .rail-left :global(.section-label) {
+      display: none;
+    }
+
+    .bench-main .rail-left :global(.tools) {
+      grid-template-columns: repeat(6, auto);
+      flex: none;
+    }
+
+    .bench-main .rail-left :global(.params) {
+      display: none;
+    }
+
+    .center {
+      order: 1;
+    }
+
+    /* Narration below the canvas (collapsed ⓘ by the R4 viewport rule);
+       margin-top: auto from the desktop rule would detach it from the
+       canvas, so the fold resets it. */
+    .bench-main .rail-left :global(.narration),
+    .bench-main .rail-left :global(.collapsed) {
+      order: 2;
+      margin: 0 14px 14px;
+    }
+
+    /* No definite frame height on the scrolling page: size containment
+       would collapse the stage host, so the stage sizes by width only. */
+    .stagewrap {
+      flex: none;
+      container-type: normal;
+    }
+
+    .center :global(.stage) {
+      width: min(100%, 38rem);
     }
   }
 </style>

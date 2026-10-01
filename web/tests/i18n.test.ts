@@ -245,10 +245,8 @@ describe('glossary (Task 15)', () => {
   it('every Term key="..." used in the wired components resolves in GLOSSARY', () => {
     // Static scan of the components that import Term (hardcoded by design —
     // the brief keeps this a simple string scan, not a module graph walk).
-    const termFiles = [
-      'src/ui/ObservablesBar.svelte',
-      'src/ui/ViewToggle.svelte',
-    ]
+    // T8 folded ObservablesBar + ViewToggle's terms into the ReadoutRail.
+    const termFiles = ['src/ui/ReadoutRail.svelte']
     const root = join(dirname(fileURLToPath(import.meta.url)), '..')
     const used = new Set<string>()
     for (const file of termFiles) {

@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 /**
- * JSON state save/load e2e (Task 17). Advanced-mode header buttons: Save
+ * JSON state save/load e2e (Task 17; the buttons moved to the ReadoutRail's
+ * "Xuất" block with the T8 UI redesign). Advanced-mode rail buttons: Save
  * asks the worker for `serialize_state()` and downloads
  * `psiforge-state-<YYYYMMDD-HHmmss>.json`; Load feeds a file back through
  * decodeState + the worker's deserialize (which restores t and frames the

@@ -520,6 +520,12 @@
     onpointercancel={onPointerCancel}
   ></canvas>
   <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
+  <!-- Sim-time readout (UI redesign T8): pure DOM text over the frame's
+       top-left corner, reading the existing simStore.t rune — the render
+       loop is untouched, Svelte just patches this text node per frame. -->
+  <div class="t-label" data-testid="t-label" aria-hidden="true">
+    |ψ|² · t = {simStore.t.toFixed(1)}
+  </div>
   {#if legendVisible}
     <!-- Spec 7.1: the M1 review's "user mistook the orange wall for a UI
          element" — the chips name the overlay colors and the max|V| scale
@@ -544,6 +550,20 @@
 </div>
 
 <style>
+  /* Sim-time label (UI redesign T8, mockup .ws-tlabel): mono micro-copy at
+     the stage's top-left, accent-tinted. Never a pointer target, hidden
+     from AT (the readouts own the accessible numbers). */
+  .t-label {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.6rem;
+    font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
   /* Outcome toast: transient, non-interactive, top-center of the stage. */
   .toast {
     position: absolute;
