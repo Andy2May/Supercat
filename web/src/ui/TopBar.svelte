@@ -53,9 +53,12 @@
 
 <header class="topbar">
   <a class="back" data-testid="back-link" href="#/">{backLabel}</a>
-  <!-- Wordmark: plain text, "PSI" on its own element for the accent. -->
-  <span class="mark"><i>PSI</i>FORGE</span>
-  <span class="scene">{sceneLabel}</span>
+  <!-- Wordmark: plain text, "FORGE" on its own element for the accent
+       (mockup .ws-mark pattern: PSI<i>FORGE</i>). -->
+  <span class="mark">PSI<i>FORGE</i></span>
+  <!-- The view's single h1 (a11y): styled as the mono micro scene label,
+       all h1 defaults overridden below. -->
+  <h1 class="scene">{sceneLabel}</h1>
   <span class="spacer"></span>
   <div class="seg" role="group" aria-label={switchHint}>
     <span class="current" aria-current="true">{currentLabel}</span>
@@ -98,7 +101,7 @@
     color: var(--text-1);
   }
 
-  /* Wordmark (mockup .ws-mark): bold, "PSI" in the accent. */
+  /* Wordmark (mockup .ws-mark): bold, "FORGE" in the accent. */
   .mark {
     font-weight: 700;
     font-size: 0.85rem;
@@ -113,14 +116,18 @@
   }
 
   /* Scene label (mockup .ws-scene): mono micro-copy; shrinks with an
-     ellipsis when the bar runs out of room (small phones). */
+     ellipsis when the bar runs out of room (small phones). An <h1> for
+     a11y (the sim view's single heading) — the global h1 rules and the
+     browser's bold default are both overridden so it stays a micro label. */
   .scene {
     min-width: 0;
+    margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
     font-size: 10px;
+    font-weight: 400;
     letter-spacing: 0.1em;
     color: var(--text-3);
   }

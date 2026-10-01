@@ -57,15 +57,24 @@ describe('TopBar chrome', () => {
     expect(back.textContent).toContain(enDict['app.backToLanding'])
   })
 
-  it('renders the PSIFORGE wordmark with PSI on its own accent element', () => {
+  it('renders the PSIFORGE wordmark with FORGE on its own accent element', () => {
+    const { container } = render(TopBar, { props: { id: 'double-slit' } })
+
+    // getByText cannot match the span (its text is split by the <i>), so
+    // pin it through the class — the container-query idiom toolRail.test.ts
+    // uses for its .value readouts.
+    const mark = container.querySelector('.mark')
+    expect(mark?.textContent).toBe('PSIFORGE')
+    // "FORGE" rides the <i> so CSS can accent it (mockup pattern
+    // PSI<i>FORGE</i>); "PSI" stays in the base text color.
+    expect(mark?.querySelector('i')?.textContent).toBe('FORGE')
+  })
+
+  it('renders the scene label as the view heading (h1)', () => {
     render(TopBar, { props: { id: 'double-slit' } })
 
-    const mark = screen.getByText('FORGE')
-    expect(mark.textContent).toBe('PSIFORGE')
-    // "PSI" rides a child element so CSS can accent it; "FORGE" is the
-    // element's own text.
-    const accent = mark.querySelector('i, b, span, em')
-    expect(accent?.textContent).toBe('PSI')
+    const heading = screen.getByText(sceneOf(enDict, 'double-slit'))
+    expect(heading.tagName).toBe('H1')
   })
 })
 

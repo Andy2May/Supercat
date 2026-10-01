@@ -33,9 +33,12 @@ import { vi as viDict } from '../src/i18n/vi.js'
  *   worker a seeded measure-momentum message; view switches go through
  *   simStore.setView; the contrast slider keeps its binding and pinned
  *   min/max/step;
- * - EXPORT: PNG / Save / Load are entry points only — the three callback
- *   props fire; the hidden file input hands the picked File to
- *   onImportFile and resets so re-picking the same file re-fires change;
+ * - EXPORT: Save / Load are entry points only — the two callback props
+ *   fire; PNG export is NOT rendered here (the M2 spec keeps it in BOTH
+ *   modes, so it lives in the always-mounted PlaybackBar — fix round R1;
+ *   playbackBar.test.ts + export.spec.ts pin its home); the hidden file
+ *   input hands the picked File to onImportFile and resets so re-picking
+ *   the same file re-fires change;
  * - a language flip re-translates every label.
  *
  * Runs in jsdom (pragma above). simStore is the module-global singleton, so
@@ -73,7 +76,6 @@ const RAW: ObservablesFrame = {
 
 function props() {
   return {
-    onExportPng: vi.fn(),
     onSaveState: vi.fn(),
     onImportFile: vi.fn(),
   }
@@ -374,15 +376,10 @@ describe('ReadoutRail contrast slider', () => {
 // ------------------------------------------------------------------ export
 
 describe('ReadoutRail export block', () => {
-  it('clicking PNG fires onExportPng only', async () => {
-    const p = props()
-    render(ReadoutRail, { props: p })
+  it('does not render the PNG export button — the PlaybackBar owns it (no duplicate testid)', () => {
+    render(ReadoutRail, { props: props() })
 
-    await fireEvent.click(screen.getByTestId('export-png'))
-
-    expect(p.onExportPng).toHaveBeenCalledTimes(1)
-    expect(p.onSaveState).not.toHaveBeenCalled()
-    expect(p.onImportFile).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('export-png')).toBeNull()
   })
 
   it('clicking Save fires onSaveState only', async () => {
@@ -392,7 +389,6 @@ describe('ReadoutRail export block', () => {
     await fireEvent.click(screen.getByTestId('export-json'))
 
     expect(p.onSaveState).toHaveBeenCalledTimes(1)
-    expect(p.onExportPng).not.toHaveBeenCalled()
     expect(p.onImportFile).not.toHaveBeenCalled()
   })
 
@@ -437,10 +433,9 @@ describe('ReadoutRail export block', () => {
     expect(p.onImportFile).not.toHaveBeenCalled()
   })
 
-  it('labels the three buttons with the export/import keys', () => {
+  it('labels the two buttons with the export/import keys', () => {
     render(ReadoutRail, { props: props() })
 
-    expect(screen.getByTestId('export-png').textContent).toContain(enDict['export.png'])
     expect(screen.getByTestId('export-json').textContent).toContain(enDict['export.json'])
     expect(screen.getByTestId('import-json').textContent).toContain(enDict['import.json'])
   })

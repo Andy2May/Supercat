@@ -275,11 +275,7 @@
         </div>
         {#if modeStore.mode === 'advanced'}
           <aside class="rail-right">
-            <ReadoutRail
-              onExportPng={() => simStore.requestCapture()}
-              onSaveState={saveState}
-              onImportFile={importStateFile}
-            />
+            <ReadoutRail onSaveState={saveState} onImportFile={importStateFile} />
           </aside>
         {/if}
       </div>

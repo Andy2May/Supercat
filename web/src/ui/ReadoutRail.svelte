@@ -12,13 +12,15 @@
    *
    *   READOUTS  the old ObservablesBar: numeric readouts beside three
    *             canvas-2D sparklines over `simStore.observablesHistory`;
-   *   VIEW      the old ViewToggle's display-space control — now a single
-   *             three-way segment (position / momentum / phase) — plus its
-   *             contrast slider, binding untouched, and its momentum-view
-   *             measurement trigger (measure-momentum);
-   *   EXPORT    the old header buttons (PNG / Save state / Load state),
-   *             reduced to entry points: the three callback props own the
-   *             actual save/load/capture logic (Task 8 wires them in App).
+  *   VIEW      the old ViewToggle's display-space control — now a single
+  *             three-way segment (position / momentum / phase) — plus its
+  *             contrast slider, binding untouched, and its momentum-view
+  *             measurement trigger (measure-momentum);
+  *   EXPORT    the old header's Save / Load state buttons, reduced to
+  *             entry points: the two callback props own the actual
+  *             save/load logic (Task 8 wires them in App). PNG export is
+  *             NOT here — the M2 spec keeps it in BOTH modes, so it lives
+  *             in the always-mounted PlaybackBar (fix round R1).
    *
    * App.svelte mounts this ONLY in advanced mode (the component carries no
    * mode logic of its own) and unmounted until Task 8 — same as ToolRail /
@@ -28,15 +30,15 @@
    * hardcoded 20, so a future extent change keeps the chart on-scale.
    */
 
-  // Entry points owned by the caller (Task 8 wires App's logic here):
-  // PNG queues a capture, Save posts serialize-state, Load receives the
-  // picked File directly (App's onStateFile decodes it).
+  // Entry points owned by the caller (Task 8 wires App's logic here): Save
+  // posts serialize-state, Load receives the picked File directly (App's
+  // importStateFile decodes it). PNG export is NOT here — the M2 spec keeps
+  // it available in BOTH modes, so it lives in the always-mounted
+  // PlaybackBar (fix round R1 removed the rail's duplicate).
   let {
-    onExportPng,
     onSaveState,
     onImportFile,
   }: {
-    onExportPng: () => void
     onSaveState: () => void
     onImportFile: (file: File) => void
   } = $props()
@@ -74,7 +76,6 @@
       phaseColor: t('view.phaseColor'),
       contrast: t('view.contrast'),
       measureMomentum: t('measure.momentumTool'),
-      exportPng: t('export.png'),
       exportJson: t('export.json'),
       importJson: t('import.json'),
     }
@@ -415,13 +416,10 @@
 
   <hr class="hairline" />
 
-  <!-- XUẤT -->
+  <!-- XUẤT (Save / Load only — PNG export rides the both-modes PlaybackBar) -->
   <section class="section">
     <div class="section-label">{labels.railExport}</div>
     <div class="outs">
-      <button type="button" data-testid="export-png" onclick={() => onExportPng()}>
-        {labels.exportPng}
-      </button>
       <button type="button" data-testid="export-json" onclick={() => onSaveState()}>
         {labels.exportJson}
       </button>
@@ -611,10 +609,10 @@
     accent-color: var(--accent);
   }
 
-  /* Export block (mockup .ws-outs): three equal entry points. */
+  /* Export block (mockup .ws-outs): two equal entry points (Save / Load). */
   .outs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 7px;
   }
 
