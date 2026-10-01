@@ -9,7 +9,9 @@ import { expect, test } from '@playwright/test'
  * decodeState + the worker's deserialize (which restores t and frames the
  * state at once). A corrupt/version-gated file must show the NON-fatal
  * load-error banner while the simulation keeps running — no fatal banner,
- * no console errors.
+ * no console errors. 512² state files (`?grid=512`) must additionally
+ * surface the size note (spec §5.7 + risk row "khi mở/lưu") on Save AND
+ * Load — without blocking either.
  */
 
 /** Attaches the no-error collectors every scenario asserts at the end. */
@@ -221,6 +223,74 @@ test('a version-2 file shows the load-error banner but never stops the simulatio
   // Dismiss works, and the banner stays gone.
   await page.getByTestId('load-error-dismiss').click()
   await expect(banner).toBeHidden()
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('512² state files show the size note on Save AND Load — never blocking; default 256 stays silent', async ({ page }) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  // Control at the DEFAULT grid first: Save and Load both stay silent.
+  await bootAdvanced(page)
+  expect(await grid(page)).toBe(256)
+  const [defaultDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('export-json').click(),
+  ])
+  const defaultPath = await defaultDownload.path()
+  expect(defaultPath).not.toBeNull()
+  expect((JSON.parse(await readFile(defaultPath!, 'utf8')) as { nx: number }).nx).toBe(256)
+  await expect(page.getByTestId('save-size-note')).toBeHidden()
+  // Load direction at 256: let the decode land first — a hidden-check on a
+  // not-yet-decoded file would pass vacuously.
+  await page.getByTestId('import-json-input').setInputFiles(defaultPath!)
+  await page.waitForTimeout(500)
+  await expect(page.getByTestId('save-size-note')).toBeHidden()
+
+  // Then the heavy grid (spec §5.7 + risk table: "cảnh báo nếu 512²"). The
+  // ?grid=512 search param forces a FULL reload (hash-only gotos stay
+  // same-document), so the store singleton re-reads it; advanced mode was
+  // persisted to localStorage by the toggle above, so Save is already up.
+  await page.goto('/?grid=512#/sim/double-slit')
+  await expect(page.getByTestId('export-json')).toBeVisible()
+  // 512² runs at only a few fps — a handful of frames proves the scene is
+  // live before serializing it.
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(2)
+  expect(await grid(page)).toBe(512)
+
+  // Save: the download FIRES (the note is a warning, never a confirmation
+  // that could block it)...
+  const [bigDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('export-json').click(),
+  ])
+  const bigPath = await bigDownload.path()
+  expect(bigPath).not.toBeNull()
+  expect((JSON.parse(await readFile(bigPath!, 'utf8')) as { nx: number }).nx).toBe(512)
+
+  // ...and the note is up: informational (role=status, not alert), with
+  // the localized size wording, and dismissable.
+  const note = page.getByTestId('save-size-note')
+  await expect(note).toBeVisible()
+  await expect(note).toHaveAttribute('role', 'status')
+  await expect(note).toContainText(/MB|megabyte/i)
+  await page.getByTestId('save-size-note-dismiss').click()
+  await expect(note).toBeHidden()
+
+  // Load direction (spec risk row "khi mở/lưu"): importing the 512² file
+  // back re-raises the SAME note — the warning is about file weight, not
+  // direction — while the load itself proceeds (same grid here, so no
+  // load-error) and the loop keeps drawing.
+  await page.getByTestId('import-json-input').setInputFiles(bigPath!)
+  await expect(note).toBeVisible()
+  await expect(page.getByTestId('load-error')).toBeHidden()
+  const f1 = await frames(page)
+  await expect
+    .poll(() => frames(page), { timeout: 10_000 })
+    .toBeGreaterThan(f1)
 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])

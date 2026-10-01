@@ -80,6 +80,19 @@
     active
     return t('loadFailed.dismiss')
   })
+  // 512² save-size notice (final review, spec §5.7 + risk row "khi
+  // mở/lưu"): the transient banner's text and its dismiss control's
+  // accessible name (the visible glyph stays "×", mirroring the load-error
+  // banner). One direction-neutral message serves BOTH the Save download
+  // and a heavy Load — the warning is about file weight, not direction.
+  const saveSizeNoteText = $derived.by(() => {
+    active
+    return t('export.sizeNote')
+  })
+  const saveSizeDismissLabel = $derived.by(() => {
+    active
+    return t('export.sizeNote.dismiss')
+  })
 
   // WebGL2 gate, probed once: without it the renderer cannot draw, so the
   // app is replaced by the WebGlMissing page and no worker is ever created.
@@ -162,6 +175,37 @@
   // The hidden file input behind the "Mở" button.
   let fileInput = $state<HTMLInputElement | undefined>(undefined)
 
+  /** True while the large-grid save-size note is up (final review, spec
+   * §5.7 + risk table): transient — auto-dismisses via the timer below, or
+   * early through the dismiss button. Independent of loadError/fatal so it
+   * can coexist with them. */
+  let saveSizeNote = $state(false)
+  let saveSizeTimer: number | undefined
+
+  /** Shows the save-size note and (re)arms its 8 s auto-dismiss. */
+  function showSaveSizeNote(): void {
+    saveSizeNote = true
+    window.clearTimeout(saveSizeTimer)
+    saveSizeTimer = window.setTimeout(() => {
+      saveSizeNote = false
+      saveSizeTimer = undefined
+    }, 8_000)
+  }
+
+  /** The dismiss button: same end state as the auto-dismiss. */
+  function dismissSaveSizeNote(): void {
+    saveSizeNote = false
+    window.clearTimeout(saveSizeTimer)
+    saveSizeTimer = undefined
+  }
+
+  // The auto-dismiss timer is plain (not reactive); clear it on unmount so
+  // a dead App never fires the callback (same hygiene as the cleanups
+  // above).
+  $effect(() => {
+    return () => window.clearTimeout(saveSizeTimer)
+  })
+
   /** Save: only posts the request — the reply lands in the onState
    * subscription below, which encodes and downloads the file. */
   function saveState(): void {
@@ -172,6 +216,11 @@
   // arrays) goes through encodeState into a timestamped JSON file.
   $effect(() => {
     const off = simStore.onState((state) => {
+      // A 512² state JSON is ~4 MB (spec §5.7: "cảnh báo nếu 512²") and
+      // would otherwise download silently — surface the size note BEFORE
+      // the download starts. It is a warning, never a confirmation: the
+      // download below always fires.
+      if (simStore.grid >= 512) showSaveSizeNote()
       try {
         downloadBlob(
           new Blob([JSON.stringify(encodeState(state))], { type: 'application/json' }),
@@ -217,6 +266,10 @@
       if (raw.nx !== raw.ny) {
         throw new StateFileError('shape', `state file: non-square grid ${raw.nx}x${raw.ny}`)
       }
+      // 512² warning, LOAD direction (spec risk row "khi mở/lưu"): the
+      // decoded arrays imply a several-MB file — the same note Save shows,
+      // and equally non-blocking: the load below proceeds regardless of it.
+      if (raw.nx >= 512) showSaveSizeNote()
       simStore.loadState(raw)
     } catch (error) {
       simStore.loadError = loadErrorDetail(error)
@@ -297,6 +350,23 @@
         </button>
       </div>
     {/if}
+    {#if saveSizeNote}
+      <!-- Large-grid size note (final review, spec §5.7 + risk row "khi
+           mở/lưu"): shown by Save (download already fired) and by Load
+           (which proceeds regardless) — a 512² state file can weigh
+           several MB either way. Informational (role=status, not alert),
+           transient (auto-dismiss), never blocking. -->
+      <div class="save-note" role="status" data-testid="save-size-note">
+        <span>{saveSizeNoteText}</span>
+        <button
+          data-testid="save-size-note-dismiss"
+          aria-label={saveSizeDismissLabel}
+          onclick={dismissSaveSizeNote}
+        >
+          ×
+        </button>
+      </div>
+    {/if}
     {#if simStore.perfMode}
       <div class="hud" data-testid="perf-hud" aria-hidden="true">
         <span>{hudLabels.fps}: {Math.round(simStore.perf.fps)}</span>
@@ -348,6 +418,31 @@
       color: #fbbf24;
       background: color-mix(in srgb, #fbbf24 14%, transparent);
       border-color: #fbbf24;
+    }
+  }
+
+  /* Save-size note: the load-error banner's layout, but an INFORMATIONAL
+     blue tint — nothing went wrong, the file is just heavy. */
+  .save-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-top: 1.25rem;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    text-align: left;
+    color: #1e40af;
+    background: color-mix(in srgb, #1e40af 12%, transparent);
+    border: 1px solid #1e40af;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .save-note {
+      color: #93c5fd;
+      background: color-mix(in srgb, #93c5fd 14%, transparent);
+      border-color: #93c5fd;
     }
   }
 </style>

@@ -10,9 +10,16 @@
 
   let { message }: { message: string } = $props()
 
+  // Local mirror of the language store (same pattern as App.svelte): the
+  // derived labels re-translate the moment `setLang` fires. The
+  // subscription lives in an $effect cleanup — hash routing unmounts this
+  // banner on every landing visit, and each unmount must unsubscribe or
+  // the dead banner's closure leaks.
   let active = $state(getLang())
-  lang.subscribe((value) => {
-    active = value
+  $effect(() => {
+    return lang.subscribe((value) => {
+      active = value
+    })
   })
 
   const labels = $derived.by(() => {

@@ -28,6 +28,13 @@ export const en: Record<string, string> = {
   'loadFailed.shape': 'wrong grid dimensions',
   'loadFailed.corrupt': 'corrupt file',
   'loadFailed.dismiss': 'Dismiss',
+  // 512² save-size notice (spec §5.7 + risk row "khi mở/lưu"): a 512²
+  // state JSON weighs several MB — this is the transient banner shown by
+  // BOTH directions (alongside the never-blocked Save download, and on
+  // loading such a file), plus the dismiss control's name. Direction-
+  // neutral wording by design.
+  'export.sizeNote': 'Large-grid state files can weigh several megabytes',
+  'export.sizeNote.dismiss': 'Dismiss',
   'error.resetAndRun': 'Reset & run again',
   'webgl.missingTitle': 'WebGL2 not supported',
   'perf.fps': 'FPS',

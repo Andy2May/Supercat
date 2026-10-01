@@ -28,6 +28,13 @@ export const vi: Record<string, string> = {
   'loadFailed.shape': 'sai kích thước lưới',
   'loadFailed.corrupt': 'file hỏng',
   'loadFailed.dismiss': 'Đóng',
+  // 512² save-size notice (spec §5.7 + risk row "khi mở/lưu"): a 512²
+  // state JSON weighs several MB — this is the transient banner shown by
+  // BOTH directions (alongside the never-blocked Save download, and on
+  // loading such a file), plus the dismiss control's name. Direction-
+  // neutral wording by design.
+  'export.sizeNote': 'File trạng thái ở lưới lớn có thể nặng vài MB',
+  'export.sizeNote.dismiss': 'Đóng',
   'error.resetAndRun': 'Reset & chạy lại',
   'webgl.missingTitle': 'Không hỗ trợ WebGL2',
   'perf.fps': 'FPS',
