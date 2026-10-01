@@ -136,19 +136,33 @@ test('rapid hover sweep across all five tiles: last preset wins, no worker races
   await expect(page.getByTestId('preset-tile')).toHaveCount(5)
 
   // A fast sweep (< 1 s total): every mouseenter lands inside the debounce
-  // window of the previous one, so only the LAST preset may boot. Raw
-  // mouse moves (not .hover, whose actionability waits would blow the
-  // budget while the hero entrance is still settling).
+  // window of the previous one, so only the LAST preset may boot. Raw mouse
+  // moves (not .hover, whose actionability waits would blow the budget while
+  // the hero entrance is still settling), and the tile centers are collected
+  // in ONE evaluate BEFORE the clock starts — five locator.boundingBox()
+  // roundtrips inside the window cost ~1.2 s on a slow host and fail the
+  // budget before any real timing question, while the five raw moves alone
+  // are tens of milliseconds.
+  const centers = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-testid="preset-tile"]')).map(
+      (el) => {
+        const rect = el.getBoundingClientRect()
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+      },
+    ),
+  )
+  expect(centers).toHaveLength(5)
   const sweep = Date.now()
-  for (const id of ['double-slit', 'tunneling', 'free-packet', 'harmonic', 'sandbox']) {
-    const box = await page.locator(`[data-preset="${id}"]`).boundingBox()
-    expect(box).not.toBeNull()
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  for (const { x, y } of centers) {
+    await page.mouse.move(x, y)
   }
   expect(Date.now() - sweep).toBeLessThan(1_000)
 
   await page.waitForTimeout(400) // debounce + destroy/init settle
   await expect(page.getByTestId('landing-status')).toContainText(`NOW SHOWING · ${EN.sandbox}`)
+  // (The sweep ends on the sandbox, which boots PAUSED by design — a frozen
+  // frames counter here is correct, so post-sweep liveness is pinned by the
+  // harmonic swap in the test above instead.)
 
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
