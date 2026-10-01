@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 :root {
   color-scheme: light dark;
   font-family:
@@ -8,6 +10,15 @@
     sans-serif;
   line-height: 1.5;
   text-align: center;
+}
+
+/* Temporary until T2 formalizes the type stack: make the app actually render
+   in the self-hosted Space Grotesk so the woff2 files are exercised. */
+body {
+  font-family:
+    'Space Grotesk',
+    system-ui,
+    sans-serif;
 }
 
 main {
