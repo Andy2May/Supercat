@@ -26,11 +26,12 @@
    * (Task 18) shows the tooltip; the position button and the measurement
    * trigger stay plain.
    *
-   * Below the group sits the contrast slider (Task 18 round 1): pure render
-   * state (`simStore.contrast`, no worker message) driving the shader's
-   * u_contrast — 1 is the default look, higher lifts the dim interference
-   * fringes out of the colormap's dark low end. Advanced-only by mount
-   * (App gates this whole component).
+   * Below the group sits the contrast slider (Task 18): pure render state
+   * (`simStore.contrast`, no worker message) driving the shader's
+   * u_contrast. The DEFAULT is 2.5 everywhere (user ruling 2026-10-01 —
+   * fringes and the tunneling blob clearly visible; bright-core saturation
+   * accepted); the slider is advanced-only by mount (App gates this whole
+   * component) but edits the same global value every mode renders with.
    */
 
   // Local mirror of the language store (same pattern as App.svelte): the

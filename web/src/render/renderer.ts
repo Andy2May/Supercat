@@ -53,10 +53,13 @@ export class HeatmapRenderer {
    */
   private colorMode: 0 | 1 = 0
   /**
-   * Display contrast (u_contrast, Task 18 round 1): 1 = the M1 tonemap
-   * verbatim; > 1 lifts dim structure. Kept as a field for the same reason
-   * as `colorMode`: a context-loss rebuild() re-applies the current value
-   * instead of flashing back to neutral, and draw() re-asserts it so the
+   * Display contrast (u_contrast, Task 18). The field default 1 is the
+   * UNIFORM NEUTRAL (the pre-ruling M1 gamma), not the product default —
+   * the store boots at the user-ruling 2.5 and the render loop calls
+   * setContrast before the first draw, so this only matters between
+   * construction and the first frame (nothing draws there). Kept as a
+   * field for the same reason as `colorMode`: a context-loss rebuild()
+   * re-applies the last SET value, and draw() re-asserts it so the
    * fade-between-frames path follows live changes too.
    */
   private contrast = 1

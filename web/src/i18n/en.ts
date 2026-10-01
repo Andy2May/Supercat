@@ -64,9 +64,10 @@ export const en: Record<string, string> = {
   'view.momentumCaption': 'Momentum space kx, ky — k = 0 at the center',
   'view.toggleLabel': 'Display space',
   'view.phaseColor': 'Phase color',
-  // Contrast slider (Task 18 round 1, advanced mode only): scales the
-  // canvas tonemap's gamma — 1 is the default look, higher lifts dim
-  // structure (interference fringes) out of the colormap's dark low end.
+  // Contrast slider (Task 18, advanced mode only): scales the canvas
+  // tonemap's gamma. Default 2.5 EVERYWHERE (user ruling 2026-10-01 —
+  // fringes/tunneling blob clearly visible); the slider edits that global
+  // value, lower crushes dim structure.
   'view.contrast': 'Contrast',
   // Header toggle hint; '{mode}' is replaced with the target mode's name.
   'mode.switchHint': 'Switch to {mode}',

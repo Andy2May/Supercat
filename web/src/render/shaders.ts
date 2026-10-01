@@ -59,12 +59,14 @@ uniform sampler2D u_potential;
 uniform float u_potentialMax;
 // Smoothed peak |psi|^2 of the current frame — the auto-exposure reference.
 uniform float u_maxDensity;
-// Contrast (Task 18 round 1): divides the tonemap exponent's gamma — 1.0 is
-// the M1 look verbatim; > 1 lowers the gamma and lifts dim structure (the
+// Contrast (Task 18): divides the tonemap exponent's gamma — 1.0 is the old
+// M1 look verbatim; > 1 lowers the gamma and lifts dim structure (the
 // interference fringes of a reflected packet against the auto-exposure
-// peak), < 1 crushes it. Applied to the shared brightness b, so the inferno
-// ramp AND the HSV phase path's VALUE both follow — position and momentum
-// views alike.
+// peak), < 1 crushes it. The app's DEFAULT is 2.5 in every mode (user
+// ruling 2026-10-01: fringe/tunneling visibility; bright-core saturation
+// accepted). Applied to the shared brightness b, so the inferno ramp AND
+// the HSV phase path's VALUE both follow — position and momentum views
+// alike.
 uniform float u_contrast;
 // Grid size (nx, ny) in texels — the step for potential neighbor sampling.
 uniform vec2 u_gridSize;

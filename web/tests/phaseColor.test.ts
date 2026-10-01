@@ -50,8 +50,9 @@ describe('FRAGMENT_SHADER_SRC phase colormap (structural)', () => {
 
   it('keeps the mode-0 inferno path byte-equivalent in behavior', () => {
     // The auto-exposure tonemap line feeds BOTH modes unchanged. The
-    // exponent is 0.45 scaled by u_contrast (Task 18 round 1) — at the
-    // default 1.0 the arithmetic is the original 0.45 gamma exactly.
+    // exponent is 0.45 scaled by u_contrast (Task 18) — at u_contrast = 1
+    // the arithmetic is the original 0.45 gamma exactly (the pre-ruling M1
+    // look; the app's DEFAULT is 2.5 everywhere, user ruling 2026-10-01).
     expect(FRAGMENT_SHADER_SRC).toContain(
       'float b = pow(clamp(rho / max(u_maxDensity, 1e-6), 0.0, 1.0), 0.45 / u_contrast)',
     )
@@ -132,22 +133,24 @@ describe('SimStore phaseColor flag', () => {
     expect(store.phaseColor).toBe(false)
   })
 
-  it('contrast defaults to the neutral 1, is pure render state, and resets on init', () => {
+  it('contrast defaults to the user-ruling 2.5 everywhere, is pure render state, resets on init', () => {
     const store = new RecordingStore()
-    // 1.0 = the pre-slider look EXACTLY (0.45 / 1 = 0.45 gamma).
-    expect(store.contrast).toBe(1)
+    // USER RULING (2026-10-01): 2.5 in EVERY mode — fringes and the
+    // tunneling blob clearly visible; bright-core saturation accepted.
+    // (1 would be the pre-ruling M1 gamma verbatim: 0.45 / 1 = 0.45.)
+    expect(store.contrast).toBe(2.5)
 
     store.init(PRESETS['free-packet'])
     store.sent.length = 0
-    store.contrast = 2.5
+    store.contrast = 1
     store.contrast = 0.5
     // Pure render state (same contract as phaseColor): no worker message.
     expect(store.sent).toEqual([])
 
     store.destroy()
     store.init(PRESETS['double-slit'])
-    // A fresh scene boots with neutral eyes.
-    expect(store.contrast).toBe(1)
+    // A fresh scene boots at the ruling default again.
+    expect(store.contrast).toBe(2.5)
   })
 
   it('explore flip does not render HSV (spec v1 §2.1): flag survives, predicate gates it', () => {

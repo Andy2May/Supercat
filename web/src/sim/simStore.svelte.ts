@@ -113,15 +113,21 @@ export class SimStore {
    */
   phaseColor = $state(false)
   /**
-   * Display contrast (Task 18 round 1): the render loop feeds it to the
-   * shader's u_contrast, which divides the tonemap gamma (0.45 / contrast).
-   * PURE render state like `phaseColor` — flipping it sends nothing to the
-   * worker. 1 = the M1 look exactly; > 1 lifts dim structure (interference
-   * fringes of the reflected packet) out of the colormap's dark low end;
-   * < 1 crushes it. Advanced-mode slider only; `init` resets it — a fresh
-   * scene starts with neutral eyes.
+   * Display contrast (Task 18): the render loop feeds it to the shader's
+   * u_contrast, which divides the tonemap gamma (0.45 / contrast). PURE
+   * render state like `phaseColor` — flipping it sends nothing to the
+   * worker. APPLIED EVERYWHERE (both experience modes, momentum view,
+   * measurement crossfades — the loop passes it per drawn frame); the
+   * SLIDER is advanced-only (explore stays minimal, spec §2.1), but the
+   * value it edits is the same global default.
+   *
+   * USER RULING (2026-10-01): the default is 2.5 in every mode — at that
+   * level the interference fringes and the tunneling transmitted blob are
+   * clearly visible; the extra bright-core saturation is accepted. (1 is
+   * the shader-uniform neutral = the old M1 look verbatim; < 1 crushes
+   * dim structure.) `init` resets to the same 2.5.
    */
-  contrast = $state(1)
+  contrast = $state(2.5)
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
   /**
@@ -250,7 +256,7 @@ export class SimStore {
     this.frames = 0
     this.view = 'position'
     this.phaseColor = false
-    this.contrast = 1
+    this.contrast = 2.5
     this.observablesHistory = []
     // Parked T8 finding: without this, a preset switch inherits the previous
     // scene's HUD numbers until the next frame overwrites them (and under
