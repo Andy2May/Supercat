@@ -103,6 +103,55 @@ canvas {
   margin-top: 1.5rem;
 }
 
+/* Glossary terms (Task 15): dotted underline + floating tooltip. Global on
+   purpose — Term.svelte renders inside other components' containers, and
+   the tip must float above the stage canvas/overlay and out of ancestors'
+   clipping. `.term` stays display:inline so surrounding layouts (buttons,
+   readout rows) do not shift; the tip itself is pointer-transparent so the
+   hover gap between label and tip never flickers. */
+.term {
+  position: relative;
+  display: inline;
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+.term:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 0.15rem;
+}
+
+/* Dark card, light text: readable over both the heatmap and light mode.
+   Hidden by default; hover OR keyboard focus (:focus-within — the span is
+   tabindex=0) reveals it. */
+.term .tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 260px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  color: #f1f5f9;
+  background: #0f172a;
+  border: 1px solid rgba(241, 245, 249, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  z-index: 30; /* above the stage canvas + overlay and the perf HUD (10) */
+  pointer-events: none;
+}
+
+.term:hover .tip,
+.term:focus-within .tip {
+  display: block;
+}
+
 @media (prefers-color-scheme: dark) {
   .error {
     color: #f87171;

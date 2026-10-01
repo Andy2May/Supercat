@@ -2,6 +2,7 @@
   import { getLang, lang, t } from '../i18n/index.js'
   import { simStore } from '../sim/simStore.svelte.js'
   import { mapSeries } from '../sim/sparkline.js'
+  import Term from './Term.svelte'
 
   /**
    * Live observables strip (Task 11, advanced mode only — App.svelte mounts
@@ -195,11 +196,11 @@
   <div class="panel">
     <div class="head">
       <span class="pair">
-        <i class="swatch" style:background={CYAN}></i>{labels.xMean}
+        <i class="swatch" style:background={CYAN}></i><Term key="mx" label={labels.xMean} />
         <b data-testid="x-mean-value">{fmt(latest?.x)}</b>
       </span>
       <span class="pair">
-        <i class="swatch" style:background={MAGENTA}></i>{labels.yMean}
+        <i class="swatch" style:background={MAGENTA}></i><Term key="my" label={labels.yMean} />
         <b data-testid="y-mean-value">{fmt(latest?.y)}</b>
       </span>
     </div>
@@ -209,11 +210,11 @@
   <div class="panel">
     <div class="head">
       <span class="pair">
-        <i class="swatch" style:background={CYAN}></i>{labels.sigmaProduct}
+        <i class="swatch" style:background={CYAN}></i><Term key="sigmaProduct" label={labels.sigmaProduct} />
         <b data-testid="sigma-x-value">{fmt(latest === undefined ? undefined : latest.sigmaX * latest.sigmaPx)}</b>
       </span>
       <span class="pair">
-        <i class="swatch" style:background={MAGENTA}></i>{labels.sigmaProductY}
+        <i class="swatch" style:background={MAGENTA}></i><Term key="sigmaProduct" label={labels.sigmaProductY} />
         <b data-testid="sigma-y-value">{fmt(latest === undefined ? undefined : latest.sigmaY * latest.sigmaPy)}</b>
       </span>
     </div>
@@ -222,12 +223,12 @@
 
   <div class="panel">
     <div class="head">
-      <span class="pair">{labels.energy}<b data-testid="energy-value">{fmt(latest?.energy)}</b></span>
+      <span class="pair"><Term key="energy" label={labels.energy} /><b data-testid="energy-value">{fmt(latest?.energy)}</b></span>
     </div>
     <canvas bind:this={energyCanvas} aria-label={labels.chartEnergy}></canvas>
   </div>
 
-  <p class="note" data-testid="energy-jump-note">{labels.jumpNote}</p>
+  <p class="note" data-testid="energy-jump-note"><Term key="energyJump" label={labels.jumpNote} /></p>
 </section>
 
 <style>
@@ -280,10 +281,14 @@
     background: #000;
   }
 
+  /* Dimmed via color-mix, NOT `opacity`: the note now hosts a Term whose
+     tooltip must paint fully opaque and escape this element's stacking —
+     opacity < 1 would create a stacking context and trap the tip's z-index
+     (plus make it translucent). */
   .note {
     flex-basis: 100%;
     margin: 0;
     font-size: 0.75rem;
-    opacity: 0.7;
+    color: color-mix(in srgb, currentColor 70%, transparent);
   }
 </style>

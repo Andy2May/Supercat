@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getLang, lang, t } from '../i18n/index.js'
   import { simStore } from '../sim/simStore.svelte.js'
+  import Term from './Term.svelte'
 
   /**
    * Position <-> momentum segmented control (Task 12, advanced mode only —
@@ -19,6 +20,10 @@
    * trigger (Task 14): a click samples a DFT bin from |phi(k)|^2 and
    * collapses ψ in k-space. Same trigger-only contract as the measure tool
    * on the canvas — the click itself fixes nothing about the outcome.
+   *
+   * The momentum and phase button labels are glossary terms (Task 15):
+   * hover (or the Term's own focus stop) shows the tooltip; the position
+   * button and the measurement trigger stay plain.
    */
 
   // Local mirror of the language store (same pattern as App.svelte): the
@@ -73,7 +78,7 @@
       class:active={view === 'momentum'}
       onclick={() => simStore.setView('momentum')}
     >
-      {labels.momentum}
+      <Term key="momentumSpace" label={labels.momentum} />
     </button>
   </div>
   {#if view === 'position'}
@@ -85,7 +90,7 @@
       class:active={simStore.phaseColor}
       onclick={() => (simStore.phaseColor = !simStore.phaseColor)}
     >
-      {labels.phaseColor}
+      <Term key="phase" label={labels.phaseColor} />
     </button>
   {:else}
     <button
@@ -111,7 +116,18 @@
     display: inline-flex;
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 0.5rem;
-    overflow: hidden;
+  }
+
+  /* Rounded ends live on the buttons themselves instead of the old
+     `overflow: hidden` on the group: the momentum button now hosts a Term
+     whose tooltip floats above it, and overflow clipping would cut the
+     tip off at the group's top edge. */
+  .view-toggle button:first-child {
+    border-radius: 0.5rem 0 0 0.5rem;
+  }
+
+  .view-toggle button:last-child {
+    border-radius: 0 0.5rem 0.5rem 0;
   }
 
   button {

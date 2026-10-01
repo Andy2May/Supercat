@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { en } from '../src/i18n/en.js'
 import { vi } from '../src/i18n/vi.js'
 
+import { GLOSSARY } from '../src/i18n/glossary.js'
 import { getLang, setLang, t } from '../src/i18n/index.js'
 import { LANDING_ORDER } from '../src/presets/index.js'
 
@@ -82,6 +87,65 @@ describe('preset narration (Task 9)', () => {
       expect(vi[`preset.${id}.card`].split('\n')).toHaveLength(
         en[`preset.${id}.card`].split('\n').length,
       )
+    }
+  })
+})
+
+describe('glossary (Task 15)', () => {
+  // The exact key set is pinned: adding or removing a term is a product
+  // decision that must update this list (and the physics audit in T19).
+  const GLOSSARY_KEYS = [
+    'density',
+    'phase',
+    'norm',
+    'mx',
+    'my',
+    'sigma',
+    'sigmaProduct',
+    'momentumSpace',
+    'energy',
+    'energyJump',
+    'k',
+    'tunneling',
+    'collapse',
+  ]
+
+  it('GLOSSARY has exactly the pinned 13-key set', () => {
+    expect(Object.keys(GLOSSARY).sort()).toEqual([...GLOSSARY_KEYS].sort())
+  })
+
+  it('every entry has non-empty vi and en copy, at most 2 sentences each', () => {
+    for (const [key, entry] of Object.entries(GLOSSARY)) {
+      for (const lang of ['vi', 'en'] as const) {
+        expect(entry[lang], `${key}.${lang}`).toBeTruthy()
+        // The brief caps entries at two sentences (everyday first,
+        // optional technical second). Count sentence-ending punctuation
+        // rather than splitting — a final "(... Born)." would otherwise
+        // produce a phantom ')' fragment.
+        const enders = entry[lang].match(/[.!?]/g) ?? []
+        expect(enders.length, `${key}.${lang}`).toBeLessThanOrEqual(2)
+      }
+    }
+  })
+
+  it('every Term key="..." used in the wired components resolves in GLOSSARY', () => {
+    // Static scan of the components that import Term (hardcoded by design —
+    // the brief keeps this a simple string scan, not a module graph walk).
+    const termFiles = [
+      'src/ui/ObservablesBar.svelte',
+      'src/ui/ViewToggle.svelte',
+    ]
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const used = new Set<string>()
+    for (const file of termFiles) {
+      const source = readFileSync(join(root, file), 'utf8')
+      for (const match of source.matchAll(/<Term\s+key="([a-zA-Z]+)"/g)) {
+        used.add(match[1])
+      }
+    }
+    expect(used.size).toBeGreaterThan(0)
+    for (const key of used) {
+      expect(GLOSSARY[key], `Term key="${key}"`).toBeDefined()
     }
   })
 })
