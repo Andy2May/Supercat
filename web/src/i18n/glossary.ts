@@ -21,8 +21,8 @@ export interface GlossaryEntry {
 
 export const GLOSSARY: Record<string, GlossaryEntry> = {
   density: {
-    vi: '|ψ|² — mật độ xác suất: chỗ sáng là nơi khả năng tìm thấy hạt cao; sáng gấp đôi nghĩa là mật độ xác suất gấp đôi. Bản thân ψ không đo được, chỉ bình phương độ lớn của nó mới có ý nghĩa vật lý (quy tắc Born).',
-    en: '|ψ|² is the probability density: bright areas are where the particle is likely to be found; twice as bright means twice the probability density. ψ itself cannot be measured — only its squared magnitude has physical meaning (Born rule).',
+    vi: '|ψ|² — mật độ xác suất: chỗ càng sáng thì khả năng tìm thấy hạt càng cao. Bản thân ψ không đo được, chỉ bình phương độ lớn của nó mới có ý nghĩa vật lý (quy tắc Born).',
+    en: '|ψ|² is the probability density: the brighter the spot, the more likely the particle is to be found there. ψ itself cannot be measured — only its squared magnitude has physical meaning (Born rule).',
   },
   phase: {
     vi: 'Pha là "kim đồng hồ" ẩn của sóng tại mỗi điểm, quay đều theo thời gian. Khi các phần sóng có pha khác nhau chồng lên nhau, chúng giao thoa — đó là nguồn gốc của các vạch sáng và tối.',

@@ -48,8 +48,11 @@ const PINNED: Record<PresetId, { potential: object; packet: object; autoplay: bo
     autoplay: true,
   },
   harmonic: {
+    // sigma = 1/sqrt(2) — the true coherent-state width for m = omega =
+    // hbar = 1 (physics audit 2026-10-01, finding 3): the packet orbits
+    // without breathing, so the "barely spreads" narration is exact.
     potential: { type: 'harmonic', omega: 1 },
-    packet: { x0: -6, y0: 0, kx: 0, ky: 3, sigmaX: 1.2, sigmaY: 1.2 },
+    packet: { x0: -6, y0: 0, kx: 0, ky: 3, sigmaX: 0.7071067811865476, sigmaY: 0.7071067811865476 },
     autoplay: true,
   },
   sandbox: {

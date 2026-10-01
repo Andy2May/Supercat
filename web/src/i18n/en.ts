@@ -42,11 +42,11 @@ export const en: Record<string, string> = {
   'tool.kMag': 'Momentum |k|',
   // V-overlay legend (Task 18, spec 7.1): chip labels over the canvas naming
   // the potential overlay's colors, plus the live scale template ('{v}' is
-  // the max |V|). Explore-friendly wording — no glossary jargon; the V₀
-  // symbol with its value is as technical as this gets.
+  // the max |V| — not a single named V₀: hand-painted scenes mix barrier and
+  // well heights). Explore-friendly wording — no glossary jargon.
   'legend.barrier': 'Barrier',
   'legend.well': 'Well',
-  'legend.v0': 'V₀ ≈ {v}',
+  'legend.v0': 'max|V| ≈ {v}',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
   // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
@@ -105,9 +105,9 @@ export const en: Record<string, string> = {
     'The faint tail that leaks through decays with the barrier thickness.\n' +
     'Draw one more barrier layer and see where the faint tail ends up.',
   'preset.free-packet.title': 'Free wave packet',
-  'preset.free-packet.teaser': 'A packet at rest still spreads out — momentum uncertainty at work.',
+  'preset.free-packet.teaser': 'A moving packet still spreads out — momentum uncertainty at work.',
   'preset.free-packet.card':
-    'A wave packet that "sits still" spreads out on its own until it fills the whole box.\n' +
+    'A wave packet races across the box and spreads out until it fills the whole space.\n' +
     'There is no friction — only momentum uncertainty.\n' +
     'Let it run long enough and the density flattens out evenly.\n' +
     'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own — nothing is lost.',

@@ -39,9 +39,11 @@
   // ------------------------------------------------------- V-overlay legend
 
   /**
-   * V₀ readout (Task 18, spec 7.1): at most one decimal ("30", "24",
-   * "12.5") — the value is a float32 max over the uploaded potential, not
-   * an exact design constant, so pretending more precision is noise.
+   * max|V| readout (Task 18, spec 7.1; relabeled 2026-10-01 physics audit —
+   * the value is max|V|, only a single-height preset makes it a "V₀"):
+   * at most one decimal ("30", "24", "12.5") — the value is a float32 max
+   * over the uploaded potential, not an exact design constant, so
+   * pretending more precision is noise.
    */
   function fmtV0(value: number): string {
     const rounded = Math.round(value * 10) / 10
@@ -520,9 +522,10 @@
   <canvas bind:this={overlay} class="overlay" aria-hidden="true"></canvas>
   {#if legendVisible}
     <!-- Spec 7.1: the M1 review's "user mistook the orange wall for a UI
-         element" — the chips name the overlay colors and V₀ anchors the
-         scale. Pointer-transparent (never a pointer target), bottom-left
-         away from the top-center toast and the below-canvas playback bar. -->
+         element" — the chips name the overlay colors and the max|V| scale
+         anchors them. Pointer-transparent (never a pointer target),
+         bottom-left away from the top-center toast and the below-canvas
+         playback bar. -->
     <div class="v-legend" data-testid="v-legend">
       <span class="row">
         <span class="chip" style:background={V_LEGEND_HEX.barrier}></span>

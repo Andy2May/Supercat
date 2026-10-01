@@ -42,11 +42,11 @@ export const vi: Record<string, string> = {
   'tool.kMag': 'Động lượng |k|',
   // V-overlay legend (Task 18, spec 7.1): chip labels over the canvas naming
   // the potential overlay's colors, plus the live scale template ('{v}' is
-  // the max |V|). Explore-friendly wording — no glossary jargon; the V₀
-  // symbol with its value is as technical as this gets.
+  // the max |V| — not a single named V₀: hand-painted scenes mix barrier and
+  // well heights). Explore-friendly wording — no glossary jargon.
   'legend.barrier': 'Rào',
   'legend.well': 'Giếng',
-  'legend.v0': 'V₀ ≈ {v}',
+  'legend.v0': 'max|V| ≈ {v}',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
   // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
@@ -105,9 +105,9 @@ export const vi: Record<string, string> = {
     'Vệt mờ xuyên qua suy giảm theo độ dày.\n' +
     'Hãy vẽ thêm một lớp rào nữa xem vệt mờ đi đâu.',
   'preset.free-packet.title': 'Gói sóng tự do',
-  'preset.free-packet.teaser': 'Đứng yên vẫn tự giãn ra — hệ quả của bất định động lượng.',
+  'preset.free-packet.teaser': 'Gói sóng vừa bay vừa tự giãn ra — hệ quả của bất định động lượng.',
   'preset.free-packet.card':
-    'Gói sóng "ngồi yên" sẽ tự giãn ra và phủ kín hộp.\n' +
+    'Gói sóng bay xuyên hộp và tự giãn ra, dần phủ kín không gian.\n' +
     'Không có ma sát — chỉ là bất định động lượng.\n' +
     'Để chạy lâu sẽ thấy mật độ phẳng đều.\n' +
     'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian — không mất đi đâu.',

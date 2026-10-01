@@ -29,11 +29,14 @@
 //! # Determinism contract
 //!
 //! Sampling is driven by [`next_uniform`], one step of PCG32 (XSH-RR) seeded
-//! by the caller's `u64`: every operation it performs — integer arithmetic,
-//! one multiply, one add, IEEE-754 `exp` — is exactly specified, so the same
-//! seed always yields the same outcome and successor state on every build
-//! and platform. Replaying a simulation replays its measurements exactly;
-//! distinct seeds explore the distribution (see
+//! by the caller's `u64`: the same seed always yields the same outcome and
+//! successor state on a given platform and build, and replays identically.
+//! The PCG integer path is exactly reproducible everywhere (integer
+//! arithmetic, one multiply, one add); cross-platform agreement is limited
+//! only by `exp`, which IEEE-754 recommends but does not require to be
+//! correctly rounded — different libms differ by a few ulp, with no visible
+//! physical consequence. Replaying a simulation on the same build replays
+//! its measurements exactly; distinct seeds explore the distribution (see
 //! `sample_distribution_matches_density_3_sigma`).
 
 use crate::error::{CoreError, Result};

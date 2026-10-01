@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * V₀ legend (Task 18, spec 7.1): a pointer-transparent DOM overlay on the
+ * V legend (Task 18, spec 7.1): a pointer-transparent DOM overlay on the
  * sim canvas naming the potential overlay's colors and its live scale —
- * the M1 review finding that the orange wall read as a UI element. Visible
+ * the M1 review finding that the orange wall read as a UI element. The
+ * scale is labeled max|V| (physics audit 2026-10-01, finding 4): the value
+ * is the max absolute potential, which is only "V₀" for single-height
+ * presets — hand-painted scenes mix barrier and well heights. Visible
  * only where V is non-zero somewhere; the zero-potential scenes
  * (free-packet, sandbox) stay legendless until the user draws.
  */
@@ -22,7 +25,7 @@ function expectNoErrors(page: import('@playwright/test').Page): {
   return { consoleErrors, pageErrors }
 }
 
-test('V legend: double-slit shows the scale (V₀ ≈ 30), free-packet hides it', async ({
+test('V legend: double-slit shows the scale (max|V| ≈ 30), free-packet hides it', async ({
   page,
 }) => {
   const { consoleErrors, pageErrors } = expectNoErrors(page)
@@ -33,8 +36,8 @@ test('V legend: double-slit shows the scale (V₀ ≈ 30), free-packet hides it'
   await page.goto('/#/sim/double-slit')
   const legend = page.getByTestId('v-legend')
   await expect(legend).toBeVisible({ timeout: 10_000 })
-  // The wall pins the scale at 30; "V₀" is language-independent.
-  await expect(legend).toContainText('V₀')
+  // The wall pins the scale at 30; "max|V|" is language-independent.
+  await expect(legend).toContainText('max|V|')
   await expect(legend).toContainText('30')
 
   // Free-packet boots with V ≡ 0 (the worker ships the zero potential on

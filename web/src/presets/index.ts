@@ -86,11 +86,15 @@ export const PRESETS: Record<PresetId, PresetConfig> = {
     titleKey: 'preset.free-packet.title',
   },
   // Coherent-state elliptical orbit: offset packet with tangential momentum.
+  // sigma = 1/sqrt(2) is the HO ground-state width for m = omega = hbar = 1,
+  // making this a true coherent state: the width never breathes (physics
+  // audit 2026-10-01, finding 3 — the old 1.2 throbbed 1.2 <-> 0.417 twice
+  // per orbit while the narration promised it barely spreads).
   harmonic: {
     id: 'harmonic',
     grid: 256,
     potential: { type: 'harmonic', omega: 1 },
-    packet: { x0: -6, y0: 0, kx: 0, ky: 3, sigmaX: 1.2, sigmaY: 1.2 },
+    packet: { x0: -6, y0: 0, kx: 0, ky: 3, sigmaX: Math.SQRT1_2, sigmaY: Math.SQRT1_2 },
     autoplay: true,
     titleKey: 'preset.harmonic.title',
   },

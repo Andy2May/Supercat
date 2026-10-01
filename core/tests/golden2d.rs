@@ -338,7 +338,10 @@ fn kinetic_expectation(wf: &Wavefunction2D) -> f64 {
 /// `|<x>(pi/2)| = 3 sin(N (theta - dt)) ~ 3 (pi/2) dt^2 / 24 ~ 2.0e-7`,
 /// `|<y>(pi/2) + 3| = 3/r - 3 ~ 3 dt^2 / 8 ~ 3.7e-7`,
 /// `|<y>(pi)| = 3 sin(2 N (theta - dt)) / r ~ 3.9e-7`, and
-/// `|<x>(pi) + 3| ~ 6 (theta - dt)^2 ~ 3e-14` — all inside the 1e-6 gate.
+/// `|<x>(pi) + 3| ~ 6 (theta - dt)^2 ~ 3e-14` in pure splitting terms —
+/// in practice masked by the rounding floor of the 256²-cell moment sums
+/// (measured 4.5e-12, floor-dominated; the splitting prediction is ~170x
+/// below it) — all inside the 1e-6 gate.
 #[test]
 fn coherent_state_circular_orbit() {
     let (mut wf, v) = coherent_orbit_setup(256);
