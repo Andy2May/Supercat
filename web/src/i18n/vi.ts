@@ -85,9 +85,9 @@ export const vi: Record<string, string> = {
     'Không có ma sát — chỉ là bất định động lượng.\n' +
     'Để chạy lâu sẽ thấy mật độ phẳng đều.',
   'preset.harmonic.title': 'Dao động điều hòa',
-  'preset.harmonic.teaser': "Gói sóng chạy tròn trong 'bát' thế — đúng dự đoán cổ điển.",
+  'preset.harmonic.teaser': "Gói sóng chạy theo quỹ đạo elip trong 'bát' thế — đúng dự đoán cổ điển.",
   'preset.harmonic.card':
-    'Gói bị "bát" giữ lại, tâm nó chạy theo quỹ đạo tròn như quả bóng lăn trong chậu.\n' +
+    'Gói bị "bát" giữ lại, tâm nó chạy theo quỹ đạo elip như quả bóng lăn trong chậu.\n' +
     'Đúng dự đoán cổ điển (định lý Ehrenfest).\n' +
     'Để ý gói gần như không giãn.',
   'preset.sandbox.title': 'Tự do khám phá',

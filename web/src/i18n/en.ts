@@ -87,7 +87,7 @@ export const en: Record<string, string> = {
   'preset.harmonic.title': 'Harmonic oscillator',
   'preset.harmonic.teaser': 'The packet orbits inside the potential bowl — as classical physics predicts.',
   'preset.harmonic.card':
-    'The "bowl" holds the packet: its center traces a circular orbit, like a ball rolling in a basin.\n' +
+    'The "bowl" holds the packet: its center traces an elliptical orbit, like a ball rolling in a basin.\n' +
     "Exactly the classical prediction (Ehrenfest's theorem).\n" +
     'Notice how the packet barely spreads.',
   'preset.sandbox.title': 'Free play',
