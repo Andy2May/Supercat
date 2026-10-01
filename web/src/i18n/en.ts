@@ -130,4 +130,25 @@ export const en: Record<string, string> = {
     'A free-play space.\n' +
     'Pick a tool to draw barriers or wells, and drop a wave packet by dragging on the canvas.\n' +
     'Watch |ψ|² respond.',
+  // UI redesign (2026-10-01): section labels for the workspace side rails and
+  // the scene tab bar, plus the landing hero copy. Values are the Appendix A
+  // draft of the redesign spec — final wording is settled in a later polish
+  // pass, these pins are the parity baseline. 'landing.title' is ONE key with
+  // a literal '\n' between the two hero lines (the component renders it via
+  // split('\n'), like the preset cards); 'landing.schrodinger' is decorative
+  // math (aria-hidden at the call site) and identical across languages.
+  'rail.tools': 'TOOLS',
+  'rail.briefing': 'BRIEFING',
+  'rail.readouts': 'READOUTS',
+  'rail.view': 'VIEW',
+  'rail.export': 'EXPORT',
+  'scene.label': 'EXPERIMENT · {name}',
+  'landing.kicker': '2D QUANTUM LAB',
+  'landing.title': 'See the\ninvisible.',
+  'landing.desc':
+    'Draw barriers, fire wave packets, take measurements — and watch quantum mechanics unfold before your eyes. No install, no signup.',
+  'landing.ctaPrimary': 'Start experimenting →',
+  'landing.ctaFree': 'Free exploration',
+  'landing.status': 'NOW SHOWING · {name}',
+  'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',
 }

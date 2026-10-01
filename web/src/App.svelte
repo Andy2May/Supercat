@@ -44,7 +44,7 @@
   const modeToggleLabel = $derived.by(() => {
     active // dependency: re-translate when the language changes
     const target = modeStore.mode === 'explore' ? 'mode.advanced' : 'mode.explore'
-    return t('mode.switchHint').replace('{mode}', t(target))
+    return t('mode.switchHint', { mode: t(target) })
   })
   const hudLabels = $derived.by(() => {
     active

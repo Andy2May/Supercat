@@ -52,6 +52,120 @@ describe('i18n', () => {
   })
 })
 
+describe('t(key, params) interpolation (redesign Task 3)', () => {
+  afterEach(() => {
+    setLang('en')
+  })
+
+  it('fills each {name} placeholder with String(param)', () => {
+    setLang('vi')
+    expect(t('scene.label', { name: 'Khe kép' })).toBe('THÍ NGHIỆM · Khe kép')
+    setLang('en')
+    expect(t('scene.label', { name: 'Double slit' })).toBe('EXPERIMENT · Double slit')
+  })
+
+  it('replaces the three former manual .replace call sites', () => {
+    setLang('vi')
+    expect(t('mode.switchHint', { mode: 'Explore' })).toBe('Chuyển sang Explore')
+    expect(t('legend.v0', { v: 3.5 })).toBe('max|V| ≈ 3.5')
+    expect(t('measure.resultMomentum', { x: '1.20', y: '-0.50' })).toBe('Đo k = (1.20, -0.50)')
+    setLang('en')
+    expect(t('mode.switchHint', { mode: t('mode.advanced') })).not.toContain('{mode}')
+  })
+
+  it('a missing param leaves its placeholder untouched', () => {
+    setLang('en')
+    expect(t('measure.resultPosition')).toBe('Measured at ({x}, {y})')
+    expect(t('measure.resultPosition', { x: '1.00' })).toBe('Measured at (1.00, {y})')
+  })
+
+  it('params without a matching placeholder are ignored without error', () => {
+    setLang('en')
+    expect(t('app.title', { unused: 'x' })).toBe(en['app.title'])
+  })
+
+  it('numeric params are stringified', () => {
+    setLang('en')
+    expect(t('legend.v0', { v: 12 })).toBe('max|V| ≈ 12')
+  })
+
+  it('every occurrence of a placeholder is replaced, not just the first', () => {
+    // No shipped value repeats a placeholder, so pin the all-occurrences
+    // semantics with a scratch key (added to BOTH dictionaries so the parity
+    // invariant holds even mid-test, removed afterwards).
+    const key = '__test.repeat__'
+    vi[key] = en[key] = 'a {x} b {x} c'
+    try {
+      setLang('vi')
+      expect(t(key, { x: 'X' })).toBe('a X b X c')
+    } finally {
+      delete vi[key]
+      delete en[key]
+    }
+  })
+
+  it('unknown keys still return the key itself, params notwithstanding', () => {
+    setLang('en')
+    expect(t('no.such.key', { x: 1 })).toBe('no.such.key')
+  })
+})
+
+describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
+  it('rail section labels exist in both languages', () => {
+    expect(vi['rail.tools']).toBe('CÔNG CỤ')
+    expect(en['rail.tools']).toBe('TOOLS')
+    expect(vi['rail.briefing']).toBe('THUYẾT MINH')
+    expect(en['rail.briefing']).toBe('BRIEFING')
+    expect(vi['rail.readouts']).toBe('ĐỌC SỐ')
+    expect(en['rail.readouts']).toBe('READOUTS')
+    expect(vi['rail.view']).toBe('HIỂN THỊ')
+    expect(en['rail.view']).toBe('VIEW')
+    expect(vi['rail.export']).toBe('XUẤT')
+    expect(en['rail.export']).toBe('EXPORT')
+  })
+
+  it('scene label carries the {name} template', () => {
+    expect(vi['scene.label']).toBe('THÍ NGHIỆM · {name}')
+    expect(en['scene.label']).toBe('EXPERIMENT · {name}')
+  })
+
+  it('landing hero copy matches the Appendix A draft', () => {
+    expect(vi['landing.kicker']).toBe('PHÒNG THÍ NGHIỆM LƯỢNG TỬ')
+    expect(en['landing.kicker']).toBe('2D QUANTUM LAB')
+    // One key holding both hero lines separated by a literal newline; the
+    // landing component renders it as split('\n'), like PresetCard cards.
+    expect(vi['landing.title']).toBe('Nhìn thấy\ncái vô hình.')
+    expect(en['landing.title']).toBe('See the\ninvisible.')
+    expect(vi['landing.desc']).toBe(
+      'Vẽ rào chắn, bắn gói sóng, đo vị trí — và xem cơ học lượng tử tự diễn ra dưới con mắt bạn. Không cài đặt, không đăng ký.',
+    )
+    expect(en['landing.desc']).toBe(
+      'Draw barriers, fire wave packets, take measurements — and watch quantum mechanics unfold before your eyes. No install, no signup.',
+    )
+    expect(vi['landing.ctaPrimary']).toBe('Bắt đầu thí nghiệm →')
+    expect(en['landing.ctaPrimary']).toBe('Start experimenting →')
+    expect(vi['landing.ctaFree']).toBe('Tự do khám phá')
+    expect(en['landing.ctaFree']).toBe('Free exploration')
+    expect(vi['landing.status']).toBe('ĐANG CHIẾU · {name}')
+    expect(en['landing.status']).toBe('NOW SHOWING · {name}')
+  })
+
+  it('landing.schrodinger is the same formula string in both languages', () => {
+    expect(vi['landing.schrodinger']).toBe('i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ')
+    expect(en['landing.schrodinger']).toBe(vi['landing.schrodinger'])
+  })
+
+  it('landing.title splits into exactly 2 non-empty lines', () => {
+    for (const dict of [vi, en]) {
+      const lines = dict['landing.title'].split('\n')
+      expect(lines).toHaveLength(2)
+      for (const line of lines) {
+        expect(line.trim().length).toBeGreaterThan(0)
+      }
+    }
+  })
+})
+
 describe('preset narration (Task 9)', () => {
   it('every preset has title/teaser/card in both languages; card 3-5 lines; teaser one short line', () => {
     for (const dict of [vi, en]) {

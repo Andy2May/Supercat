@@ -130,4 +130,25 @@ export const vi: Record<string, string> = {
     'Vùng chơi tự do.\n' +
     'Chọn công cụ vẽ rào/giếng, thả gói sóng bằng cách kéo trên nền.\n' +
     'Xem |ψ|² phản ứng.',
+  // UI redesign (2026-10-01): section labels for the workspace side rails and
+  // the scene tab bar, plus the landing hero copy. Values are the Appendix A
+  // draft of the redesign spec — final wording is settled in a later polish
+  // pass, these pins are the parity baseline. 'landing.title' is ONE key with
+  // a literal '\n' between the two hero lines (the component renders it via
+  // split('\n'), like the preset cards); 'landing.schrodinger' is decorative
+  // math (aria-hidden at the call site) and identical across languages.
+  'rail.tools': 'CÔNG CỤ',
+  'rail.briefing': 'THUYẾT MINH',
+  'rail.readouts': 'ĐỌC SỐ',
+  'rail.view': 'HIỂN THỊ',
+  'rail.export': 'XUẤT',
+  'scene.label': 'THÍ NGHIỆM · {name}',
+  'landing.kicker': 'PHÒNG THÍ NGHIỆM LƯỢNG TỬ',
+  'landing.title': 'Nhìn thấy\ncái vô hình.',
+  'landing.desc':
+    'Vẽ rào chắn, bắn gói sóng, đo vị trí — và xem cơ học lượng tử tự diễn ra dưới con mắt bạn. Không cài đặt, không đăng ký.',
+  'landing.ctaPrimary': 'Bắt đầu thí nghiệm →',
+  'landing.ctaFree': 'Tự do khám phá',
+  'landing.status': 'ĐANG CHIẾU · {name}',
+  'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',
 }

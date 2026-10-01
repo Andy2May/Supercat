@@ -61,7 +61,7 @@
     return {
       barrier: t('legend.barrier'),
       well: t('legend.well'),
-      v0: t('legend.v0').replace('{v}', fmtV0(simStore.potentialMax)),
+      v0: t('legend.v0', { v: fmtV0(simStore.potentialMax) }),
     }
   })
 
@@ -464,10 +464,10 @@
   function showToast(outcome: MeasuredOutcome): void {
     // Non-reactive t() on purpose: a language flip must not re-fire the
     // marker effect (and the toast is long gone before it would matter).
-    const template = t(
+    toast = t(
       outcome.kind === 'position' ? 'measure.resultPosition' : 'measure.resultMomentum',
+      { x: fmt(outcome.x), y: fmt(outcome.y) },
     )
-    toast = template.replace('{x}', fmt(outcome.x)).replace('{y}', fmt(outcome.y))
     if (toastTimer !== 0) window.clearTimeout(toastTimer)
     toastTimer = window.setTimeout(() => {
       toast = undefined
