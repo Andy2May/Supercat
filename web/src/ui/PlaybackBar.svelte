@@ -20,6 +20,7 @@
       restorePotential: t('playback.restorePotential'),
       speed: t('playback.speed'),
       barLabel: t('playback.barLabel'),
+      exportPng: t('export.png'),
     }
   })
   const playPauseLabel = $derived.by(() => {
@@ -50,6 +51,17 @@
   </button>
   <button data-testid="restore-potential" onclick={() => simStore.send({ type: 'restore-potential' })}>
     {labels.restorePotential}
+  </button>
+  <!-- PNG export (Task 16): queues a capture of the NEXT drawn frame — the
+       render loop fires toBlob synchronously after its draw, the only safe
+       point for the preserveDrawingBuffer:false canvas. Available in BOTH
+       experience modes; aria-label mirrors the visible text. -->
+  <button
+    data-testid="export-png"
+    aria-label={labels.exportPng}
+    onclick={() => simStore.requestCapture()}
+  >
+    {labels.exportPng}
   </button>
   <label class="slider">
     <span>{labels.speed}</span>

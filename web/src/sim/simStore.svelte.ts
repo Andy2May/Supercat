@@ -158,6 +158,16 @@ export class SimStore {
    */
   epoch = 0
 
+  /**
+   * PNG export queue (Task 16): plain counter, NOT reactive — consumed by
+   * the render loop inside its frame callback. Every export-button click
+   * queues exactly one capture; the loop takes one per drawn frame. A
+   * boolean flag would collapse two clicks landing inside the same
+   * inter-frame gap (< 16 ms) into a single file — the counter keeps the
+   * one-click-one-file contract.
+   */
+  capturePending = 0
+
   private worker: Worker | undefined
   private readonly frameListeners = new Set<(frame: FrameMessage) => void>()
 
@@ -265,6 +275,17 @@ export class SimStore {
     if (this.view === next) return
     this.view = next
     this.send({ type: 'set-momentum-view', on: next === 'momentum' })
+  }
+
+  /**
+   * Queues a PNG snapshot of the canvas (Task 16). The capture itself
+   * runs in the render loop's next frame callback, synchronously after
+   * `draw()` — the only point where the (preserveDrawingBuffer:false)
+   * backbuffer is guaranteed readable. No worker message involved: this
+   * is a main-thread render concern.
+   */
+  requestCapture(): void {
+    this.capturePending++
   }
 
   /**

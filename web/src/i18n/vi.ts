@@ -15,6 +15,9 @@ export const vi: Record<string, string> = {
   'playback.restorePotential': 'Khôi phục thế gốc',
   'playback.barLabel': 'Điều khiển mô phỏng',
   'playback.speed': 'Tốc độ',
+  // PNG canvas export (Task 16): playback-bar button, visible in both
+  // experience modes; doubles as its aria-label.
+  'export.png': 'Xuất ảnh PNG',
   'error.resetAndRun': 'Reset & chạy lại',
   'webgl.missingTitle': 'Không hỗ trợ WebGL2',
   'perf.fps': 'FPS',

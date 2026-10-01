@@ -9,7 +9,9 @@
  *                                      frame's buffer back for reuse)
  *
  * A worker frame -> upload field (+ potential when shipped) -> draw ->
- * refresh the debug hook and the perf HUD. Drawing is frame-driven, so a
+ * refresh the debug hook and the perf HUD — and, if the export button
+ * queued one, fire a PNG capture of the just-drawn canvas (Task 16, same
+ * task as the draw; see capturePng). Drawing is frame-driven, so a
  * paused simulation draws nothing and `debugState.frames` freezes — with
  * one exception (Task 14): while a measurement crossfade is running, the
  * tick itself draws extra frames to ramp u_fade even when no worker frame
@@ -33,6 +35,50 @@ function maxAbs(values: Float32Array): number {
     if (a > max) max = a
   }
   return max
+}
+
+/**
+ * Export filename `psiforge-<YYYYMMDD-HHmmss>.png` in LOCAL time (Task 16):
+ * the PNG is a user artifact and a UTC stamp would be off by the viewer's
+ * timezone offset.
+ */
+function pngFilename(): string {
+  const now = new Date()
+  const two = (n: number): string => String(n).padStart(2, '0')
+  return (
+    `psiforge-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}` +
+    `-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}.png`
+  )
+}
+
+/**
+ * Encodes the canvas as PNG and triggers a browser download (Task 16).
+ * The toBlob CALL must be synchronous within the same task as the last
+ * draw — the canvas has preserveDrawingBuffer:false, so the backbuffer is
+ * only valid until the browser composites; the async part here is merely
+ * the encode (the bitmap snapshot is taken at call time, so a deferred
+ * callback reads a captured copy, not the volatile buffer). A null blob is
+ * rare (zero-area canvas, OOM) and not fatal: warn and move on.
+ */
+function capturePng(canvas: HTMLCanvasElement): void {
+  canvas.toBlob((blob) => {
+    if (blob === null) {
+      console.warn('psiforge: PNG export failed — canvas.toBlob returned no blob')
+      return
+    }
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = pngFilename()
+    // Firefox needs the anchor in the DOM to fire a download; Chrome is
+    // fine either way. Insert-click-remove keeps both honest.
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    // The browser took ownership of the blob at click time; revoke on a
+    // later task so the URL outlives the download's start.
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }, 'image/png')
 }
 
 export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => void {
@@ -264,6 +310,17 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       // Idempotent + one uniform1i, so per-frame is free.
       renderer.setColorMode(effectiveColorMode(store.view, store.phaseColor, modeStore.mode))
       renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
+      // PNG export (Task 16): consume the queue exactly here — one capture
+      // per queued click, at most one per frame, inside the `!contextLost`
+      // branch so a capture lost to a dead context stays queued for the
+      // first frame after restoration instead of encoding a garbage
+      // backbuffer. capturePng's toBlob is synchronous with the draw above
+      // (same task) — the preserveDrawingBuffer:false buffer would already
+      // be cleared by the time any deferred call read it.
+      if (store.capturePending > 0) {
+        store.capturePending--
+        capturePng(canvas)
+      }
     }
     showingMomentum = viewIsMomentum
     // The upload (or the context-loss skip) was the last read of the frame

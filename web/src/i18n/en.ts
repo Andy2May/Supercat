@@ -15,6 +15,9 @@ export const en: Record<string, string> = {
   'playback.restorePotential': 'Restore original potential',
   'playback.barLabel': 'Playback controls',
   'playback.speed': 'Speed',
+  // PNG canvas export (Task 16): playback-bar button, visible in both
+  // experience modes; doubles as its aria-label.
+  'export.png': 'Export PNG',
   'error.resetAndRun': 'Reset & run again',
   'webgl.missingTitle': 'WebGL2 not supported',
   'perf.fps': 'FPS',
