@@ -6,6 +6,8 @@
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
   import { effectiveView, simStore } from './sim/simStore.svelte.js'
+  import { decodeState, encodeState, StateFileError } from './sim/stateFile.js'
+  import { downloadBlob, psiforgeFilename } from './ui/download.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
   import ObservablesBar from './ui/ObservablesBar.svelte'
@@ -55,6 +57,15 @@
   const momentumCaption = $derived.by(() => {
     active // dependency: re-translate when the language changes
     return t('view.momentumCaption')
+  })
+  // JSON state save/load (Task 17, advanced mode): header button labels.
+  const saveStateLabel = $derived.by(() => {
+    active
+    return t('export.json')
+  })
+  const loadStateLabel = $derived.by(() => {
+    active
+    return t('import.json')
   })
 
   // WebGL2 gate, probed once: without it the renderer cannot draw, so the
@@ -133,6 +144,91 @@
       ? t('app.noWebgl')
       : t('app.renderFailed')
   })
+
+  // ---- JSON state save/load (Task 17, advanced mode) --------------------
+  // The hidden file input behind the "Mở" button.
+  let fileInput = $state<HTMLInputElement | undefined>(undefined)
+
+  /** Save: only posts the request — the reply lands in the onState
+   * subscription below, which encodes and downloads the file. */
+  function saveState(): void {
+    simStore.send({ type: 'serialize-state' })
+  }
+
+  // The download half of Save: the worker's `state` reply (transferred
+  // arrays) goes through encodeState into a timestamped JSON file.
+  $effect(() => {
+    const off = simStore.onState((state) => {
+      try {
+        downloadBlob(
+          new Blob([JSON.stringify(encodeState(state))], { type: 'application/json' }),
+          psiforgeFilename('state', 'json'),
+        )
+      } catch {
+        // encodeState refusing non-finite data cannot happen for a state
+        // the propagator is still stepping (its norm guard fires first) —
+        // and a failed save must never take the app down. Swallow.
+      }
+    })
+    return off
+  })
+
+  /** Load-failure copy: the localized headline plus, when the codec said
+   * why, the matching reason detail. */
+  function loadFailedMessage(error: unknown): string {
+    if (error instanceof StateFileError) {
+      return `${t('loadFailed')} — ${t(`loadFailed.${error.reason}`)}`
+    }
+    return t('loadFailed')
+  }
+
+  /** Load: read -> parse -> decode -> hand to the worker (arrays
+   * transferred). Any throw on the way is a NON-fatal loadError banner —
+   * the running simulation is untouched. */
+  async function onStateFile(event: Event): Promise<void> {
+    const input = event.currentTarget
+    const file = input instanceof HTMLInputElement ? (input.files?.[0] ?? undefined) : undefined
+    // Reset so picking the SAME file again still fires a change event.
+    if (input instanceof HTMLInputElement) input.value = ''
+    if (file === undefined) return
+    try {
+      const raw = decodeState(JSON.parse(await file.text()))
+      // The codec validates the file against its OWN grid; THIS app is
+      // square-grid only (every texture upload is sized from a single
+      // store.grid), so a hand-crafted nx≠ny file is rejected here with
+      // the same shape class the codec uses.
+      if (raw.nx !== raw.ny) {
+        throw new StateFileError('shape', `state file: non-square grid ${raw.nx}x${raw.ny}`)
+      }
+      // A loaded file may live on a different grid than this session booted
+      // with — the render loop sizes every texture upload from store.grid,
+      // so it must learn the file's grid BEFORE the load's confirmation
+      // frame arrives (straggler old-grid frames are dropped by a guard in
+      // simLoop).
+      simStore.grid = raw.nx
+      // Optimistic clear: a worker-side rejection re-sets loadError via its
+      // load-error reply; the next frame after a successful load confirms.
+      simStore.loadError = undefined
+      simStore.send(
+        {
+          type: 'deserialize-state',
+          nx: raw.nx,
+          ny: raw.ny,
+          extentX: raw.extentX,
+          extentY: raw.extentY,
+          dt: raw.dt,
+          m: raw.m,
+          hbar: raw.hbar,
+          t: raw.t,
+          potential: raw.potential,
+          psi: raw.psi,
+        },
+        [raw.potential.buffer, raw.psi.buffer],
+      )
+    } catch (error) {
+      simStore.loadError = loadFailedMessage(error)
+    }
+  }
 </script>
 
 {#if !webglOk}
@@ -149,6 +245,25 @@
         <button data-testid="mode-toggle" onclick={() => modeStore.toggle()}>
           {modeToggleLabel}
         </button>
+        {#if modeStore.mode === 'advanced'}
+          <!-- JSON state save/load (Task 17, advanced only): Save posts
+               serialize-state (the reply downloads in the onState effect);
+               Load clicks the hidden file input below. -->
+          <button data-testid="export-json" onclick={saveState}>
+            {saveStateLabel}
+          </button>
+          <button data-testid="import-json" onclick={() => fileInput?.click()}>
+            {loadStateLabel}
+          </button>
+          <input
+            data-testid="import-json-input"
+            type="file"
+            accept=".json,application/json"
+            hidden
+            bind:this={fileInput}
+            onchange={onStateFile}
+          />
+        {/if}
       </div>
     </header>
     {#if renderError !== undefined}
@@ -170,6 +285,20 @@
     {/if}
     {#if simStore.fatal !== undefined}
       <ErrorBanner message={simStore.fatal} />
+    {:else if simStore.loadError !== undefined}
+      <!-- Non-fatal load error (Task 17): a rejected state file. Amber, not
+           red — the simulation keeps running; dismiss or load another file
+           (a successful load clears it). -->
+      <div class="load-error" role="alert" data-testid="load-error">
+        <span>{simStore.loadError}</span>
+        <button
+          data-testid="load-error-dismiss"
+          aria-label="×"
+          onclick={() => (simStore.loadError = undefined)}
+        >
+          ×
+        </button>
+      </div>
     {/if}
     {#if simStore.perfMode}
       <div class="hud" data-testid="perf-hud" aria-hidden="true">
@@ -200,5 +329,28 @@
     font-size: 0.85rem;
     opacity: 0.75;
     font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  }
+
+  .load-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-top: 1.25rem;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    text-align: left;
+    color: #92400e;
+    background: color-mix(in srgb, #92400e 12%, transparent);
+    border: 1px solid #92400e;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .load-error {
+      color: #fbbf24;
+      background: color-mix(in srgb, #fbbf24 14%, transparent);
+      border-color: #fbbf24;
+    }
   }
 </style>

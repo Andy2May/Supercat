@@ -19,6 +19,7 @@ import type {
   MainToWorker,
   MeasuredOutcome,
   ObservablesFrame,
+  StateMessage,
   WorkerToMain,
 } from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
@@ -113,6 +114,14 @@ export class SimStore {
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
   /**
+   * NON-fatal load error (Task 17): set when a JSON state file fails to
+   * decode (main thread) or fails wasm's deserialize validation (worker
+   * `load-error`). Unlike `fatal` it never stops the simulation — the
+   * banner is informational. Cleared by `init` (covers preset switches)
+   * and optimistically by App the moment a fresh file passes decoding.
+   */
+  loadError = $state<string | undefined>(undefined)
+  /**
    * Latest measurement outcome (Task 14): set (a fresh object each time —
    * identical coordinates still re-trigger the marker/toast effect) when a
    * frame carrying `measured` lands, read by SimCanvas to spawn the ring
@@ -170,6 +179,13 @@ export class SimStore {
 
   private worker: Worker | undefined
   private readonly frameListeners = new Set<(frame: FrameMessage) => void>()
+  /**
+   * `state`-reply subscribers (Task 17): App registers one to encode the
+   * serialized payload and trigger the JSON download. Same pattern as
+   * `frameListeners` — a Set + unsubscribe closure, so the download path
+   * survives any number of mount/unmount cycles.
+   */
+  private readonly stateListeners = new Set<(state: StateMessage) => void>()
 
   constructor() {
     const params = readParams()
@@ -195,6 +211,7 @@ export class SimStore {
   init(preset: PresetConfig): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
+    this.loadError = undefined
     this.lastMeasurement = undefined
     this.t = 0
     this.norm = 0
@@ -305,6 +322,19 @@ export class SimStore {
     }
   }
 
+  /**
+   * Subscribes to `state` replies (Task 17, the answer to `serialize-state`
+   * — a send the App side triggers with its Save button); same contract as
+   * `onFrame`. The payload's arrays were transferred to this thread, so
+   * each subscriber must treat them as read-only single-shot data.
+   */
+  onState(cb: (state: StateMessage) => void): () => void {
+    this.stateListeners.add(cb)
+    return () => {
+      this.stateListeners.delete(cb)
+    }
+  }
+
   /** Tears the worker down for good (component unmount). */
   destroy(): void {
     this.worker?.terminate()
@@ -317,6 +347,19 @@ export class SimStore {
     if (msg.type === 'fatal') {
       this.fatal = msg.message
       this.running = false
+      return
+    }
+    if (msg.type === 'state') {
+      // The serialized scene (Task 17): handed to the save subscribers —
+      // App encodes it into the JSON download. Not frame-shaped; nothing
+      // else here applies.
+      for (const cb of this.stateListeners) cb(msg)
+      return
+    }
+    if (msg.type === 'load-error') {
+      // A rejected state file (Task 17): informational only — the worker
+      // kept the live simulation running, so nothing else moves.
+      this.loadError = msg.message
       return
     }
     this.t = msg.t

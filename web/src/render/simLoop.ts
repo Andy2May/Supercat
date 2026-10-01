@@ -26,6 +26,7 @@ import { modeStore } from '../sim/modeStore.svelte.js'
 import { effectiveColorMode, type SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
+import { downloadBlob, psiforgeFilename } from '../ui/download.js'
 
 /** Max |V| over the shipped potential — scales the shader's V overlay. */
 function maxAbs(values: Float32Array): number {
@@ -38,27 +39,15 @@ function maxAbs(values: Float32Array): number {
 }
 
 /**
- * Export filename `psiforge-<YYYYMMDD-HHmmss>.png` in LOCAL time (Task 16):
- * the PNG is a user artifact and a UTC stamp would be off by the viewer's
- * timezone offset.
- */
-function pngFilename(): string {
-  const now = new Date()
-  const two = (n: number): string => String(n).padStart(2, '0')
-  return (
-    `psiforge-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}` +
-    `-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}.png`
-  )
-}
-
-/**
  * Encodes the canvas as PNG and triggers a browser download (Task 16).
  * The toBlob CALL must be synchronous within the same task as the last
  * draw — the canvas has preserveDrawingBuffer:false, so the backbuffer is
  * only valid until the browser composites; the async part here is merely
  * the encode (the bitmap snapshot is taken at call time, so a deferred
  * callback reads a captured copy, not the volatile buffer). A null blob is
- * rare (zero-area canvas, OOM) and not fatal: warn and move on.
+ * rare (zero-area canvas, OOM) and not fatal: warn and move on. Filename +
+ * anchor plumbing live in ui/download.ts (shared with the Task-17 JSON
+ * export).
  */
 function capturePng(canvas: HTMLCanvasElement): void {
   canvas.toBlob((blob) => {
@@ -66,18 +55,7 @@ function capturePng(canvas: HTMLCanvasElement): void {
       console.warn('psiforge: PNG export failed — canvas.toBlob returned no blob')
       return
     }
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = pngFilename()
-    // Firefox needs the anchor in the DOM to fire a download; Chrome is
-    // fine either way. Insert-click-remove keeps both honest.
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    // The browser took ownership of the blob at click time; revoke on a
-    // later task so the URL outlives the download's start.
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    downloadBlob(blob, psiforgeFilename('', 'png'))
   }, 'image/png')
 }
 
@@ -202,6 +180,18 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
   const offFrame = store.onFrame((frame) => {
     if (disposed) return
     advanceInFlight = false
+
+    // Grid-consistency guard (Task 17): a loaded state file can carry a
+    // different grid than the session booted with — App updates store.grid
+    // the moment a decoded file is sent, so any frame still sized for the
+    // OLD grid is a straggler from the superseded sim (an advance that was
+    // in flight across the load). Uploading it under the new dims would
+    // hand texImage2D a wrongly-sized buffer; drop it instead — the load's
+    // own confirmation frame follows immediately.
+    if (frame.densityPhase.length !== 2 * store.grid * store.grid) {
+      recycleBuffer = frame.densityPhase.buffer as ArrayBuffer
+      return
+    }
 
     const now = performance.now()
     fpsEma = nextFpsEma(fpsEma, lastDrawAt === 0 ? 0 : now - lastDrawAt)

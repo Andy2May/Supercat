@@ -18,6 +18,15 @@ export const vi: Record<string, string> = {
   // PNG canvas export (Task 16): playback-bar button, visible in both
   // experience modes; doubles as its aria-label.
   'export.png': 'Xuất ảnh PNG',
+  // JSON state save/load (Task 17, advanced mode): the header Save/Load
+  // state buttons, the non-fatal load-failure banner headline, and the
+  // per-reason detail appended to it (StateFileError.reason).
+  'export.json': 'Lưu trạng thái',
+  'import.json': 'Mở trạng thái',
+  'loadFailed': 'Không mở được file trạng thái',
+  'loadFailed.version': 'phiên bản file không hỗ trợ',
+  'loadFailed.shape': 'sai kích thước lưới',
+  'loadFailed.corrupt': 'file hỏng',
   'error.resetAndRun': 'Reset & chạy lại',
   'webgl.missingTitle': 'Không hỗ trợ WebGL2',
   'perf.fps': 'FPS',

@@ -288,6 +288,110 @@ self.onmessage = (ev: MessageEvent<MainToWorker>): void => {
           })
           break
         }
+        case 'serialize-state': {
+          if (sim === undefined) throw new Error('serialize-state before init')
+          // serialize_state() returns its payload as a plain object
+          // (scalars + two freshly-allocated Float32Arrays — see the wasm
+          // docs); both arrays are wasm-owned copies, so they leave through
+          // the transfer list untouched by any recycle channel.
+          const s = sim.serialize_state() as {
+            nx: number
+            ny: number
+            extentX: number
+            extentY: number
+            dt: number
+            m: number
+            hbar: number
+            t: number
+            potential: Float32Array
+            psi: Float32Array
+          }
+          self.postMessage(
+            {
+              type: 'state',
+              nx: s.nx,
+              ny: s.ny,
+              extentX: s.extentX,
+              extentY: s.extentY,
+              dt: s.dt,
+              m: s.m,
+              hbar: s.hbar,
+              t: s.t,
+              potential: s.potential,
+              psi: s.psi,
+            },
+            [s.potential.buffer, s.psi.buffer],
+          )
+          break
+        }
+        case 'deserialize-state': {
+          if (sim === undefined) throw new Error('deserialize-state before init')
+          // A bad FILE is a caller problem, not a worker fault: every
+          // failure below (fresh-sim construction with impossible scalars,
+          // wasm's dimension/non-finite rejections) lands on load-error so
+          // the live simulation keeps running untouched — never on fatal.
+          // (wasm rejects atomically: a failed deserialize leaves the
+          // target sim exactly as it was.)
+          try {
+            // Grid rule: wasm's deserialize only enforces nx/ny —
+            // extent/dt/m/ħ are validated but NOT applied, and the
+            // propagator is never rebuilt in place. A file saved on a
+            // different grid therefore needs a FRESH Simulation2D built
+            // from the file's own scalars (which is also what applies
+            // them); the live reference is swapped only once construction
+            // succeeded, so a rejection keeps the old sim.
+            if (msg.nx !== gridNx || msg.ny !== gridNy) {
+              sim = new wasm.Simulation2D(
+                msg.nx,
+                msg.ny,
+                msg.extentX,
+                msg.extentY,
+                msg.dt,
+                msg.m,
+                msg.hbar,
+              )
+              gridNx = msg.nx
+              gridNy = msg.ny
+              // Same session reset an `init` does for a new grid: the
+              // version/pool bookkeeping belongs to the old sim, and stale
+              // pooled buffers would fail the same-size check anyway. The
+              // experience flags (obsOn/momentumView) are session state —
+              // they carry over untouched.
+              lastSentPotentialVersion = -1
+              recyclePool.length = 0
+              halted = false
+            }
+            sim.deserialize_state({
+              nx: msg.nx,
+              ny: msg.ny,
+              extentX: msg.extentX,
+              extentY: msg.extentY,
+              dt: msg.dt,
+              m: msg.m,
+              hbar: msg.hbar,
+              t: msg.t,
+              potential: msg.potential,
+              psi: msg.psi,
+            })
+            // Ship the restored state AT ONCE (advance(0) is the t getter;
+            // deserialize restored t) so the load is visible even while
+            // paused. The loaded |psi|^2 peak is a different state's —
+            // force a fresh maxDensity scan, and (if the user watches
+            // k-space) a momentum snapshot on this very frame.
+            scanMaxDensity = true
+            forceMomentumNext = true
+            postFrame(sim.advance(0))
+          } catch (error) {
+            self.postMessage(
+              {
+                type: 'load-error',
+                message: error instanceof Error ? error.message : String(error),
+              },
+              [],
+            )
+          }
+          break
+        }
         case 'set-observables-cadence': {
           obsOn = msg.on
           // Land the flag change on the cadence grid: the next frame (count

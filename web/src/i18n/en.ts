@@ -18,6 +18,15 @@ export const en: Record<string, string> = {
   // PNG canvas export (Task 16): playback-bar button, visible in both
   // experience modes; doubles as its aria-label.
   'export.png': 'Export PNG',
+  // JSON state save/load (Task 17, advanced mode): the header Save/Load
+  // state buttons, the non-fatal load-failure banner headline, and the
+  // per-reason detail appended to it (StateFileError.reason).
+  'export.json': 'Save state',
+  'import.json': 'Load state',
+  'loadFailed': 'Could not load state file',
+  'loadFailed.version': 'unsupported file version',
+  'loadFailed.shape': 'wrong grid dimensions',
+  'loadFailed.corrupt': 'corrupt file',
   'error.resetAndRun': 'Reset & run again',
   'webgl.missingTitle': 'WebGL2 not supported',
   'perf.fps': 'FPS',
