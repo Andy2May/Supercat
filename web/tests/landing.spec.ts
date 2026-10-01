@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Landing "theater" + hash routing (UI redesign T9). Playwright's Desktop
- * Chrome runs with an en-US locale, so `navigator.language` boots the app in
- * English — the assertions below match the English copy on purpose.
+ * Landing "theater" + hash routing (UI redesign T9), plus the branded
+ * document shell assertions (T10: title/OG meta/favicon). Playwright's
+ * Desktop Chrome runs with an en-US locale, so `navigator.language` boots
+ * the app in English — the assertions below match the English copy on
+ * purpose (the shell meta, unlike the app copy, is static Vietnamese).
  *
  * Viewport 1280×800: the film strip is the vertical right rail only while
  * innerWidth >= 1024, and NarrationPanel's R4 rule boots the card open only
@@ -52,6 +54,45 @@ function frames(page: import('@playwright/test').Page): Promise<number> {
 function simTime(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => window.__psiforge?.t ?? 0)
 }
+
+test('document shell: vi lang, branded title, OG/Twitter meta, favicon resolves', async ({
+  page,
+}) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+
+  await page.goto('/')
+
+  // The document is Vietnamese by default; the title is static vi copy
+  // (spec Appendix A — deliberately NOT an i18n key).
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('vi')
+  await expect(page).toHaveTitle(/Psiforge/)
+  expect(await page.title()).toBe('Psiforge — Phòng thí nghiệm lượng tử 2D')
+
+  // Open Graph card + mirrored Twitter card.
+  const ogImage = page.locator('meta[property="og:image"]')
+  await expect(ogImage).toHaveCount(1)
+  await expect(ogImage).toHaveAttribute('content', /\/og\.png$/)
+  await expect(page.locator('meta[property="og:title"]')).toHaveCount(1)
+  await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'website')
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+    'content',
+    'summary_large_image',
+  )
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
+    'content',
+    /\/og\.png$/,
+  )
+
+  // The favicon link points at the SVG and the dev server actually serves it.
+  const icon = page.locator('link[rel="icon"]')
+  await expect(icon).toHaveCount(1)
+  await expect(icon).toHaveAttribute('href', '/favicon.svg')
+  const iconResponse = await page.request.get('/favicon.svg')
+  expect(iconResponse.status()).toBe(200)
+
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})
 
 test('theater landing: five preset tiles in registry order, hero + nav + strip + status', async ({
   page,
