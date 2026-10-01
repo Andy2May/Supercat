@@ -14,7 +14,8 @@
    *             canvas-2D sparklines over `simStore.observablesHistory`;
    *   VIEW      the old ViewToggle's display-space control — now a single
    *             three-way segment (position / momentum / phase) — plus its
-   *             contrast slider, binding untouched;
+   *             contrast slider, binding untouched, and its momentum-view
+   *             measurement trigger (measure-momentum);
    *   EXPORT    the old header buttons (PNG / Save state / Load state),
    *             reduced to entry points: the three callback props own the
    *             actual save/load/capture logic (Task 8 wires them in App).
@@ -72,6 +73,7 @@
       momentum: t('view.momentum'),
       phaseColor: t('view.phaseColor'),
       contrast: t('view.contrast'),
+      measureMomentum: t('measure.momentumTool'),
       exportPng: t('export.png'),
       exportJson: t('export.json'),
       importJson: t('import.json'),
@@ -270,6 +272,19 @@
     simStore.phaseColor = true
   }
 
+  /** The momentum MEASUREMENT trigger (carried verbatim from ViewToggle):
+   * never poke a dead sim (nobody would answer), then trigger the
+   * Born-rule sampling with a fresh 48-bit seed. Rendered only in the
+   * momentum view — same visibility contract as the old {:else} branch —
+   * because a k-space sample is what it draws from. */
+  function measureMomentum(): void {
+    if (simStore.fatal !== undefined) return
+    simStore.send({
+      type: 'measure-momentum',
+      seed: Math.floor(Math.random() * 2 ** 48),
+    })
+  }
+
   // ------------------------------------------------------------------ export
 
   // The hidden file input behind the Load button (same contract as App's).
@@ -356,7 +371,7 @@
         class:active={momentumOn}
         onclick={selectMomentum}
       >
-        {labels.momentum}
+        <Term key="momentumSpace" label={labels.momentum} />
       </button>
       <button
         type="button"
@@ -365,9 +380,19 @@
         class:active={phaseOn}
         onclick={selectPhase}
       >
-        {labels.phaseColor}
+        <Term key="phase" label={labels.phaseColor} />
       </button>
     </div>
+
+    <!-- Momentum measurement trigger (old ViewToggle's momentum-view else
+         branch): k-space sampling, so it exists ONLY while the momentum
+         view is displayed — the position view shows nothing in its place
+         (the phase entry point is the segment itself now). -->
+    {#if view === 'momentum'}
+      <button type="button" data-testid="measure-momentum" class="measure" onclick={measureMomentum}>
+        {labels.measureMomentum}
+      </button>
+    {/if}
 
     <!-- Contrast slider, binding identical to the old ViewToggle: pure
          render state on the store (no worker message); the <label> wraps
@@ -549,6 +574,14 @@
   .view-toggle button:not(.active):hover {
     border-color: transparent;
     background: color-mix(in srgb, var(--text-1) 6%, transparent);
+  }
+
+  /* Momentum measurement trigger: full-width secondary action under the
+     segment (the global button base supplies the border/hover/focus). */
+  .measure {
+    padding: 7px 10px;
+    font-size: 10.5px;
+    color: var(--text-2);
   }
 
   /* Contrast row, same grammar as ToolRail's param sliders. */

@@ -26,8 +26,13 @@ import { vi as viDict } from '../src/i18n/vi.js'
  *   getContext and reads the range off the mapSeries spy — asserting the
  *   derivation at its real call site, not pixels;
  * - VIEW: a three-way segment (position / momentum / phase) carrying the
- *   ViewToggle testids; view switches go through simStore.setView; the
- *   contrast slider keeps its binding and pinned min/max/step;
+ *   ViewToggle testids AND their glossary Terms (momentumSpace / phase —
+ *   the plain position label stays unwrapped); the momentum-view
+ *   measurement trigger (measure-momentum, old ViewToggle else-branch)
+ *   renders only while the momentum view is displayed and sends the
+ *   worker a seeded measure-momentum message; view switches go through
+ *   simStore.setView; the contrast slider keeps its binding and pinned
+ *   min/max/step;
  * - EXPORT: PNG / Save / Load are entry points only — the three callback
  *   props fire; the hidden file input hands the picked File to
  *   onImportFile and resets so re-picking the same file re-fires change;
@@ -98,6 +103,7 @@ beforeEach(() => {
   simStore.view = 'position'
   simStore.phaseColor = false
   simStore.contrast = 2.5
+  simStore.fatal = undefined
   simStore.observablesHistory = []
   mocks.mapSeries.mockClear()
 })
@@ -109,6 +115,7 @@ afterEach(() => {
   simStore.view = 'position'
   simStore.phaseColor = false
   simStore.contrast = 2.5
+  simStore.fatal = undefined
   simStore.observablesHistory = []
 })
 
@@ -211,6 +218,24 @@ describe('ReadoutRail view segment', () => {
     expect(screen.getByTestId('phase-toggle').textContent).toContain(enDict['view.phaseColor'])
   })
 
+  it('keeps the glossary Terms on the momentum and phase labels (ViewToggle carry-over)', () => {
+    render(ReadoutRail, { props: props() })
+
+    // The Term renders the label inline plus a .term tip span; the plain
+    // position label stays unwrapped (ViewToggle never wrapped it either).
+    const momentumTerm = screen.getByTestId('view-momentum').querySelector('.term')
+    expect(momentumTerm).toBeTruthy()
+    expect(momentumTerm?.textContent).toContain(enDict['view.momentum'])
+    expect(momentumTerm?.querySelector('.tip[role="tooltip"]')).toBeTruthy()
+
+    const phaseTerm = screen.getByTestId('phase-toggle').querySelector('.term')
+    expect(phaseTerm).toBeTruthy()
+    expect(phaseTerm?.textContent).toContain(enDict['view.phaseColor'])
+    expect(phaseTerm?.querySelector('.tip[role="tooltip"]')).toBeTruthy()
+
+    expect(screen.getByTestId('view-position').querySelector('.term')).toBeNull()
+  })
+
   it('boots with exactly the position segment pressed', () => {
     render(ReadoutRail, { props: props() })
 
@@ -265,6 +290,50 @@ describe('ReadoutRail view segment', () => {
 
     expect(screen.getByTestId('view-momentum').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('view-position').getAttribute('aria-pressed')).toBe('false')
+  })
+})
+
+// -------------------------------------------------------- momentum measure
+
+describe('ReadoutRail momentum measurement trigger', () => {
+  it('is absent in the position view (old ViewToggle visibility contract)', () => {
+    render(ReadoutRail, { props: props() })
+    expect(screen.queryByTestId('measure-momentum')).toBeNull()
+  })
+
+  it('appears once the momentum view is selected, with its tool label', async () => {
+    render(ReadoutRail, { props: props() })
+
+    await fireEvent.click(screen.getByTestId('view-momentum'))
+
+    const trigger = screen.getByTestId('measure-momentum')
+    expect(trigger.textContent).toContain(enDict['measure.momentumTool'])
+  })
+
+  it('a click sends the worker one measure-momentum message with a fresh 48-bit seed', async () => {
+    const sendSpy = vi.spyOn(simStore, 'send')
+    simStore.view = 'momentum'
+    render(ReadoutRail, { props: props() })
+
+    await fireEvent.click(screen.getByTestId('measure-momentum'))
+
+    expect(sendSpy).toHaveBeenCalledTimes(1)
+    const msg = sendSpy.mock.calls[0][0] as { type: string; seed: number }
+    expect(msg.type).toBe('measure-momentum')
+    expect(Number.isInteger(msg.seed)).toBe(true)
+    expect(msg.seed).toBeGreaterThanOrEqual(0)
+    expect(msg.seed).toBeLessThan(2 ** 48)
+  })
+
+  it('never pokes a dead sim: a fatal banner swallows the click', async () => {
+    const sendSpy = vi.spyOn(simStore, 'send')
+    simStore.view = 'momentum'
+    simStore.fatal = 'debugFatal (test param)'
+    render(ReadoutRail, { props: props() })
+
+    await fireEvent.click(screen.getByTestId('measure-momentum'))
+
+    expect(sendSpy).not.toHaveBeenCalled()
   })
 })
 
