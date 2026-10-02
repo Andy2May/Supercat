@@ -2,6 +2,7 @@
   import { getLang, lang, setLang, t } from '../i18n/index.js'
   import type { PresetId } from '../presets/index.js'
   import { modeStore } from '../sim/modeStore.svelte.js'
+  import { usesStore } from '../sim/usesStore.svelte.js'
 
   /** Whose preset title fills the scene label. */
   let { id }: { id: PresetId } = $props()
@@ -49,6 +50,12 @@
     active
     return t('mode.switchHint', { mode: targetLabel })
   })
+  // Uses overlay entry (spec 4.1): a quiet mono chip beside the language
+  // toggle; the click hands the button itself over as the focus origin.
+  const usesLabel = $derived.by(() => {
+    active
+    return t('uses.open')
+  })
 </script>
 
 <header class="topbar">
@@ -71,6 +78,14 @@
       {targetLabel}
     </button>
   </div>
+  <button
+    type="button"
+    class="lang"
+    data-testid="uses-open"
+    onclick={(event) => usesStore.openFrom(event.currentTarget)}
+  >
+    {usesLabel}
+  </button>
   <button type="button" class="lang" onclick={() => setLang(active === 'vi' ? 'en' : 'vi')}>
     {langLabel}
   </button>

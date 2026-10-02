@@ -5,6 +5,7 @@ import { tick } from 'svelte'
 
 import TopBar from '../src/ui/TopBar.svelte'
 import { modeStore } from '../src/sim/modeStore.svelte.js'
+import { usesStore } from '../src/sim/usesStore.svelte.js'
 import { getLang, setLang } from '../src/i18n/index.js'
 import { en as enDict } from '../src/i18n/en.js'
 import { vi as viDict } from '../src/i18n/vi.js'
@@ -36,12 +37,14 @@ function sceneOf(dict: Record<string, string>, id: string): string {
 
 beforeEach(() => {
   modeStore.mode = 'explore'
+  usesStore.close()
   setLang('en')
 })
 
 afterEach(() => {
   cleanup()
   modeStore.mode = 'explore'
+  usesStore.close()
   setLang(getLang() === 'vi' ? 'en' : getLang())
 })
 
@@ -153,5 +156,24 @@ describe('TopBar language toggle', () => {
     await fireEvent.click(screen.getByText(viDict['app.lang.switchToEn']))
     expect(getLang()).toBe('en')
     expect(screen.getByTestId('mode-toggle').textContent).toBe(enDict['mode.advanced'])
+  })
+})
+
+// ------------------------------------------------------------------ uses chip
+
+describe('TopBar uses chip', () => {
+  it('renders the uses chip labeled uses.open', () => {
+    render(TopBar, { props: { id: 'double-slit' } })
+    const chip = screen.getByTestId('uses-open')
+    expect(chip.tagName).toBe('BUTTON')
+    expect(chip.textContent).toBe(enDict['uses.open'])
+  })
+
+  it('clicking the chip opens the store with the chip as focus origin', async () => {
+    render(TopBar, { props: { id: 'double-slit' } })
+    const chip = screen.getByTestId('uses-open')
+    await fireEvent.click(chip)
+    expect(usesStore.open).toBe(true)
+    expect(usesStore.opener).toBe(chip)
   })
 })

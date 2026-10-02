@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/svelte'
 import { tick } from 'svelte'
 
 import NarrationPanel from '../src/ui/NarrationPanel.svelte'
+import { usesStore } from '../src/sim/usesStore.svelte.js'
 import { getLang, setLang } from '../src/i18n/index.js'
 import { en as enDict } from '../src/i18n/en.js'
 import { vi as viDict } from '../src/i18n/vi.js'
@@ -39,6 +40,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  usesStore.close()
   setLang(getLang() === 'vi' ? 'en' : getLang())
 })
 
@@ -153,5 +155,30 @@ describe('NarrationPanel translations', () => {
     expect(screen.getByTestId('preset-info').getAttribute('aria-label')).toBe(
       viDict['preset.card.show'],
     )
+  })
+})
+
+// ----------------------------------------------------------------- uses hook
+
+describe('NarrationPanel uses hook', () => {
+  it('renders the hook on the open panel, labeled uses.hook', () => {
+    vi.stubGlobal('innerHeight', TALL)
+    render(NarrationPanel, { props: { id: 'double-slit' } })
+    expect(screen.getByTestId('uses-hook').textContent).toBe(enDict['uses.hook'])
+  })
+
+  it('hides the hook on the collapsed stub', () => {
+    vi.stubGlobal('innerHeight', 768)
+    render(NarrationPanel, { props: { id: 'double-slit' } })
+    expect(screen.queryByTestId('uses-hook')).toBeNull()
+  })
+
+  it('clicking the hook opens the store with the hook as focus origin', async () => {
+    vi.stubGlobal('innerHeight', TALL)
+    render(NarrationPanel, { props: { id: 'double-slit' } })
+    const hook = screen.getByTestId('uses-hook')
+    await fireEvent.click(hook)
+    expect(usesStore.open).toBe(true)
+    expect(usesStore.opener).toBe(hook)
   })
 })

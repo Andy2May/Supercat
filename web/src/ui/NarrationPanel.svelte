@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getLang, lang, t } from '../i18n/index.js'
   import type { PresetId } from '../presets/index.js'
+  import { usesStore } from '../sim/usesStore.svelte.js'
 
   // Whose narration to show. App.svelte keys this component on the preset
   // id, so every entry into a preset remounts it: the open state re-runs its
@@ -41,6 +42,12 @@
     active
     return t('preset.card.show')
   })
+  // Uses overlay hook (spec 4.1): the open panel's last line points at the
+  // real-world applications dialog; the collapsed ⓘ stub carries nothing.
+  const hookLabel = $derived.by(() => {
+    active
+    return t('uses.hook')
+  })
 
   // R4 guard: on short viewports (< 800px) the narration starts collapsed so
   // the canvas keeps its height — the briefing stays one ⓘ away. Read once
@@ -60,6 +67,13 @@
     {#each lines as line, index (index)}
       <p>{line}</p>
     {/each}
+    <button
+      class="hook"
+      data-testid="uses-hook"
+      onclick={(event) => usesStore.openFrom(event.currentTarget)}
+    >
+      {hookLabel}
+    </button>
   </section>
 {:else}
   <div class="collapsed">
@@ -142,5 +156,19 @@
     padding: 2px 8px;
     font-size: 11px;
     color: var(--text-2);
+  }
+
+  /* Uses hook (spec 4.1): a ghost text control like the collapse button,
+     pinned as the briefing's closing line. */
+  .hook {
+    margin: 8px 0 0;
+    padding: 2px 0;
+    border: none;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+
+  .hook:hover {
+    color: var(--text-1);
   }
 </style>
