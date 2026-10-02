@@ -147,4 +147,59 @@ export const en: Record<string, string> = {
   'landing.ctaFree': 'Free exploration',
   'landing.status': 'NOW SHOWING · {name}',
   'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',
+  // Uses overlay (spec 2026-10-02): the equation at work in the real world,
+  // opened from the top-bar chip and the briefing hook. Two-tier copy per
+  // card: an easy sentence plus a mono PHYSICS line; card structure (groups,
+  // watch presets) lives in ui/usesData.ts keyed by the same ids. Copy is
+  // verbatim from the spec's section 5 tables.
+  'uses.open': 'Uses',
+  'uses.hook': 'This equation out in the world →',
+  'uses.title': 'What this equation does for you',
+  'uses.intro':
+    "Schrödinger's equation is not locked in a lab. It runs in your pocket, keeps GPS on time, and is busy building tomorrow's machines.",
+  'uses.groupToday': 'IN USE TODAY',
+  'uses.groupTomorrow': 'TOMORROW',
+  'uses.physicsLabel': 'PHYSICS',
+  'uses.watch': 'See it: {name} →',
+  'uses.close': 'Close',
+  'uses.flash.title': 'Flash memory',
+  'uses.flash.easy':
+    'Every photo you save on a phone, SSD or memory card is written by tunneling: electrons slip through an insulating oxide layer onto a floating gate, and stay there for years.',
+  'uses.flash.physics':
+    'Fowler-Nordheim tunneling: the write current rides the same tail you see behind the barrier, ~ e^(−2κd).',
+  'uses.stm.title': 'Scanning tunneling microscope',
+  'uses.stm.easy':
+    'The STM maps surfaces atom by atom. The tunneling current between its tip and the surface decays so steeply with distance that a shift of 0.1 nm changes the signal roughly tenfold.',
+  'uses.stm.physics':
+    'I ∝ e^(−2κz): exponential sensitivity turns a distance probe into an atom viewer.',
+  'uses.chips.title': 'Chips, LEDs, lasers',
+  'uses.chips.easy':
+    "Solving the equation for electrons in a crystal lattice yields energy bands with forbidden gaps. Transistors switch by band design, an LED's color is a chosen gap, a laser amplifies a chosen transition.",
+  'uses.chips.physics':
+    'Bloch theorem: a periodic V(x) produces band structure; the gap sets the photon energy, ħω = E_gap.',
+  'uses.gps.title': 'Atomic clocks and GPS',
+  'uses.gps.easy':
+    'The second itself is defined by a quantum jump between two energy levels of the cesium atom. GPS satellites carry such clocks; without them your position would drift by kilometers each day.',
+  'uses.gps.physics':
+    '1 s = 9 192 631 770 cycles of the Cs-133 hyperfine ground-state transition.',
+  'uses.chemistry.title': 'Computational chemistry',
+  'uses.chemistry.easy':
+    'Most of computational chemistry is this equation solved approximately for electrons in molecules: screening drug candidates and designing materials before any lab work begins.',
+  'uses.chemistry.physics':
+    'Density functional theory (Nobel Prize in Chemistry 1998) makes approximate solutions cheap enough to run at scale.',
+  'uses.sun.title': 'The sun and radioactivity',
+  'uses.sun.easy':
+    'The sun shines because protons tunnel through their mutual electric repulsion to fuse; the core is not hot enough to cross that barrier classically. Alpha particles escape unstable nuclei the same way.',
+  'uses.sun.physics':
+    'Gamow factor: fusion and alpha-decay rates lie inside e^(−2κd), exponentially sensitive to barrier width and height.',
+  'uses.qcompute.title': 'Quantum computers',
+  'uses.qcompute.easy':
+    'A qubit carries a wavefunction, and every gate is unitary evolution: a quantum computer runs this equation as its law of motion. Results are read out with the same Born rule this sandbox uses to measure.',
+  'uses.qcompute.physics':
+    'Superposition plus interference: the double slit, scaled up into circuits.',
+  'uses.qsensing.title': 'Quantum communication and sensing',
+  'uses.qsensing.easy':
+    'Quantum key distribution catches eavesdroppers because measuring disturbs the state. Matter-wave sensors turn interference into measurements of gravity and magnetic fields beyond classical limits.',
+  'uses.qsensing.physics':
+    'Security from the measurement postulate; sensitivity from interference between superposed paths.',
 }

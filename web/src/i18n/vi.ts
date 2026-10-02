@@ -147,4 +147,59 @@ export const vi: Record<string, string> = {
   'landing.ctaFree': 'Tự do khám phá',
   'landing.status': 'ĐANG CHIẾU · {name}',
   'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',
+  // Uses overlay (spec 2026-10-02): the equation at work in the real world,
+  // opened from the top-bar chip and the briefing hook. Two-tier copy per
+  // card: an easy sentence plus a mono PHYSICS line; card structure (groups,
+  // watch presets) lives in ui/usesData.ts keyed by the same ids. Copy is
+  // verbatim from the spec's section 5 tables.
+  'uses.open': 'Ứng dụng',
+  'uses.hook': 'Phương trình này ngoài kia →',
+  'uses.title': 'Phương trình này làm gì cho bạn',
+  'uses.intro':
+    'Phương trình Schrödinger không nằm mãi trong phòng thí nghiệm. Nó chạy trong túi bạn, giữ GPS đúng giờ, và đang dựng những cỗ máy của ngày mai.',
+  'uses.groupToday': 'ĐANG DÙNG HÔM NAY',
+  'uses.groupTomorrow': 'TƯƠNG LAI',
+  'uses.physicsLabel': 'VẬT LÝ',
+  'uses.watch': 'Xem thử: {name} →',
+  'uses.close': 'Đóng',
+  'uses.flash.title': 'Bộ nhớ flash',
+  'uses.flash.easy':
+    'Mỗi tấm ảnh bạn lưu trên điện thoại, SSD hay thẻ nhớ đều được ghi bằng xuyên hầm: electron lọt qua lớp oxit cách điện, đỗ lên cổng nổi và nằm đó nhiều năm.',
+  'uses.flash.physics':
+    'Fowler-Nordheim: dòng ghi đi qua đúng cái đuôi mờ sau rào chắn, ~ e^(−2κd).',
+  'uses.stm.title': 'Kính hiển vi quét tunneling',
+  'uses.stm.easy':
+    'STM vẽ bề mặt từng nguyên tử một. Dòng tunneling giữa mũi dò và bề mặt giảm dốc theo khoảng cách: chỉ dịch 0,1 nm là tín hiệu đổi chừng mười lần.',
+  'uses.stm.physics':
+    'I ∝ e^(−2κz): độ nhạy theo hàm mũ biến thước đo khoảng cách thành kính soi nguyên tử.',
+  'uses.chips.title': 'Chip, LED, laser',
+  'uses.chips.easy':
+    'Giải phương trình cho electron trong mạng tinh thể ra các dải năng lượng xen khoảng cấm. Transistor đóng mở nhờ thiết kế dải, màu LED là một khoảng cấm được chọn, laser khuếch đại đúng một bước chuyển được chọn.',
+  'uses.chips.physics':
+    'Định lý Bloch: V(x) tuần hoàn cho cấu trúc dải; khoảng cấm định năng lượng photon, ħω = E_gap.',
+  'uses.gps.title': 'Đồng hồ nguyên tử và GPS',
+  'uses.gps.easy':
+    'Chính đơn vị giây được định nghĩa bằng một bước nhảy lượng tử giữa hai mức năng lượng của nguyên tử cesi. Vệ tinh GPS mang theo những đồng hồ đó; thiếu chúng, vị trí của bạn sẽ trôi hàng cây số mỗi ngày.',
+  'uses.gps.physics':
+    '1 giây = 9 192 631 770 chu kỳ của bước chuyển siêu tinh tế giữa hai mức nền của Cs-133.',
+  'uses.chemistry.title': 'Hóa học tính toán',
+  'uses.chemistry.easy':
+    'Phần lớn hóa học tính toán là giải gần đúng chính phương trình này cho electron trong phân tử: sàng lọc ứng viên thuốc và thiết kế vật liệu trước khi phòng thí nghiệm bắt đầu.',
+  'uses.chemistry.physics':
+    'Lý thuyết phi hàm mật độ DFT (Nobel Hóa học 1998) làm lời giải gần đủ rẻ để chạy đại trà.',
+  'uses.sun.title': 'Mặt Trời và phóng xạ',
+  'uses.sun.easy':
+    'Mặt Trời sáng vì proton xuyên hầm qua lực đẩy điện cùng dấu để hợp hạch; lõi Mặt Trời chưa đủ nóng để vượt rào theo vật lý cổ điển. Hạt alpha thoát khỏi hạt nhân không bền cũng bằng con đường đó.',
+  'uses.sun.physics':
+    'Hệ số Gamow: tốc độ hợp hạch và phân rã alpha nằm trong e^(−2κd), nhạy theo hàm mũ với bề rộng và độ cao rào.',
+  'uses.qcompute.title': 'Máy tính lượng tử',
+  'uses.qcompute.easy':
+    'Qubit mang một hàm sóng, và mỗi cổng lượng tử là một bước tiến hóa unita: máy tính lượng tử vận hành theo đúng phương trình này như định luật chuyển động của nó. Kết quả được đọc bằng đúng quy tắc Born mà sandbox này dùng để đo.',
+  'uses.qcompute.physics':
+    'Chồng chập cộng giao thoa: khe đôi được mở rộng thành mạch.',
+  'uses.qsensing.title': 'Truyền tin và cảm biến lượng tử',
+  'uses.qsensing.easy':
+    'Phân phối khóa lượng tử bắt được người nghe lén vì phép đo làm xáo trộn trạng thái. Cảm biến sóng vật chất biến giao thoa thành phép đo trọng trường và từ trường vượt giới hạn cổ điển.',
+  'uses.qsensing.physics':
+    'An toàn đến từ tiên đề về phép đo; độ nhạy đến từ giao thoa giữa các đường chồng chập.',
 }
