@@ -1,7 +1,7 @@
 /** Vietnamese dictionary. Key set must stay identical to `en.ts`. */
 export const vi: Record<string, string> = {
-  'app.title': 'Psiforge — mô phỏng lượng tử 2D',
-  'app.tagline': 'Vật lý sóng lượng tử chạy ngay trong trình duyệt',
+  'app.title': 'Supercat — mô phỏng lượng tử 2D',
+  'app.tagline': 'Tất cả chỉ là xác suất — giờ bạn nhìn thấy được',
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
   'app.noWebgl': 'Không có WebGL2 — trình mô phỏng không thể hiển thị trên thiết bị này.',
@@ -131,9 +131,9 @@ export const vi: Record<string, string> = {
     'Chọn công cụ vẽ rào/giếng, thả gói sóng bằng cách kéo trên nền.\n' +
     'Xem |ψ|² phản ứng.',
   // UI redesign (2026-10-01): section labels for the workspace side rails and
-  // the scene tab bar, plus the landing hero copy. Values are the Appendix A
-  // draft of the redesign spec — final wording is settled in a later polish
-  // pass, these pins are the parity baseline. 'landing.title' is ONE key with
+  // the scene tab bar, plus the landing hero copy. Hero values are the
+  // Supercat rebrand draft (2026-10-02) — these pins are the parity baseline.
+  // 'landing.title' is ONE key with
   // a literal '\n' between the two hero lines (the component renders it via
   // split('\n'), like the preset cards); 'landing.schrodinger' is decorative
   // math (aria-hidden at the call site) and identical across languages.
@@ -143,11 +143,11 @@ export const vi: Record<string, string> = {
   'rail.view': 'HIỂN THỊ',
   'rail.export': 'XUẤT',
   'scene.label': 'THÍ NGHIỆM · {name}',
-  'landing.kicker': 'PHÒNG THÍ NGHIỆM LƯỢNG TỬ',
-  'landing.title': 'Nhìn thấy\ncái vô hình.',
+  'landing.kicker': 'CON MÈO NỔI TIẾNG NHẤT VẬT LÝ CHƯA TỪNG TỒN TẠI',
+  'landing.title': 'Đừng hỏi mèo sống hay chết.\nHỏi xác suất.',
   'landing.desc':
-    'Vẽ rào chắn, bắn gói sóng, đo vị trí — và xem cơ học lượng tử tự diễn ra dưới con mắt bạn. Không cài đặt, không đăng ký.',
-  'landing.ctaPrimary': 'Bắt đầu thí nghiệm →',
+    'Chúa có chơi xúc xắc không? Có — và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
+  'landing.ctaPrimary': 'Mở hộp →',
   'landing.ctaFree': 'Tự do khám phá',
   'landing.status': 'ĐANG CHIẾU · {name}',
   'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',

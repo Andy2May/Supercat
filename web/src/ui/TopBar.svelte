@@ -53,9 +53,9 @@
 
 <header class="topbar">
   <a class="back" data-testid="back-link" href="#/">{backLabel}</a>
-  <!-- Wordmark: plain text, "FORGE" on its own element for the accent
-       (mockup .ws-mark pattern: PSI<i>FORGE</i>). -->
-  <span class="mark">PSI<i>FORGE</i></span>
+  <!-- Wordmark: plain text, "CAT" on its own element for the accent
+       (mockup .ws-mark pattern: SUPER<i>CAT</i>). -->
+  <span class="mark">SUPER<i>CAT</i></span>
   <!-- The view's single h1 (a11y): styled as the mono micro scene label,
        all h1 defaults overridden below. -->
   <h1 class="scene">{sceneLabel}</h1>

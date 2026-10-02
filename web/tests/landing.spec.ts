@@ -65,8 +65,8 @@ test('document shell: vi lang, branded title, OG/Twitter meta, favicon resolves'
   // The document is Vietnamese by default; the title is static vi copy
   // (spec Appendix A — deliberately NOT an i18n key).
   expect(await page.evaluate(() => document.documentElement.lang)).toBe('vi')
-  await expect(page).toHaveTitle(/Psiforge/)
-  expect(await page.title()).toBe('Psiforge — Phòng thí nghiệm lượng tử 2D')
+  await expect(page).toHaveTitle(/Supercat/)
+  expect(await page.title()).toBe('Supercat — Phòng thí nghiệm lượng tử 2D')
 
   // Open Graph card + mirrored Twitter card.
   const ogImage = page.locator('meta[property="og:image"]')
@@ -83,11 +83,11 @@ test('document shell: vi lang, branded title, OG/Twitter meta, favicon resolves'
     /\/og\.png$/,
   )
 
-  // The favicon link points at the SVG and the dev server actually serves it.
+  // The favicon link points at the cat PNG and the dev server serves it.
   const icon = page.locator('link[rel="icon"]')
   await expect(icon).toHaveCount(1)
-  await expect(icon).toHaveAttribute('href', '/favicon.svg')
-  const iconResponse = await page.request.get('/favicon.svg')
+  await expect(icon).toHaveAttribute('href', '/favicon.png')
+  const iconResponse = await page.request.get('/favicon.png')
   expect(iconResponse.status()).toBe(200)
 
   expect(consoleErrors).toEqual([])
@@ -118,8 +118,8 @@ test('theater landing: five preset tiles in registry order, hero + nav + strip +
   // strip, status line — and the live background canvas behind it all.
   await expect(page.getByTestId('landing-hero')).toBeVisible()
   const heading = page.getByTestId('landing-hero').getByRole('heading', { level: 1 })
-  await expect(heading).toContainText('See the')
-  await expect(heading).toContainText('invisible.')
+  await expect(heading).toContainText("Don't ask if the cat's alive.")
+  await expect(heading).toContainText('Ask for the probability.')
   await expect(page.getByTestId('landing-nav')).toBeVisible()
   await expect(page.getByTestId('landing-strip')).toBeVisible()
   const status = page.getByTestId('landing-status')

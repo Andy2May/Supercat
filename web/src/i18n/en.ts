@@ -1,7 +1,7 @@
 /** English dictionary. Key set must stay identical to `vi.ts`. */
 export const en: Record<string, string> = {
-  'app.title': 'Psiforge — 2D quantum simulator',
-  'app.tagline': 'Quantum wave physics running right in your browser',
+  'app.title': 'Supercat — 2D quantum simulator',
+  'app.tagline': "It's all just probability — now you can watch",
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
   'app.noWebgl': 'WebGL2 is not available — the simulator cannot render on this device.',
@@ -131,9 +131,9 @@ export const en: Record<string, string> = {
     'Pick a tool to draw barriers or wells, and drop a wave packet by dragging on the canvas.\n' +
     'Watch |ψ|² respond.',
   // UI redesign (2026-10-01): section labels for the workspace side rails and
-  // the scene tab bar, plus the landing hero copy. Values are the Appendix A
-  // draft of the redesign spec — final wording is settled in a later polish
-  // pass, these pins are the parity baseline. 'landing.title' is ONE key with
+  // the scene tab bar, plus the landing hero copy. Hero values are the
+  // Supercat rebrand draft (2026-10-02) — these pins are the parity baseline.
+  // 'landing.title' is ONE key with
   // a literal '\n' between the two hero lines (the component renders it via
   // split('\n'), like the preset cards); 'landing.schrodinger' is decorative
   // math (aria-hidden at the call site) and identical across languages.
@@ -143,11 +143,11 @@ export const en: Record<string, string> = {
   'rail.view': 'VIEW',
   'rail.export': 'EXPORT',
   'scene.label': 'EXPERIMENT · {name}',
-  'landing.kicker': '2D QUANTUM LAB',
-  'landing.title': 'See the\ninvisible.',
+  'landing.kicker': 'THE MOST FAMOUS CAT IN PHYSICS NEVER EXISTED',
+  'landing.title': "Don't ask if the cat's alive.\nAsk for the probability.",
   'landing.desc':
-    'Draw barriers, fire wave packets, take measurements — and watch quantum mechanics unfold before your eyes. No install, no signup.',
-  'landing.ctaPrimary': 'Start experimenting →',
+    'Does God play dice? Yes — every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
+  'landing.ctaPrimary': 'Open the box →',
   'landing.ctaFree': 'Free exploration',
   'landing.status': 'NOW SHOWING · {name}',
   'landing.schrodinger': 'i·ħ ∂ψ/∂t = −ħ²/2m ∇²ψ + Vψ',

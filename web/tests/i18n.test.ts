@@ -129,21 +129,21 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(en['scene.label']).toBe('EXPERIMENT · {name}')
   })
 
-  it('landing hero copy matches the Appendix A draft', () => {
-    expect(vi['landing.kicker']).toBe('PHÒNG THÍ NGHIỆM LƯỢNG TỬ')
-    expect(en['landing.kicker']).toBe('2D QUANTUM LAB')
+  it('landing hero copy matches the Supercat draft', () => {
+    expect(vi['landing.kicker']).toBe('CON MÈO NỔI TIẾNG NHẤT VẬT LÝ CHƯA TỪNG TỒN TẠI')
+    expect(en['landing.kicker']).toBe('THE MOST FAMOUS CAT IN PHYSICS NEVER EXISTED')
     // One key holding both hero lines separated by a literal newline; the
     // landing component renders it as split('\n'), like PresetCard cards.
-    expect(vi['landing.title']).toBe('Nhìn thấy\ncái vô hình.')
-    expect(en['landing.title']).toBe('See the\ninvisible.')
+    expect(vi['landing.title']).toBe('Đừng hỏi mèo sống hay chết.\nHỏi xác suất.')
+    expect(en['landing.title']).toBe("Don't ask if the cat's alive.\nAsk for the probability.")
     expect(vi['landing.desc']).toBe(
-      'Vẽ rào chắn, bắn gói sóng, đo vị trí — và xem cơ học lượng tử tự diễn ra dưới con mắt bạn. Không cài đặt, không đăng ký.',
+      'Chúa có chơi xúc xắc không? Có — và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
     )
     expect(en['landing.desc']).toBe(
-      'Draw barriers, fire wave packets, take measurements — and watch quantum mechanics unfold before your eyes. No install, no signup.',
+      'Does God play dice? Yes — every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
     )
-    expect(vi['landing.ctaPrimary']).toBe('Bắt đầu thí nghiệm →')
-    expect(en['landing.ctaPrimary']).toBe('Start experimenting →')
+    expect(vi['landing.ctaPrimary']).toBe('Mở hộp →')
+    expect(en['landing.ctaPrimary']).toBe('Open the box →')
     expect(vi['landing.ctaFree']).toBe('Tự do khám phá')
     expect(en['landing.ctaFree']).toBe('Free exploration')
     expect(vi['landing.status']).toBe('ĐANG CHIẾU · {name}')

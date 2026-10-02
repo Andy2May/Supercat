@@ -11,11 +11,11 @@ import { vi as viDict } from '../src/i18n/vi.js'
 
 /**
  * TopBar (UI redesign T8): the full-width workspace bar — back link,
- * PSI·FORGE wordmark, the scene label, the segmented mode control and the
+ * SUPER·CAT wordmark, the scene label, the segmented mode control and the
  * language toggle. Pinned by the task brief —
  *
  * - `back-link` stays an anchor to '#/' labeled app.backToLanding;
- * - the wordmark is plain text "PSIFORGE" with "PSI" carried by its own
+ * - the wordmark is plain text "SUPERCAT" with "SUPER" carried by its own
  *   element (accent styling);
  * - the scene label composes `scene.label` with the preset's title param;
  * - the segmented mode control keeps the e2e contract EXACTLY: one button
@@ -57,17 +57,17 @@ describe('TopBar chrome', () => {
     expect(back.textContent).toContain(enDict['app.backToLanding'])
   })
 
-  it('renders the PSIFORGE wordmark with FORGE on its own accent element', () => {
+  it('renders the SUPERCAT wordmark with CAT on its own accent element', () => {
     const { container } = render(TopBar, { props: { id: 'double-slit' } })
 
     // getByText cannot match the span (its text is split by the <i>), so
     // pin it through the class — the container-query idiom toolRail.test.ts
     // uses for its .value readouts.
     const mark = container.querySelector('.mark')
-    expect(mark?.textContent).toBe('PSIFORGE')
-    // "FORGE" rides the <i> so CSS can accent it (mockup pattern
-    // PSI<i>FORGE</i>); "PSI" stays in the base text color.
-    expect(mark?.querySelector('i')?.textContent).toBe('FORGE')
+    expect(mark?.textContent).toBe('SUPERCAT')
+    // "CAT" rides the <i> so CSS can accent it (mockup pattern
+    // SUPER<i>CAT</i>); "SUPER" stays in the base text color.
+    expect(mark?.querySelector('i')?.textContent).toBe('CAT')
   })
 
   it('renders the scene label as the view heading (h1)', () => {

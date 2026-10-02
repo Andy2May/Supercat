@@ -130,9 +130,9 @@
 
   <header class="nav" data-testid="landing-nav">
     <div class="mark">
-      <b>PSI<i>FORGE</i></b>
+      <b>SUPER<i>CAT</i></b>
       <!-- Brand lockup micro-tag (mockup "2D QUANTUM LAB"): part of the
-           wordmark like PSIFORGE itself, not translatable copy. -->
+           wordmark like SUPERCAT itself, not translatable copy. -->
       <span class="tag">2D QUANTUM LAB</span>
     </div>
     <div class="right">
@@ -165,7 +165,13 @@
         <a class="btn pri" href="#/sim/double-slit">{hero.ctaPrimary}</a>
         <a class="btn gho" href="#/sim/sandbox">{hero.ctaFree}</a>
       </div>
-      <p class="schrodinger" aria-hidden="true">{hero.schrodinger}</p>
+      <!-- The equation that (allegedly) spawned the cat — and the cat itself,
+           mid-scheme, right beside it. Both decorative (aria-hidden): the
+           grin is the brand, the math is the alibi. -->
+      <p class="schrodinger" aria-hidden="true">
+        <img class="cat" src="/cat-meme.png" alt="" loading="lazy" decoding="async" />
+        <span aria-hidden="true">{hero.schrodinger}</span>
+      </p>
     </div>
   </section>
 
@@ -436,10 +442,25 @@
 
   .schrodinger {
     margin: 18px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
     font-size: 9.5px;
     color: var(--text-3);
     letter-spacing: 0.06em;
+  }
+
+  /* The scheming cat beside its equation (Supercat rebrand): the meme photo
+     as a small rounded sticker — tall 4:5 crop, hairline border so it reads
+     as a deliberate card against the backdrop rather than a stray photo. */
+  .schrodinger .cat {
+    height: 84px;
+    width: auto;
+    flex: none;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    display: block;
   }
 
   /* ---- film-strip selector (mockup .lg-strip) ---------------------------- */

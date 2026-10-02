@@ -188,13 +188,13 @@ describe('Landing strip and hero structure', () => {
     expect(container).toBeTruthy()
   })
 
-  it('renders the glass nav: PSIFORGE wordmark, GitHub pill, language toggle', async () => {
+  it('renders the glass nav: SUPERCAT wordmark, GitHub pill, language toggle', async () => {
     const { container } = render(Landing)
 
     // The wordmark rides .mark b (the .mark lockup also carries the tag).
     const wordmark = container.querySelector('.mark b')
-    expect(wordmark?.textContent).toBe('PSIFORGE')
-    expect(wordmark?.querySelector('i')?.textContent).toBe('FORGE')
+    expect(wordmark?.textContent).toBe('SUPERCAT')
+    expect(wordmark?.querySelector('i')?.textContent).toBe('CAT')
     expect(container.querySelector('.mark .tag')?.textContent).toBe('2D QUANTUM LAB')
 
     const github = screen.getByText('GitHub')
