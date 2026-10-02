@@ -153,7 +153,7 @@ export const en: Record<string, string> = {
   // watch presets) lives in ui/usesData.ts keyed by the same ids. Copy is
   // verbatim from the spec's section 5 tables.
   'uses.open': 'Uses',
-  'uses.hook': 'This equation out in the world →',
+  'uses.hook': 'Beyond the Lab →',
   'uses.title': 'What Does This Equation Do for You?',
   'uses.intro':
     "The Schrödinger equation isn't trapped in a lab. It runs silently in your pocket, keeps GPS accurate to the second, and powers the technologies of tomorrow.",

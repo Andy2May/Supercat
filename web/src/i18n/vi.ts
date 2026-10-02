@@ -153,7 +153,7 @@ export const vi: Record<string, string> = {
   // watch presets) lives in ui/usesData.ts keyed by the same ids. Copy is
   // verbatim from the spec's section 5 tables.
   'uses.open': 'Ứng dụng',
-  'uses.hook': 'Phương trình này ngoài kia →',
+  'uses.hook': 'Bên ngoài phòng thí nghiệm →',
   'uses.title': 'Phương trình này làm gì cho bạn?',
   'uses.intro':
     'Phương trình Schrödinger không chỉ nằm trên bảng đen. Nó đang chạy âm thầm trong túi bạn, giữ cho GPS chính xác từng mét và đặt nền móng cho những công nghệ của tương lai.',

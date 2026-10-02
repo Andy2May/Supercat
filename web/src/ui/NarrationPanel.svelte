@@ -133,15 +133,17 @@
 
   .narration h2 {
     margin: 7px 0 0;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-1);
   }
 
-  /* Body copy (mockup .ws-narr p): quiet secondary text, roomy 1.6 leading. */
+  /* Body copy (mockup .ws-narr p): quiet secondary text, roomy 1.6 leading.
+     One step up from the rail chrome (user ruling 2026-10-02: the briefing
+     is reading text, not a readout). */
   .narration p {
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: 12.5px;
     line-height: 1.6;
     color: var(--text-2);
   }
@@ -164,7 +166,7 @@
     margin: 8px 0 0;
     padding: 2px 0;
     border: none;
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--text-3);
   }
 
