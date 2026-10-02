@@ -1,7 +1,8 @@
-# Psiforge
+# Supercat
 
-Psiforge is an open-source quantum mechanics simulation platform that combines
-two roles in one project:
+Supercat is an open-source quantum mechanics simulation platform named for
+the most famous cat in physics — the one that is neither alive nor dead
+until you look. It combines two roles in one project:
 
 1. An **interactive educational sandbox** that runs in the browser — open a
    link and experiment immediately, no installation, no account.
@@ -18,7 +19,7 @@ effects.
 Monorepo with four components — "one core, three facades":
 
 ```
-psiforge/
+supercat/
 ├── core/      Rust crate — all physics and numerics, no I/O dependencies
 ├── wasm/      Rust crate — thin binding of core to JavaScript (wasm-bindgen)
 ├── python/    Rust crate — binding of core to Python (pyo3), wheels on PyPI
@@ -27,7 +28,8 @@ psiforge/
 
 Currently `core/` (the `psiforge-core` crate), `wasm/` (the `psiforge-wasm`
 binding), and `web/` (the browser sandbox) exist; `python/` is planned for a
-later milestone.
+later milestone. The crates keep their historical `psiforge-*` names — the
+2026 rebrand renamed the product, not the packages that depend on them.
 
 ## Quickstart
 
@@ -39,7 +41,7 @@ on it by path (or by git URL once the repository is public):
 psiforge-core = { path = "core" }
 ```
 
-Then build a simulation the way every Psiforge run does: a grid, a Gaussian
+Then build a simulation the way every Supercat run does: a grid, a Gaussian
 initial state, a potential, and a split-operator propagator. This example
 prepares a coherent state (ground-state width `1/√2`, displaced to `x0 = 3`)
 in a harmonic potential and propagates it for 100 steps:

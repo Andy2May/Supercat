@@ -1,6 +1,6 @@
-# Psiforge web
+# Supercat web
 
-Browser UI for the Psiforge 2D quantum simulator: Vite + Svelte 5 +
+Browser UI for the Supercat 2D quantum simulator: Vite + Svelte 5 +
 TypeScript, with the simulation itself running in a Web Worker backed by the
 `wasm/` crate (wasm-bindgen output lands in `src/wasm/`, generated — not
 committed).
