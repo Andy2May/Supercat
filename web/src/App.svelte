@@ -6,6 +6,7 @@
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
   import { effectiveView, simStore } from './sim/simStore.svelte.js'
+  import { usesStore } from './sim/usesStore.svelte.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
   import NarrationPanel from './ui/NarrationPanel.svelte'
@@ -14,6 +15,7 @@
   import SimCanvas from './ui/SimCanvas.svelte'
   import ToolRail from './ui/ToolRail.svelte'
   import TopBar from './ui/TopBar.svelte'
+  import UsesOverlay from './ui/UsesOverlay.svelte'
   import WebGlMissing from './ui/WebGlMissing.svelte'
 
   // Local mirror of the language store: `$derived` below reads it, so every
@@ -164,6 +166,12 @@
     {/if}
     {#if simStore.fatal !== undefined}
       <ErrorBanner message={simStore.fatal} />
+    {/if}
+    <!-- Uses overlay (spec 2026-10-02): modal over the bench, mounted only
+         while open. Sits after the bench/error gate on purpose: the top-bar
+         entry stays usable even if the renderer failed. -->
+    {#if usesStore.open}
+      <UsesOverlay />
     {/if}
     {#if simStore.perfMode}
       <div class="hud" data-testid="perf-hud" aria-hidden="true">
