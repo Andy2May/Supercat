@@ -175,7 +175,7 @@
            mid-scheme, right beside it. Both decorative (aria-hidden): the
            grin is the brand, the math is the alibi. -->
       <p class="schrodinger" aria-hidden="true">
-        <img class="cat" src="/cat-meme.png" alt="" loading="lazy" decoding="async" />
+        <img class="cat" src="cat-meme.png" alt="" loading="lazy" decoding="async" />
         <span aria-hidden="true">{hero.schrodinger}</span>
       </p>
     </div>

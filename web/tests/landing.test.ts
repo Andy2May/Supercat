@@ -188,6 +188,18 @@ describe('Landing strip and hero structure', () => {
     expect(container).toBeTruthy()
   })
 
+  it('references the meme cat by a RELATIVE path (the app deploys under a subpath)', () => {
+    render(Landing)
+
+    const cat = document.querySelector<HTMLImageElement>('.schrodinger .cat')
+    expect(cat).toBeTruthy()
+    // Vite base './' never rewrites raw src strings in templates, so an
+    // absolute "/cat-meme.png" 404s on GitHub Pages' /Supercat/ subpath
+    // (2026-10-02 finding); the document always sits at the site root, hash
+    // routing never changes it, and a relative reference works on any host.
+    expect(cat?.getAttribute('src')).toBe('cat-meme.png')
+  })
+
   it('renders the glass nav: SUPERCAT wordmark, GitHub pill, language toggle', async () => {
     const { container } = render(Landing)
 
