@@ -7,7 +7,7 @@
   import { modeStore } from './sim/modeStore.svelte.js'
   import { effectiveView, simStore } from './sim/simStore.svelte.js'
   import { decodeState, encodeState, StateFileError } from './sim/stateFile.js'
-  import { downloadBlob, psiforgeFilename } from './ui/download.js'
+  import { downloadBlob, supercatFilename } from './ui/download.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
   import NarrationPanel from './ui/NarrationPanel.svelte'
@@ -192,7 +192,7 @@
       try {
         downloadBlob(
           new Blob([JSON.stringify(encodeState(state))], { type: 'application/json' }),
-          psiforgeFilename('state', 'json'),
+          supercatFilename('state', 'json'),
         )
       } catch {
         // encodeState refusing non-finite data cannot happen for a state

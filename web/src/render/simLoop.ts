@@ -26,7 +26,7 @@ import { modeStore } from '../sim/modeStore.svelte.js'
 import { effectiveColorMode, type SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
-import { downloadBlob, psiforgeFilename } from '../ui/download.js'
+import { downloadBlob, supercatFilename } from '../ui/download.js'
 
 /** Max |V| over the shipped potential — scales the shader's V overlay. */
 function maxAbs(values: Float32Array): number {
@@ -52,10 +52,10 @@ function maxAbs(values: Float32Array): number {
 function capturePng(canvas: HTMLCanvasElement): void {
   canvas.toBlob((blob) => {
     if (blob === null) {
-      console.warn('psiforge: PNG export failed — canvas.toBlob returned no blob')
+      console.warn('supercat: PNG export failed — canvas.toBlob returned no blob')
       return
     }
-    downloadBlob(blob, psiforgeFilename('', 'png'))
+    downloadBlob(blob, supercatFilename('', 'png'))
   }, 'image/png')
 }
 

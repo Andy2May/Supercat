@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test'
  * JSON state save/load e2e (Task 17; the buttons moved to the ReadoutRail's
  * "Xuất" block with the T8 UI redesign). Advanced-mode rail buttons: Save
  * asks the worker for `serialize_state()` and downloads
- * `psiforge-state-<YYYYMMDD-HHmmss>.json`; Load feeds a file back through
+ * `supercat-state-<YYYYMMDD-HHmmss>.json`; Load feeds a file back through
  * decodeState + the worker's deserialize (which restores t and frames the
  * state at once). A corrupt/version-gated file must show the NON-fatal
  * load-error banner while the simulation keeps running — no fatal banner,
@@ -81,7 +81,7 @@ test('advanced: Save downloads a state JSON; Load restores the saved t', async (
     exportButton.click(),
   ])
   const name = download.suggestedFilename()
-  expect(name).toMatch(/^psiforge-state-\d{8}-\d{6}\.json$/)
+  expect(name).toMatch(/^supercat-state-\d{8}-\d{6}\.json$/)
 
   // The artifact is a valid v1 state file with b64 arrays of the right
   // lengths for the running grid (256 unless ?grid= overrides it).

@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test'
  * preserveDrawingBuffer:false backbuffer is only readable in that same
  * task). Each scenario waits for real wasm frames first, so the captured
  * bitmap is an actual heatmap, then asserts the browser download:
- * `psiforge-<YYYYMMDD-HHmmss>.png` (local time) with real content
+ * `supercat-<YYYYMMDD-HHmmss>.png` (local time) with real content
  * (> 5 KB — an empty/cleared canvas PNG compresses to well under that).
  */
 
@@ -60,9 +60,9 @@ test('PNG export (explore mode): download fires, timestamp name, real heatmap co
   ])
 
   // Suggested filename comes from the anchor's download attribute:
-  // psiforge-<YYYYMMDD-HHmmss>.png in LOCAL time.
+  // supercat-<YYYYMMDD-HHmmss>.png in LOCAL time.
   const name = download.suggestedFilename()
-  expect(name).toMatch(/^psiforge-\d{8}-\d{6}\.png$/)
+  expect(name).toMatch(/^supercat-\d{8}-\d{6}\.png$/)
 
   // Saved artifact is a real heatmap (dpr-sized canvas, noise-ish inferno
   // pixels), not a cleared backbuffer: comfortably past 5 KB.
@@ -110,7 +110,7 @@ test('each click exports exactly one file: repeated clicks yield repeated downlo
     exportButton.click(),
   ])
   for (const download of [first, second]) {
-    expect(download.suggestedFilename()).toMatch(/^psiforge-\d{8}-\d{6}\.png$/)
+    expect(download.suggestedFilename()).toMatch(/^supercat-\d{8}-\d{6}\.png$/)
   }
 
   // No third download appears: the queue drained, nothing lingers. (1 s is

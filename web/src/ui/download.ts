@@ -1,7 +1,7 @@
 /**
  * Browser-download plumbing shared by the PNG canvas export (Task 16) and
  * the JSON state export (Task 17). Both produce a local-time timestamped
- * `psiforge[-suffix]-<YYYYMMDD-HHmmss>.<ext>` file — a user artifact must
+ * `supercat[-suffix]-<YYYYMMDD-HHmmss>.<ext>` file — a user artifact must
  * not carry a UTC stamp that is off by the viewer's timezone.
  */
 
@@ -17,10 +17,10 @@ function localTimestamp(): string {
   )
 }
 
-/** `psiforge-<stamp>.png` (suffix '') / `psiforge-state-<stamp>.json`
+/** `supercat-<stamp>.png` (suffix '') / `supercat-state-<stamp>.json`
  * (suffix 'state'). */
-export function psiforgeFilename(suffix: string, ext: string): string {
-  return `psiforge${suffix === '' ? '' : `-${suffix}`}-${localTimestamp()}.${ext}`
+export function supercatFilename(suffix: string, ext: string): string {
+  return `supercat${suffix === '' ? '' : `-${suffix}`}-${localTimestamp()}.${ext}`
 }
 
 /**

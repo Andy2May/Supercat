@@ -25,12 +25,12 @@ describe('ModeStore', () => {
     expect(freshStore().mode).toBe<Mode>('explore')
   })
 
-  it('toggle() flips to advanced and persists psiforge.mode', () => {
+  it('toggle() flips to advanced and persists supercat.mode', () => {
     const storage = mockStorage()
     const store = new ModeStore(storage)
     store.toggle()
     expect(store.mode).toBe<Mode>('advanced')
-    expect(storage.getItem('psiforge.mode')).toBe('advanced')
+    expect(storage.getItem('supercat.mode')).toBe('advanced')
   })
 
   it('toggle() again returns to explore', () => {
@@ -43,12 +43,17 @@ describe('ModeStore', () => {
   it('a fresh instance reads the persisted mode back (post-reload)', () => {
     freshStore().toggle()
     // Same storage content, brand-new construction.
+    const reloaded = new ModeStore(mockStorage({ 'supercat.mode': 'advanced' }))
+    expect(reloaded.mode).toBe<Mode>('advanced')
+  })
+
+  it('a legacy psiforge.mode key still seeds the mode (pre-rebrand install)', () => {
     const reloaded = new ModeStore(mockStorage({ 'psiforge.mode': 'advanced' }))
     expect(reloaded.mode).toBe<Mode>('advanced')
   })
 
   it('a garbage persisted value falls back to explore', () => {
-    const store = new ModeStore(mockStorage({ 'psiforge.mode': 'quantum-flux' }))
+    const store = new ModeStore(mockStorage({ 'supercat.mode': 'quantum-flux' }))
     expect(store.mode).toBe<Mode>('explore')
   })
 

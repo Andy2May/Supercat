@@ -2,8 +2,9 @@
  * Explore/advanced experience mode (Task 7). A Svelte 5 runes store (same
  * `.svelte.ts` pattern as `simStore.svelte.ts`): `mode` is `$state`, so every
  * component reading it re-renders on `toggle()`. The mode persists across
- * reloads under localStorage 'psiforge.mode'; anything but the two valid
- * names falls back to 'explore'.
+ * reloads under localStorage 'supercat.mode' (installs that saved under the
+ * pre-rebrand 'psiforge.mode' key are still read); anything but the two
+ * valid names falls back to 'explore'.
  *
  * Storage comes through a constructor seam: production defaults to
  * `window.localStorage`, node-env tests inject a mock (or `undefined`), and
@@ -15,7 +16,11 @@
 export type Mode = 'explore' | 'advanced'
 
 /** localStorage key the active mode is persisted under. */
-const STORAGE_KEY = 'psiforge.mode'
+const STORAGE_KEY = 'supercat.mode'
+
+/** Pre-rebrand key: a mode saved while the app was still Psiforge survives
+ * the rename, so it is consulted when the new key has nothing. */
+const LEGACY_STORAGE_KEY = 'psiforge.mode'
 
 /** The two storage calls the store uses — narrow enough to mock in tests. */
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
@@ -36,7 +41,8 @@ function defaultStorage(): StorageLike | undefined {
 function readMode(storage: StorageLike | undefined): Mode {
   if (storage === undefined) return 'explore'
   try {
-    return storage.getItem(STORAGE_KEY) === 'advanced' ? 'advanced' : 'explore'
+    const saved = storage.getItem(STORAGE_KEY) ?? storage.getItem(LEGACY_STORAGE_KEY)
+    return saved === 'advanced' ? 'advanced' : 'explore'
   } catch {
     return 'explore'
   }
