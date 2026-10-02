@@ -159,7 +159,6 @@ export const en: Record<string, string> = {
     "The Schrödinger equation isn't trapped in a lab. It runs silently in your pocket, keeps GPS accurate to the second, and powers the technologies of tomorrow.",
   'uses.groupToday': 'IN USE TODAY',
   'uses.groupTomorrow': 'FUTURE TECH',
-  'uses.appLabel': 'Application:',
   'uses.watch': 'See it: {name} →',
   'uses.close': 'Close',
   'uses.flash.title': 'Flash Memory (SSDs, USBs, Smartphones)',

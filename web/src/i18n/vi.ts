@@ -159,7 +159,6 @@ export const vi: Record<string, string> = {
     'Phương trình Schrödinger không chỉ nằm trên bảng đen. Nó đang chạy âm thầm trong túi bạn, giữ cho GPS chính xác từng mét và đặt nền móng cho những công nghệ của tương lai.',
   'uses.groupToday': 'ĐANG DÙNG HÔM NAY',
   'uses.groupTomorrow': 'CÔNG NGHỆ TƯƠNG LAI',
-  'uses.appLabel': 'Ứng dụng:',
   'uses.watch': 'Xem thử: {name} →',
   'uses.close': 'Đóng',
   'uses.flash.title': 'Bộ nhớ Flash (SSD, Thẻ nhớ, Điện thoại)',

@@ -23,7 +23,6 @@
       intro: t('uses.intro'),
       groupToday: t('uses.groupToday'),
       groupTomorrow: t('uses.groupTomorrow'),
-      appLabel: t('uses.appLabel'),
       closeLabel: t('uses.close'),
     }
   })
@@ -135,7 +134,7 @@
   {#each todayCards as card (card.id)}
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
-      <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
+      <p class="easy">{card.easy}</p>
       <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
         <a
@@ -152,7 +151,7 @@
   {#each tomorrowCards as card (card.id)}
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
-      <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
+      <p class="easy">{card.easy}</p>
       <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
         <a
@@ -223,7 +222,7 @@
 
   .head h2 {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--text-1);
@@ -233,7 +232,7 @@
     flex: none;
     padding: 2px 9px;
     border: none;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.2;
     color: var(--text-3);
   }
@@ -244,7 +243,7 @@
 
   .intro {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: 13.5px;
     line-height: 1.6;
     color: var(--text-2);
   }
@@ -253,7 +252,7 @@
   .group {
     margin: 16px 0 2px;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-    font-size: 9.5px;
+    font-size: 10.5px;
     letter-spacing: 0.2em;
     color: var(--text-3);
   }
@@ -265,40 +264,36 @@
 
   .card h3 {
     margin: 8px 0 0;
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 600;
     color: var(--text-1);
   }
 
   .card .easy {
     margin: 5px 0 0;
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.6;
     color: var(--text-2);
   }
 
-  /* The easy tier carries the Ứng dụng: label; the physics tier goes
-     unlabeled (user ruling 2026-10-02: "Vật lý:" read stiff): the mono,
-     dimmer line opens with its own mechanism name (Fowler-Nordheim, Bloch,
-     Gamow), so typography alone separates the two tiers. */
+  /* Both tiers go unlabeled (user rulings 2026-10-02: "Vật lý:" then
+     "Ứng dụng:" both read stiff): prose carries the easy story, and the
+     mono, dimmer physics line opens with its own mechanism name
+     (Fowler-Nordheim, Bloch, Gamow), so typography alone separates the
+     tiers. Sizes are one step up from the rails (user ruling 2026-10-02:
+     the overlay is a reading surface, not a readout). */
   .card .physics {
     margin: 6px 0 0;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-    font-size: 10px;
+    font-size: 11.5px;
     line-height: 1.55;
     color: var(--text-3);
-  }
-
-  .plabel {
-    margin-right: 6px;
-    letter-spacing: 0.14em;
-    color: var(--accent);
   }
 
   .watch {
     display: inline-block;
     margin: 8px 0 0;
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--accent);
     text-decoration: none;

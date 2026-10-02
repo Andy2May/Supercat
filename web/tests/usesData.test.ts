@@ -28,8 +28,7 @@ describe('USES_CARDS', () => {
   it('has every uses.* key in BOTH dictionaries (9 UI keys + 3 per card)', () => {
     const uiKeys = [
       'uses.open', 'uses.hook', 'uses.title', 'uses.intro',
-      'uses.groupToday', 'uses.groupTomorrow',
-      'uses.appLabel', 'uses.watch', 'uses.close',
+      'uses.groupToday', 'uses.groupTomorrow', 'uses.watch', 'uses.close',
     ]
     for (const dict of [en, vi]) {
       for (const key of uiKeys) expect(dict[key], `${dict === en ? 'en' : 'vi'} ${key}`).toBeDefined()
