@@ -93,9 +93,12 @@ Full local gate before committing web changes: vitest + playwright +
   did not create (user keeps personal files there, e.g. `Cat_Meme.png`).
 - Windows dev: `cargo` is only on PATH via `~/.bashrc`; stale vite dev
   servers lock worktrees, so shut them down before removing a worktree.
-- `svelte-check` on this checkout may report 2 pre-existing errors inside
-  `node_modules/esrap` types (present on a clean HEAD); project-code
-  diagnostics are what matter.
+- `npm run check`: read the error TEXT and exit code, never the count
+  alone (a stale "2 pre-existing esrap errors" baseline once masked 2 real
+  project errors that then failed CI; the esrap node_modules errors come
+  and go with `npm ci` and are noise, project-code diagnostics are not).
+  Pipes swallow exit codes: run gates without `| tail`, or use
+  `set -o pipefail`.
 
 ## Read before touching sensitive areas
 
