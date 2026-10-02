@@ -66,7 +66,7 @@ test('document shell: vi lang, branded title, OG/Twitter meta, favicon resolves'
   // (spec Appendix A — deliberately NOT an i18n key).
   expect(await page.evaluate(() => document.documentElement.lang)).toBe('vi')
   await expect(page).toHaveTitle(/Supercat/)
-  expect(await page.title()).toBe('Supercat — Phòng thí nghiệm lượng tử 2D')
+  expect(await page.title()).toBe('Supercat · Phòng thí nghiệm lượng tử 2D')
 
   // Open Graph card + mirrored Twitter card.
   const ogImage = page.locator('meta[property="og:image"]')

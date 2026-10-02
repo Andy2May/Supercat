@@ -1,34 +1,34 @@
 # Supercat
 
 Supercat is an open-source quantum mechanics simulation platform named for
-the most famous cat in physics — the one that is neither alive nor dead
+the most famous cat in physics: the one that is neither alive nor dead
 until you look. It combines two roles in one project:
 
-1. An **interactive educational sandbox** that runs in the browser — open a
+1. An **interactive educational sandbox** that runs in the browser: open a
    link and experiment immediately, no installation, no account.
-2. A **research computing library** exposed through a Python API — backed by
+2. A **research computing library** exposed through a Python API, backed by
    the exact same physics core as the web app.
 
-Version 1 focuses on one physics area: **wave dynamics** — the time-dependent
+Version 1 focuses on one physics area: **wave dynamics**, the time-dependent
 Schrödinger equation (TDSE) on uniform 1D/2D grids. Correct physics comes
 first, pretty visuals immediately after; correctness is never sacrificed for
 effects.
 
 ## Repository layout (planned)
 
-Monorepo with four components — "one core, three facades":
+Monorepo with four components, "one core, three facades":
 
 ```
 supercat/
-├── core/      Rust crate — all physics and numerics, no I/O dependencies
-├── wasm/      Rust crate — thin binding of core to JavaScript (wasm-bindgen)
-├── python/    Rust crate — binding of core to Python (pyo3), wheels on PyPI
-└── web/       TypeScript + Vite + WebGL2 — rendering and interaction only
+├── core/      Rust crate: all physics and numerics, no I/O dependencies
+├── wasm/      Rust crate: thin binding of core to JavaScript (wasm-bindgen)
+├── python/    Rust crate: binding of core to Python (pyo3), wheels on PyPI
+└── web/       TypeScript + Vite + WebGL2: rendering and interaction only
 ```
 
 Currently `core/` (the `psiforge-core` crate), `wasm/` (the `psiforge-wasm`
 binding), and `web/` (the browser sandbox) exist; `python/` is planned for a
-later milestone. The crates keep their historical `psiforge-*` names — the
+later milestone. The crates keep their historical `psiforge-*` names: the
 2026 rebrand renamed the product, not the packages that depend on them.
 
 ## Quickstart
@@ -71,7 +71,7 @@ fn main() -> Result<(), CoreError> {
 
 The numbers to expect: a coherent state does not spread, so `sigma_x` stays
 at the ground-state width `1/√2 ≈ 0.7071`, and Ehrenfest's theorem is exact
-for the harmonic oscillator, so `<x>(t) = 3 cos(t)` — at `t = 0.1` that is
+for the harmonic oscillator, so `<x>(t) = 3 cos(t)`; at `t = 0.1` that is
 about `2.985`. All quantities are unitless here (`m = ħ = 1`); see
 [`docs/units.md`](docs/units.md) for running the same code in nanometers,
 femtoseconds, and electron-volts.
@@ -101,17 +101,17 @@ npm run dev          # open the printed localhost URL
 ```
 
 Every push to `main` deploys the app to GitHub Pages:
-<https://andy2may.github.io/Supercat/> — the link goes live after the first
+<https://andy2may.github.io/Supercat/>. The link goes live after the first
 deploy to `main` (Pages source "GitHub Actions" must be enabled in the
 repository settings).
 
 ### Test suites
 
-- `cargo test --all` — Rust tests for `core/` and `wasm/`
-- `wasm-pack test --node wasm` — wasm-bindgen tests in Node
-- `npm run test` in `web/` — vitest unit tests
-- `npm run test:e2e` in `web/` — Playwright smoke e2e (dev server)
-- `cargo bench -p psiforge-core` — criterion benchmarks, run locally
+- `cargo test --all`: Rust tests for `core/` and `wasm/`
+- `wasm-pack test --node wasm`: wasm-bindgen tests in Node
+- `npm run test` in `web/`: vitest unit tests
+- `npm run test:e2e` in `web/`: Playwright smoke e2e (dev server)
+- `cargo bench -p psiforge-core`: criterion benchmarks, run locally
 
 CI runs `cargo fmt --all --check`, `cargo clippy --all-targets -- -D
 warnings`, `cargo test --all`, and the wasm and web suites on every pull

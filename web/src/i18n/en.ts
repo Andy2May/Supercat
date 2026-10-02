@@ -1,10 +1,10 @@
 /** English dictionary. Key set must stay identical to `vi.ts`. */
 export const en: Record<string, string> = {
-  'app.title': 'Supercat — 2D quantum simulator',
-  'app.tagline': "It's all just probability — now you can watch",
+  'app.title': 'Supercat · 2D quantum simulator',
+  'app.tagline': "It's all just probability, and now you can watch it.",
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
-  'app.noWebgl': 'WebGL2 is not available — the simulator cannot render on this device.',
+  'app.noWebgl': 'WebGL2 is not available, so the simulator cannot render on this device.',
   'app.renderFailed': 'Graphics initialization failed.',
   'app.canvasLabel': '|ψ|² probability density heatmap',
   'app.play': 'Play',
@@ -35,9 +35,9 @@ export const en: Record<string, string> = {
   // to the wave — the chip is pointer-transparent, so no tooltip can carry
   // this; it must be readable in place.
   'legend.barrier': 'Barrier',
-  'legend.barrierNote': 'Energy wall — weaker waves bounce back',
+  'legend.barrierNote': 'Energy wall: weaker waves bounce back',
   'legend.well': 'Well',
-  'legend.wellNote': 'Energy dip — pulls the wave in and traps it',
+  'legend.wellNote': 'Energy dip: pulls the wave in and traps it',
   'legend.v0': 'max|V| ≈ {v}',
   // Field colormap legend (on-canvas chip, bottom-right): captions say the
   // plain word (user ruling 2026-10-02: say "probability", not |ψ|² — the
@@ -64,7 +64,7 @@ export const en: Record<string, string> = {
   // (Task 13) is the HSV colormap toggle next to the segmented control.
   'view.position': 'Position',
   'view.momentum': 'Momentum',
-  'view.momentumCaption': 'Momentum space kx, ky — k = 0 at the center',
+  'view.momentumCaption': 'Momentum space kx, ky (k = 0 at the center)',
   'view.toggleLabel': 'Display space',
   'view.phaseColor': 'Phase color',
   // Contrast slider (Task 18, advanced mode only): scales the canvas
@@ -84,7 +84,7 @@ export const en: Record<string, string> = {
   'obs.sigmaProduct': 'σx·σpx',
   'obs.sigmaProductY': 'σy·σpy',
   'obs.energy': 'E',
-  'obs.energyJumpNote': 'E can jump after a measurement — that is correct physics',
+  'obs.energyJumpNote': 'E can jump after a measurement. That is correct physics.',
   'obs.chart.means': '⟨x⟩ and ⟨y⟩ over time',
   'obs.chart.sigma': 'σx·σpx and σy·σpy over time',
   'obs.chart.energy': 'Energy E over time',
@@ -95,27 +95,27 @@ export const en: Record<string, string> = {
   'preset.card.collapse': 'Collapse',
   'preset.card.show': 'Show narration',
   'preset.double-slit.title': 'Double slit',
-  'preset.double-slit.teaser': 'One particle, two slits — and it interferes with itself.',
+  'preset.double-slit.teaser': 'One particle, two slits, and it interferes with itself.',
   'preset.double-slit.card':
     'A wave packet races into a wall with two open slits.\n' +
-    'Beyond the wall, bright and dark bands line up evenly — the interference fingerprint of a single PARTICLE.\n' +
+    'Beyond the wall, bright and dark bands line up evenly: the interference fingerprint of a single PARTICLE.\n' +
     'Press Reset to watch again, or erase one slit shut and watch the interference vanish.\n' +
-    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own — nothing is lost.',
+    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own, nothing is lost.',
   'preset.tunneling.title': 'Tunneling',
   'preset.tunneling.teaser': 'A faint tail behind the barrier: crossing where classical physics forbids.',
   'preset.tunneling.card':
-    'Classical physics says a particle with energy E≈18 can never cross a barrier 24 high — look closely BEHIND the barrier.\n' +
+    'Classical physics says a particle with energy E≈18 can never cross a barrier 24 high. Look closely BEHIND the barrier.\n' +
     'The faint tail that leaks through decays with the barrier thickness.\n' +
     'Draw one more barrier layer and see where the faint tail ends up.',
   'preset.free-packet.title': 'Free wave packet',
-  'preset.free-packet.teaser': 'A moving packet still spreads out — momentum uncertainty at work.',
+  'preset.free-packet.teaser': 'A moving packet still spreads out: momentum uncertainty at work.',
   'preset.free-packet.card':
     'A wave packet races across the box and spreads out until it fills the whole space.\n' +
-    'There is no friction — only momentum uncertainty.\n' +
+    'There is no friction, only momentum uncertainty.\n' +
     'Let it run long enough and the density flattens out evenly.\n' +
-    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own — nothing is lost.',
+    'The box wraps around: waves reaching an edge re-enter from the opposite side, and the packet spreads on its own, nothing is lost.',
   'preset.harmonic.title': 'Harmonic oscillator',
-  'preset.harmonic.teaser': 'The packet orbits inside the potential bowl — as classical physics predicts.',
+  'preset.harmonic.teaser': 'The packet orbits inside the potential bowl, as classical physics predicts.',
   'preset.harmonic.card':
     'The "bowl" holds the packet: its center traces an elliptical orbit, like a ball rolling in a basin.\n' +
     "Exactly the classical prediction (Ehrenfest's theorem).\n" +
@@ -142,7 +142,7 @@ export const en: Record<string, string> = {
   'landing.kicker': 'THE MOST FAMOUS CAT IN PHYSICS NEVER EXISTED',
   'landing.title': "Don't ask if the cat's alive.\nAsk for the probability.",
   'landing.desc':
-    'Does God play dice? Yes — every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
+    'Does God play dice? Yes, every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
   'landing.ctaPrimary': 'Open the box →',
   'landing.ctaFree': 'Free exploration',
   'landing.status': 'NOW SHOWING · {name}',

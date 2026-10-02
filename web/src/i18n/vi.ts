@@ -1,10 +1,10 @@
 /** Vietnamese dictionary. Key set must stay identical to `en.ts`. */
 export const vi: Record<string, string> = {
-  'app.title': 'Supercat — mô phỏng lượng tử 2D',
-  'app.tagline': 'Tất cả chỉ là xác suất — giờ bạn nhìn thấy được',
+  'app.title': 'Supercat · mô phỏng lượng tử 2D',
+  'app.tagline': 'Tất cả chỉ là xác suất. Giờ bạn nhìn thấy được.',
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
-  'app.noWebgl': 'Không có WebGL2 — trình mô phỏng không thể hiển thị trên thiết bị này.',
+  'app.noWebgl': 'Không có WebGL2 nên trình mô phỏng không thể hiển thị trên thiết bị này.',
   'app.renderFailed': 'Lỗi khởi tạo đồ họa.',
   'app.canvasLabel': 'Bản đồ nhiệt mật độ xác suất |ψ|²',
   'app.play': 'Chạy',
@@ -35,9 +35,9 @@ export const vi: Record<string, string> = {
   // to the wave — the chip is pointer-transparent, so no tooltip can carry
   // this; it must be readable in place.
   'legend.barrier': 'Rào',
-  'legend.barrierNote': 'Tường năng lượng — sóng yếu hơn bị bật lại',
+  'legend.barrierNote': 'Tường năng lượng: sóng yếu hơn bị bật lại',
   'legend.well': 'Giếng',
-  'legend.wellNote': 'Hố năng lượng — hút sóng vào và giữ lại',
+  'legend.wellNote': 'Hố năng lượng: hút sóng vào và giữ lại',
   'legend.v0': 'max|V| ≈ {v}',
   // Field colormap legend (on-canvas chip, bottom-right): captions say the
   // plain word (user ruling 2026-10-02: "ghi hẳn xác suất", not |ψ|² — the
@@ -64,7 +64,7 @@ export const vi: Record<string, string> = {
   // (Task 13) is the HSV colormap toggle next to the segmented control.
   'view.position': 'Vị trí',
   'view.momentum': 'Động lượng',
-  'view.momentumCaption': 'Không gian động lượng kx, ky — k = 0 ở giữa',
+  'view.momentumCaption': 'Không gian động lượng kx, ky (k = 0 ở giữa)',
   'view.toggleLabel': 'Không gian hiển thị',
   'view.phaseColor': 'Màu pha',
   // Contrast slider (Task 18, advanced mode only): scales the canvas
@@ -84,7 +84,7 @@ export const vi: Record<string, string> = {
   'obs.sigmaProduct': 'σx·σpx',
   'obs.sigmaProductY': 'σy·σpy',
   'obs.energy': 'E',
-  'obs.energyJumpNote': 'E có thể nhảy vọt sau phép đo — điều đó đúng vật lý',
+  'obs.energyJumpNote': 'E có thể nhảy vọt sau phép đo. Đó là đúng vật lý.',
   'obs.chart.means': 'Đồ thị ⟨x⟩ và ⟨y⟩ theo thời gian',
   'obs.chart.sigma': 'Đồ thị σx·σpx và σy·σpy theo thời gian',
   'obs.chart.energy': 'Đồ thị năng lượng E theo thời gian',
@@ -95,27 +95,27 @@ export const vi: Record<string, string> = {
   'preset.card.collapse': 'Thu gọn',
   'preset.card.show': 'Xem lời dẫn',
   'preset.double-slit.title': 'Khe kép',
-  'preset.double-slit.teaser': 'Một hạt đi qua hai khe — và tự giao thoa với chính nó.',
+  'preset.double-slit.teaser': 'Một hạt đi qua hai khe và tự giao thoa với chính nó.',
   'preset.double-slit.card':
     'Gói sóng lao vào tường có hai khe hở.\n' +
-    'Sau tường các vạch sáng tối xếp đều — dấu vết sóng giao thoa của một HẠT.\n' +
+    'Sau tường các vạch sáng tối xếp đều: dấu vết sóng giao thoa của một HẠT.\n' +
     'Hãy Reset xem lại từ đầu, thử vẽ tẩy bịt một khe để giao thoa biến mất.\n' +
-    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian — không mất đi đâu.',
+    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian, không mất đi đâu.',
   'preset.tunneling.title': 'Xuyên hầm',
-  'preset.tunneling.teaser': 'Hạt lọt qua bức rào cao hơn năng lượng của nó — bằng vệt mờ.',
+  'preset.tunneling.teaser': 'Hạt lọt qua bức rào cao hơn năng lượng của nó, chỉ để lại vệt mờ.',
   'preset.tunneling.card':
-    'Vật lý cổ điển nói hạt năng lượng E≈18 không thể vượt rào cao 24 — hãy nhìn kỹ PHÍA SAU rào.\n' +
+    'Vật lý cổ điển nói hạt năng lượng E≈18 không thể vượt rào cao 24. Hãy nhìn kỹ PHÍA SAU rào.\n' +
     'Vệt mờ xuyên qua suy giảm theo độ dày.\n' +
     'Hãy vẽ thêm một lớp rào nữa xem vệt mờ đi đâu.',
   'preset.free-packet.title': 'Gói sóng tự do',
-  'preset.free-packet.teaser': 'Gói sóng vừa bay vừa tự giãn ra — hệ quả của bất định động lượng.',
+  'preset.free-packet.teaser': 'Gói sóng vừa bay vừa tự giãn ra: hệ quả của bất định động lượng.',
   'preset.free-packet.card':
     'Gói sóng bay xuyên hộp và tự giãn ra, dần phủ kín không gian.\n' +
-    'Không có ma sát — chỉ là bất định động lượng.\n' +
+    'Không có ma sát, chỉ là bất định động lượng.\n' +
     'Để chạy lâu sẽ thấy mật độ phẳng đều.\n' +
-    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian — không mất đi đâu.',
+    'Hộp mô phỏng tuần hoàn: sóng chạm mép sẽ quay lại từ mép đối diện, và gói sóng tự giãn ra theo thời gian, không mất đi đâu.',
   'preset.harmonic.title': 'Dao động điều hòa',
-  'preset.harmonic.teaser': "Gói sóng chạy theo quỹ đạo elip trong 'bát' thế — đúng dự đoán cổ điển.",
+  'preset.harmonic.teaser': "Gói sóng chạy theo quỹ đạo elip trong 'bát' thế, đúng dự đoán cổ điển.",
   'preset.harmonic.card':
     'Gói bị "bát" giữ lại, tâm nó chạy theo quỹ đạo elip như quả bóng lăn trong chậu.\n' +
     'Đúng dự đoán cổ điển (định lý Ehrenfest).\n' +
@@ -142,7 +142,7 @@ export const vi: Record<string, string> = {
   'landing.kicker': 'CON MÈO NỔI TIẾNG NHẤT VẬT LÝ CHƯA TỪNG TỒN TẠI',
   'landing.title': 'Đừng hỏi mèo sống hay chết.\nHỏi xác suất.',
   'landing.desc':
-    'Chúa có chơi xúc xắc không? Có — và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
+    'Chúa có chơi xúc xắc không? Có, và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
   'landing.ctaPrimary': 'Mở hộp →',
   'landing.ctaFree': 'Tự do khám phá',
   'landing.status': 'ĐANG CHIẾU · {name}',

@@ -136,11 +136,12 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(vi['legend.momentumCaption']).toBe('Xác suất động lượng')
     expect(en['legend.momentumCaption']).toBe('Momentum probability')
     // V-legend shape notes (user ruling 2026-10-02: Rào/Giếng must explain
-    // what they are and what they DO to the sim — one plain sentence each).
-    expect(vi['legend.barrierNote']).toBe('Tường năng lượng — sóng yếu hơn bị bật lại')
-    expect(en['legend.barrierNote']).toBe('Energy wall — weaker waves bounce back')
-    expect(vi['legend.wellNote']).toBe('Hố năng lượng — hút sóng vào và giữ lại')
-    expect(en['legend.wellNote']).toBe('Energy dip — pulls the wave in and traps it')
+    // what they are and what they DO to the sim, one plain sentence each;
+    // em-dash-free wording per the 2026-10-02 no-em-dash ruling).
+    expect(vi['legend.barrierNote']).toBe('Tường năng lượng: sóng yếu hơn bị bật lại')
+    expect(en['legend.barrierNote']).toBe('Energy wall: weaker waves bounce back')
+    expect(vi['legend.wellNote']).toBe('Hố năng lượng: hút sóng vào và giữ lại')
+    expect(en['legend.wellNote']).toBe('Energy dip: pulls the wave in and traps it')
     expect(vi['legend.phaseNote']).toBe('độ sáng = xác suất')
     expect(en['legend.phaseNote']).toBe('brightness = probability')
   })
@@ -158,10 +159,10 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(vi['landing.title']).toBe('Đừng hỏi mèo sống hay chết.\nHỏi xác suất.')
     expect(en['landing.title']).toBe("Don't ask if the cat's alive.\nAsk for the probability.")
     expect(vi['landing.desc']).toBe(
-      'Chúa có chơi xúc xắc không? Có — và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
+      'Chúa có chơi xúc xắc không? Có, và ngài chơi liên tục, từng attosecond một. Vẽ rào, bắn gói sóng và xem từng lần gieo của thực tại.',
     )
     expect(en['landing.desc']).toBe(
-      'Does God play dice? Yes — every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
+      'Does God play dice? Yes, every single attosecond. Draw barriers, fire wave packets and watch reality roll.',
     )
     expect(vi['landing.ctaPrimary']).toBe('Mở hộp →')
     expect(en['landing.ctaPrimary']).toBe('Open the box →')
