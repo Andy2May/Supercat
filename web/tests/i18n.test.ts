@@ -120,6 +120,15 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(en['rail.readouts']).toBe('READOUTS')
     expect(vi['rail.view']).toBe('HIỂN THỊ')
     expect(en['rail.view']).toBe('VIEW')
+    // Field colormap legend (on-canvas chip): inferno ramp endpoint words
+    // (relative scale — auto-exposure normalizes every frame) + the phase
+    // variant's brightness note. −π/+π and |ψ|² are mono symbols, not keys.
+    expect(vi['legend.low']).toBe('thấp')
+    expect(en['legend.low']).toBe('low')
+    expect(vi['legend.high']).toBe('cao')
+    expect(en['legend.high']).toBe('high')
+    expect(vi['legend.phaseNote']).toBe('độ sáng = mật độ |ψ|²')
+    expect(en['legend.phaseNote']).toBe('brightness = density |ψ|²')
   })
 
   it('scene label carries the {name} template', () => {

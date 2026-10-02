@@ -1,10 +1,11 @@
 <script lang="ts">
   import { getLang, lang, t } from '../i18n/index.js'
-  import { V_LEGEND_HEX } from '../render/shaders.js'
+  import { INFERNO_GRADIENT_CSS, PHASE_GRADIENT_CSS, V_LEGEND_HEX } from '../render/shaders.js'
   import { startSimLoop } from '../render/simLoop.js'
+  import { modeStore } from '../sim/modeStore.svelte.js'
   import { dragToPacket } from '../sim/packet.js'
   import { DEFAULTS, screenToGrid } from '../sim/simParams.js'
-  import { simStore } from '../sim/simStore.svelte.js'
+  import { effectiveColorMode, simStore } from '../sim/simStore.svelte.js'
   import { toolState } from '../sim/toolStore.svelte.js'
   import { strokeToOp, strokeToOps, type Pt } from '../sim/tools.js'
   import { binToScreen, clearMarkers, drawMarkers, spawnMarker } from './markers.js'
@@ -88,6 +89,35 @@
   const legendVisible = $derived(
     interactive && simStore.potentialMax > 0 && simStore.view === 'position',
   )
+
+  // ------------------------------------------------- field colormap legend
+
+  /**
+   * Which field colormap the canvas is painting right now — derived from
+   * the SAME predicates the render loop feeds the shader each frame
+   * (store.view + effectiveColorMode against the live experience mode), so
+   * the chip can never narrate a colormap the canvas is not in: a
+   * phaseColor flag left on underneath explore mode shows the inferno
+   * ramp, because that is exactly what the canvas falls back to there.
+   * 'none' = landing backdrop (a decorative canvas names no colors).
+   */
+  const colVariant = $derived.by(() => {
+    if (!interactive) return 'none'
+    if (simStore.view === 'momentum') return 'momentum'
+    return effectiveColorMode(simStore.view, simStore.phaseColor, modeStore.mode) === 1
+      ? 'phase'
+      : 'density'
+  })
+
+  /** Translated endpoint words + the phase note (mono symbols are inline). */
+  const colLabels = $derived.by(() => {
+    active // dependency: re-translate when the language changes
+    return {
+      low: t('legend.low'),
+      high: t('legend.high'),
+      phaseNote: t('legend.phaseNote'),
+    }
+  })
 
   let canvas = $state<HTMLCanvasElement | undefined>(undefined)
   let overlay = $state<HTMLCanvasElement | undefined>(undefined)
@@ -565,6 +595,32 @@
       <span class="v0">{legend.v0}</span>
     </div>
   {/if}
+  {#if colVariant !== 'none'}
+    <!-- Field colormap legend: names what the canvas colors mean, in the
+         V legend's chip grammar at the stage's bottom-right. Density and
+         momentum share the inferno ramp with endpoint words (the scale is
+         relative — auto-exposure normalizes each frame, so words, not
+         numbers); the phase variant labels the hue wheel's branch-cut ends
+         (both read red at −π/+π) and keeps the brightness = density
+         reading. Strip gradients come from the shader's own constants. -->
+    <div class="col-legend" data-testid="col-legend">
+      {#if colVariant === 'phase'}
+        <span class="row">
+          <span class="mono">−π</span>
+          <span class="strip" data-testid="col-strip" style:background={PHASE_GRADIENT_CSS}></span>
+          <span class="mono">+π</span>
+        </span>
+        <span class="note">{colLabels.phaseNote}</span>
+      {:else}
+        <span class="cap mono">{colVariant === 'momentum' ? '|ψ(k)|²' : '|ψ|²'}</span>
+        <span class="row">
+          <span>{colLabels.low}</span>
+          <span class="strip" data-testid="col-strip" style:background={INFERNO_GRADIENT_CSS}></span>
+          <span>{colLabels.high}</span>
+        </span>
+      {/if}
+    </div>
+  {/if}
   {#if toast !== undefined}
     <div class="toast" data-testid="measure-toast" role="status">{toast}</div>
   {/if}
@@ -659,5 +715,58 @@
     margin-top: 0.15rem;
     font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
     opacity: 0.9;
+  }
+
+  /* Field colormap legend: the V legend's chip grammar mirrored at the
+     stage's bottom-right (V legend owns bottom-left, toast top-center,
+     t-label top-left — the four corners never collide). Same dark
+     translucent surface + pointer-transparent rule. */
+  .col-legend {
+    position: absolute;
+    bottom: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    pointer-events: none;
+  }
+
+  .col-legend .row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .col-legend .mono {
+    font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+    font-size: 0.72rem;
+  }
+
+  .col-legend .cap {
+    opacity: 0.9;
+  }
+
+  .col-legend .note {
+    font-size: 0.7rem;
+    opacity: 0.85;
+  }
+
+  /* The gradient strip (colors come inline from the shader constants).
+     The faint border keeps the ramp's black end visible over the chip's
+     own dark surface. */
+  .col-legend .strip {
+    width: 84px;
+    height: 8px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    flex: none;
   }
 </style>

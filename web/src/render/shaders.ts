@@ -30,6 +30,50 @@ export const V_LEGEND_HEX = {
   well: glToHex(V_WELL_FILL),
 } as const
 
+/**
+ * Inferno density-ramp interior stops (u_colorMode 0), hoisted to module
+ * constants so the on-canvas field legend can reproduce the ramp in CSS —
+ * same one-source-of-truth rule as V_LEGEND_HEX. Interpolated into
+ * FRAGMENT_SHADER_SRC below; black (b = 0) and the 1/3 breakpoints are the
+ * shader's own, so the legend strip's CSS stops sit at 0/33.33/66.67/100%
+ * and CSS's sRGB-linear interpolation matches the shader's mix() chain.
+ */
+export const INFERNO_C1: readonly [number, number, number] = [0.26, 0.05, 0.43]
+export const INFERNO_C2: readonly [number, number, number] = [0.73, 0.21, 0.3]
+export const INFERNO_C3: readonly [number, number, number] = [0.99, 0.91, 0.63]
+
+/** Legend strip for the density ramp (low → high |ψ|² / |ψ(k)|²). */
+export const INFERNO_GRADIENT_CSS = `linear-gradient(90deg, #000000 0%, ${glToHex(
+  INFERNO_C1,
+)} 33.33%, ${glToHex(INFERNO_C2)} 66.67%, ${glToHex(INFERNO_C3)} 100%)`
+
+/**
+ * The shader's branchless HSV → RGB K-form, ported verbatim to TS so the
+ * phase legend strip paints the exact hues the canvas paints (saturation
+ * 0.9 as in the shader; value pinned to 1 — on the canvas it carries the
+ * tonemapped density, which the legend's note says in words instead).
+ */
+function hsv2rgbHex(h: number, s: number, v: number): string {
+  const K = [1, 2 / 3, 1 / 3, 3]
+  const channel = (i: number): number => {
+    const f = h + K[i] - Math.floor(h + K[i]) // fract(h + K.xyz)
+    const p = Math.abs(f * 6 - K[3])
+    const c = Math.min(Math.max(p - 1, 0), 1) // clamp(p - K.xxx, 0, 1)
+    return v * (1 + (c - 1) * s) // v * mix(K.xxx, c, s)
+  }
+  return glToHex([channel(0), channel(1), channel(2)])
+}
+
+/**
+ * Legend strip for the phase view: hue sweeps φ = −π → +π left to right
+ * (hue = fract((φ + π) / τ), the shader's own mapping), so both ends read
+ * the same red — the branch cut the −π/+π labels point at.
+ */
+export const PHASE_GRADIENT_CSS = `linear-gradient(90deg, ${Array.from(
+  { length: 25 },
+  (_, i) => `${hsv2rgbHex(i / 24, 0.9, 1)} ${((i / 24) * 100).toFixed(2)}%`,
+).join(', ')})`
+
 export const VERTEX_SHADER_SRC = `#version 300 es
 layout(location = 0) in vec2 a_pos;
 out vec2 v_uv;
@@ -111,9 +155,9 @@ void main() {
   // 4-stop inferno-like colormap (black -> dark purple -> magenta-red ->
   // pale yellow): perceptually stepped and physics-standard, far stronger
   // contrast than the original black -> blue -> white ramp.
-  vec3 c1 = vec3(0.26, 0.05, 0.43);
-  vec3 c2 = vec3(0.73, 0.21, 0.30);
-  vec3 c3 = vec3(0.99, 0.91, 0.63);
+  vec3 c1 = vec3(${INFERNO_C1.join(', ')});
+  vec3 c2 = vec3(${INFERNO_C2.join(', ')});
+  vec3 c3 = vec3(${INFERNO_C3.join(', ')});
   vec3 color;
   if (u_colorMode == 1) {
     // HSV phase colormap (Task 13): hue encodes arg psi — phi in (-pi, pi]
