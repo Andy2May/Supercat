@@ -62,11 +62,15 @@ test('document shell: vi lang, branded title, OG/Twitter meta, favicon resolves'
 
   await page.goto('/')
 
-  // The document is Vietnamese by default; the title is static vi copy
-  // (spec Appendix A — deliberately NOT an i18n key).
+  // The document is Vietnamese by default; the title is the one static
+  // brand string (user ruling 2026-10-02: same in every locale, · separator).
   expect(await page.evaluate(() => document.documentElement.lang)).toBe('vi')
   await expect(page).toHaveTitle(/Supercat/)
-  expect(await page.title()).toBe('Supercat · Phòng thí nghiệm lượng tử 2D')
+  expect(await page.title()).toBe('Supercat · 2D Quantum Lab')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    'content',
+    'Supercat · 2D Quantum Lab',
+  )
 
   // Open Graph card + mirrored Twitter card.
   const ogImage = page.locator('meta[property="og:image"]')

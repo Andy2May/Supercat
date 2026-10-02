@@ -1,6 +1,6 @@
 /** Vietnamese dictionary. Key set must stay identical to `en.ts`. */
 export const vi: Record<string, string> = {
-  'app.title': 'Supercat · mô phỏng lượng tử 2D',
+  'app.title': 'Supercat · 2D Quantum Lab',
   'app.tagline': 'Tất cả chỉ là xác suất. Giờ bạn nhìn thấy được.',
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',

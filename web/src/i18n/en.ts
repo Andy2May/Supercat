@@ -1,6 +1,6 @@
 /** English dictionary. Key set must stay identical to `vi.ts`. */
 export const en: Record<string, string> = {
-  'app.title': 'Supercat · 2D quantum simulator',
+  'app.title': 'Supercat · 2D Quantum Lab',
   'app.tagline': "It's all just probability, and now you can watch it.",
   'app.lang.switchToEn': 'English',
   'app.lang.switchToVi': 'Tiếng Việt',
