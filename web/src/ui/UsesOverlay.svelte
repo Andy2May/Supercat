@@ -137,11 +137,12 @@
       <p class="easy">{card.easy}</p>
       <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
+        {@const preset = card.watch}
         <a
           class="watch"
           data-testid={`uses-watch-${card.id}`}
-          href={`#/sim/${card.watch}`}
-          onclick={() => watch(card.watch)}>{card.watchLabel}</a
+          href={`#/sim/${preset}`}
+          onclick={() => watch(preset)}>{card.watchLabel}</a
         >
       {/if}
     </article>
@@ -154,11 +155,12 @@
       <p class="easy">{card.easy}</p>
       <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
+        {@const preset = card.watch}
         <a
           class="watch"
           data-testid={`uses-watch-${card.id}`}
-          href={`#/sim/${card.watch}`}
-          onclick={() => watch(card.watch)}>{card.watchLabel}</a
+          href={`#/sim/${preset}`}
+          onclick={() => watch(preset)}>{card.watchLabel}</a
         >
       {/if}
     </article>
