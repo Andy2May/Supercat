@@ -355,7 +355,7 @@
     left: 46px;
     top: 50%;
     transform: translateY(-54%);
-    max-width: 400px;
+    max-width: 450px;
   }
 
   /* Entrance (ruling 4): the only `from` state is the animated one — the
@@ -393,10 +393,13 @@
 
   .hero h1 {
     margin: 0 0 12px;
-    font-size: 44px;
+    font-size: 48px;
     line-height: 1.04;
     font-weight: 700;
     letter-spacing: -0.025em;
+    /* Both locales wrap their long first line at this width; balance keeps
+       the ragged edge deliberate instead of orphaning a short last word. */
+    text-wrap: balance;
   }
 
   /* The second title line carries the accent (mockup <em>). */
@@ -406,10 +409,10 @@
 
   .desc {
     margin: 0 0 22px;
-    font-size: 14.5px;
+    font-size: 15.5px;
     line-height: 1.65;
     color: var(--text-2);
-    max-width: 34ch;
+    max-width: 36ch;
   }
 
   .cta {
@@ -474,15 +477,17 @@
   }
 
   /* The scheming cat beside its equation (Supercat rebrand): the meme photo
-     as a small rounded sticker. Light hairline + soft dark drop shadow so
-     the card separates on BOTH extremes of the backdrop — bright fringes
-     (shadow does the work) and empty black (the light border does). */
+     as a polaroid sticker — a light mat the photo carries with it, so the
+     card stays bright on empty-black backdrop zones while the soft dark
+     drop shadow separates it over bright fringes. The cat itself stays
+     pitch black: that IS the meme. */
   .schrodinger .cat {
-    height: 84px;
+    height: 92px;
     width: auto;
     flex: none;
-    border-radius: 8px;
-    border: 1px solid rgba(232, 236, 241, 0.35);
+    padding: 4px;
+    background: #e8ecf1;
+    border-radius: 10px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
     display: block;
   }
