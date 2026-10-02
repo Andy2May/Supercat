@@ -15,26 +15,6 @@ export const vi: Record<string, string> = {
   'playback.restorePotential': 'Khôi phục thế gốc',
   'playback.barLabel': 'Điều khiển mô phỏng',
   'playback.speed': 'Tốc độ',
-  // PNG canvas export (Task 16): playback-bar button, visible in both
-  // experience modes; doubles as its aria-label.
-  'export.png': 'Xuất ảnh PNG',
-  // JSON state save/load (Task 17, advanced mode): the header Save/Load
-  // state buttons, the non-fatal load-failure banner headline, and the
-  // per-reason detail appended to it (StateFileError.reason).
-  'export.json': 'Lưu trạng thái',
-  'import.json': 'Mở trạng thái',
-  'loadFailed': 'Không mở được file trạng thái',
-  'loadFailed.version': 'phiên bản file không hỗ trợ',
-  'loadFailed.shape': 'sai kích thước lưới',
-  'loadFailed.corrupt': 'file hỏng',
-  'loadFailed.dismiss': 'Đóng',
-  // 512² save-size notice (spec §5.7 + risk row "khi mở/lưu"): a 512²
-  // state JSON weighs several MB — this is the transient banner shown by
-  // BOTH directions (alongside the never-blocked Save download, and on
-  // loading such a file), plus the dismiss control's name. Direction-
-  // neutral wording by design.
-  'export.sizeNote': 'File trạng thái ở lưới lớn có thể nặng vài MB',
-  'export.sizeNote.dismiss': 'Đóng',
   'error.resetAndRun': 'Reset & chạy lại',
   'webgl.missingTitle': 'Không hỗ trợ WebGL2',
   'perf.fps': 'FPS',

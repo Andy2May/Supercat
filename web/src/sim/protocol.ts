@@ -117,40 +117,6 @@ export type MainToWorker =
       type: 'measure-momentum'
       seed: number
     }
-  | {
-      /**
-       * JSON state save (Task 17): asks the worker to reply with a `state`
-       * message holding wasm `serialize_state()`'s full payload (both
-       * Float32Arrays transferred). The main thread encodes it to a file
-       * via stateFile.ts — the worker never touches the codec.
-       */
-      type: 'serialize-state'
-    }
-  | {
-      /**
-       * JSON state load (Task 17): restores a decoded state file. The
-       * arrays were transferred by the main thread (decodeState output,
-       * zero-copy). GRID RULE: wasm `deserialize_state` enforces only
-       * nx/ny (extent/dt/m/ħ are validated-finite-but-not-applied, and the
-       * propagator is never rebuilt in place), so when the file's grid
-       * differs from the live sim the worker first constructs a FRESH
-       * `Simulation2D` from the file's own scalars — which is also what
-       * correctly applies extent/dt/m/ħ — and deserializes into that.
-       * Rejections arrive as `load-error`, never `fatal`: a bad file must
-       * not stop the running simulation.
-       */
-      type: 'deserialize-state'
-      nx: number
-      ny: number
-      extentX: number
-      extentY: number
-      dt: number
-      m: number
-      hbar: number
-      t: number
-      potential: Float32Array
-      psi: Float32Array
-    }
 
 /**
  * Worker -> main: one renderable frame. `densityPhase` holds interleaved
@@ -291,35 +257,4 @@ export function shouldSendMomentum(
 /** Worker -> main: an unrecoverable error (norm drift, bad params, panic). */
 export type FatalMessage = { type: 'fatal'; message: string }
 
-/**
- * Worker -> main: the full serialized state (Task 17), the one-frame reply
- * to `serialize-state`. Field-for-field wasm `serialize_state()`: the eight
- * scalars plus the sampled `potential` (`nx*ny` f32) and interleaved
- * `(re, im)` `psi` (`2*nx*ny` f32). Both arrays were freshly allocated by
- * wasm, so they ride the transfer list — the main thread's `encodeState`
- * reads them exactly once on the way into the JSON file.
- */
-export type StateMessage = {
-  type: 'state'
-  nx: number
-  ny: number
-  extentX: number
-  extentY: number
-  dt: number
-  m: number
-  hbar: number
-  t: number
-  potential: Float32Array
-  psi: Float32Array
-}
-
-/**
- * Worker -> main: a REJECTED state load (Task 17). The file failed wasm's
- * `deserialize_state` validation (shape/non-finite) — a caller-file
- * problem, deliberately NOT fatal: the live simulation keeps running
- * untouched, and the main thread surfaces `message` on the non-fatal
- * load-error banner.
- */
-export type LoadErrorMessage = { type: 'load-error'; message: string }
-
-export type WorkerToMain = FrameMessage | FatalMessage | StateMessage | LoadErrorMessage
+export type WorkerToMain = FrameMessage | FatalMessage

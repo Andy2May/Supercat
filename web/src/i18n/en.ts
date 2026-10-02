@@ -15,26 +15,6 @@ export const en: Record<string, string> = {
   'playback.restorePotential': 'Restore original potential',
   'playback.barLabel': 'Playback controls',
   'playback.speed': 'Speed',
-  // PNG canvas export (Task 16): playback-bar button, visible in both
-  // experience modes; doubles as its aria-label.
-  'export.png': 'Export PNG',
-  // JSON state save/load (Task 17, advanced mode): the header Save/Load
-  // state buttons, the non-fatal load-failure banner headline, and the
-  // per-reason detail appended to it (StateFileError.reason).
-  'export.json': 'Save state',
-  'import.json': 'Load state',
-  'loadFailed': 'Could not load state file',
-  'loadFailed.version': 'unsupported file version',
-  'loadFailed.shape': 'wrong grid dimensions',
-  'loadFailed.corrupt': 'corrupt file',
-  'loadFailed.dismiss': 'Dismiss',
-  // 512² save-size notice (spec §5.7 + risk row "khi mở/lưu"): a 512²
-  // state JSON weighs several MB — this is the transient banner shown by
-  // BOTH directions (alongside the never-blocked Save download, and on
-  // loading such a file), plus the dismiss control's name. Direction-
-  // neutral wording by design.
-  'export.sizeNote': 'Large-grid state files can weigh several megabytes',
-  'export.sizeNote.dismiss': 'Dismiss',
   'error.resetAndRun': 'Reset & run again',
   'webgl.missingTitle': 'WebGL2 not supported',
   'perf.fps': 'FPS',

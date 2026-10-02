@@ -9,9 +9,7 @@
  *                                      frame's buffer back for reuse)
  *
  * A worker frame -> upload field (+ potential when shipped) -> draw ->
- * refresh the debug hook and the perf HUD — and, if the export button
- * queued one, fire a PNG capture of the just-drawn canvas (Task 16, same
- * task as the draw; see capturePng). Drawing is frame-driven, so a
+ * refresh the debug hook and the perf HUD. Drawing is frame-driven, so a
  * paused simulation draws nothing and `debugState.frames` freezes — with
  * one exception (Task 14): while a measurement crossfade is running, the
  * tick itself draws extra frames to ramp u_fade even when no worker frame
@@ -26,7 +24,6 @@ import { modeStore } from '../sim/modeStore.svelte.js'
 import { effectiveColorMode, type SimStore } from '../sim/simStore.svelte.js'
 import { debugState } from './debugHook.js'
 import { HeatmapRenderer } from './renderer.js'
-import { downloadBlob, supercatFilename } from '../ui/download.js'
 
 /** Max |V| over the shipped potential — scales the shader's V overlay. */
 function maxAbs(values: Float32Array): number {
@@ -36,27 +33,6 @@ function maxAbs(values: Float32Array): number {
     if (a > max) max = a
   }
   return max
-}
-
-/**
- * Encodes the canvas as PNG and triggers a browser download (Task 16).
- * The toBlob CALL must be synchronous within the same task as the last
- * draw — the canvas has preserveDrawingBuffer:false, so the backbuffer is
- * only valid until the browser composites; the async part here is merely
- * the encode (the bitmap snapshot is taken at call time, so a deferred
- * callback reads a captured copy, not the volatile buffer). A null blob is
- * rare (zero-area canvas, OOM) and not fatal: warn and move on. Filename +
- * anchor plumbing live in ui/download.ts (shared with the Task-17 JSON
- * export).
- */
-function capturePng(canvas: HTMLCanvasElement): void {
-  canvas.toBlob((blob) => {
-    if (blob === null) {
-      console.warn('supercat: PNG export failed — canvas.toBlob returned no blob')
-      return
-    }
-    downloadBlob(blob, supercatFilename('', 'png'))
-  }, 'image/png')
 }
 
 export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => void {
@@ -321,17 +297,6 @@ export function startSimLoop(canvas: HTMLCanvasElement, store: SimStore): () => 
       // (the shader applies it to the shared tonemap brightness).
       renderer.setContrast(store.contrast)
       renderer.draw(potentialMax, viewIsMomentum ? momentumDisplayMax : displayMax)
-      // PNG export (Task 16): consume the queue exactly here — one capture
-      // per queued click, at most one per frame, inside the `!contextLost`
-      // branch so a capture lost to a dead context stays queued for the
-      // first frame after restoration instead of encoding a garbage
-      // backbuffer. capturePng's toBlob is synchronous with the draw above
-      // (same task) — the preserveDrawingBuffer:false buffer would already
-      // be cleared by the time any deferred call read it.
-      if (store.capturePending > 0) {
-        store.capturePending--
-        capturePng(canvas)
-      }
     }
     showingMomentum = viewIsMomentum
     // The upload (or the context-loss skip) was the last read of the frame

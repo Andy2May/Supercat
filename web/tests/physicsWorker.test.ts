@@ -11,8 +11,9 @@ import type { FrameMessage, WorkerToMain } from '../src/sim/protocol.js'
  * the dynamic import so its top-level `self.onmessage = ...` lands on our
  * recorder.
  *
- * The Task-17 describe block below reuses the same seam for the state
- * save/load handlers, including the grid-mismatch fresh-sim rule.
+ * (The Task-17 state save/load describe was removed with the 2026-10-02
+ * feature trim, along with the worker's serialize/deserialize handlers
+ * and the FakeSim stubs for them.)
  */
 
 /** Every call the FakeSim receives, in order (construct params, seeds,
@@ -92,55 +93,6 @@ vi.mock('../src/sim/wasm.js', () => ({
         return { i: 3, j: 5, kx: 0.75, ky: -0.9 }
       }
       reset_wave(): void {}
-      serialize_state(): {
-        nx: number
-        ny: number
-        extentX: number
-        extentY: number
-        dt: number
-        m: number
-        hbar: number
-        t: number
-        potential: Float32Array
-        psi: Float32Array
-      } {
-        return {
-          nx: this.nx,
-          ny: this.ny,
-          extentX: this.extentX,
-          extentY: this.extentY,
-          dt: this.dt,
-          m: this.m,
-          hbar: this.hbar,
-          t: this.t,
-          potential: new Float32Array(this.nx * this.ny),
-          psi: new Float32Array(2 * this.nx * this.ny),
-        }
-      }
-      deserialize_state(state: unknown): void {
-        const s = state as {
-          nx: number
-          ny: number
-          potential: Float32Array
-          psi: Float32Array
-        }
-        // Same rejection classes as the real wasm: "dimension" for shape
-        // mismatches (state grid vs this sim's grid, or sample lengths).
-        if (
-          s.nx !== this.nx ||
-          s.ny !== this.ny ||
-          s.psi.length !== 2 * this.nx * this.ny ||
-          s.potential.length !== this.nx * this.ny
-        ) {
-          calls.log.push({ op: 'deserialize_reject', nx: s.nx, ny: s.ny })
-          throw new Error(
-            `dimension mismatch: state ${s.nx}x${s.ny} does not fit simulation ${this.nx}x${this.ny}`,
-          )
-        }
-        calls.log.push({ op: 'deserialize_state', nx: s.nx, ny: s.ny })
-        this.t = (state as { t: number }).t
-        this.version += 1
-      }
     },
   }),
 }))
@@ -199,35 +151,6 @@ async function bootWorker(): Promise<void> {
     m: 1,
     hbar: 1,
   })
-}
-
-/** A decoded state file's payload, sized for the given grid. */
-function statePayload(nx: number, ny: number, t: number): {
-  type: 'deserialize-state'
-  nx: number
-  ny: number
-  extentX: number
-  extentY: number
-  dt: number
-  m: number
-  hbar: number
-  t: number
-  potential: Float32Array
-  psi: Float32Array
-} {
-  return {
-    type: 'deserialize-state',
-    nx,
-    ny,
-    extentX: 20,
-    extentY: 30,
-    dt: 0.01,
-    m: 2,
-    hbar: 3,
-    t,
-    potential: new Float32Array(nx * ny),
-    psi: new Float32Array(2 * nx * ny),
-  }
 }
 
 describe('physics.worker measure handlers', () => {
@@ -302,103 +225,3 @@ describe('physics.worker measure handlers', () => {
   })
 })
 
-describe('physics.worker state save/load handlers (Task 17)', () => {
-  beforeEach(bootWorker)
-
-  it('serialize-state replies with one state message carrying serialize_state() fields', async () => {
-    await post({ type: 'advance', substeps: 5 }) // t = 0.025
-
-    const before = workerScope.posted.length
-    await post({ type: 'serialize-state' })
-
-    // Exactly one reply: the state message, no frame.
-    expect(workerScope.posted).toHaveLength(before + 1)
-    const state = workerScope.posted[workerScope.posted.length - 1]
-    expect(state.type).toBe('state')
-    if (state.type !== 'state') return
-    expect(state.nx).toBe(4)
-    expect(state.ny).toBe(4)
-    expect(state.extentX).toBe(40)
-    expect(state.extentY).toBe(40)
-    expect(state.dt).toBe(0.005)
-    expect(state.m).toBe(1)
-    expect(state.hbar).toBe(1)
-    expect(state.t).toBeCloseTo(0.025, 10)
-    expect(state.potential).toBeInstanceOf(Float32Array)
-    expect(state.psi).toBeInstanceOf(Float32Array)
-    expect(state.potential.length).toBe(4 * 4)
-    expect(state.psi.length).toBe(2 * 4 * 4)
-  })
-
-  it('deserialize-state with a MATCHING grid restores in place (no fresh sim), t restored + frame shipped', async () => {
-    await post({ type: 'advance', substeps: 4 }) // t = 0.02
-    const constructsBefore = constructs().length
-
-    await post(statePayload(4, 4, 9.5))
-
-    // No fresh Simulation2D: the live sim was reused.
-    expect(constructs()).toHaveLength(constructsBefore)
-    expect(calls.log).toContainEqual({ op: 'deserialize_state', nx: 4, ny: 4 })
-
-    // The immediate postFrame carries the restored t (advance(0) getter)
-    // and the bumped potential_version reships the potential.
-    const frame = frames()[frames().length - 1]
-    expect(frame.t).toBe(9.5)
-    expect(frame.potential).toBeDefined()
-    expect(frame.potentialVersion).toBe(1)
-  })
-
-  it('deserialize-state with a DIFFERENT grid constructs a FRESH sim from the file params', async () => {
-    await post(statePayload(8, 8, 7))
-
-    // The fresh sim was built with the FILE's scalars — that construction
-    // is what applies extent/dt/m/ħ (wasm's in-place deserialize never
-    // would).
-    const fresh = constructs()
-    expect(fresh).toHaveLength(2) // boot init + the load
-    expect(fresh[1]).toEqual({
-      op: 'construct',
-      nx: 8,
-      ny: 8,
-      extentX: 20,
-      extentY: 30,
-      dt: 0.01,
-      m: 2,
-      hbar: 3,
-    })
-    // ...and the state went into THAT sim, not the old 4x4.
-    expect(calls.log).toContainEqual({ op: 'deserialize_state', nx: 8, ny: 8 })
-    expect(calls.log).not.toContainEqual({ op: 'deserialize_reject', nx: 8, ny: 8 })
-
-    // The postFrame answers from the new grid: densityPhase is sized
-    // 2*8*8 and t is the restored value.
-    const frame = frames()[frames().length - 1]
-    expect(frame.densityPhase.length).toBe(2 * 8 * 8)
-    expect(frame.t).toBe(7)
-  })
-
-  it('a rejected deserialize-state is a load-error, never a fatal — the live sim keeps running', async () => {
-    await post({ type: 'advance', substeps: 3 }) // t = 0.015
-    const framesBefore = frames().length
-
-    // psi sized for a 3x3 grid against the 4x4 sim: wasm's class of
-    // "dimension" rejection.
-    const bad = statePayload(4, 4, 100)
-    bad.psi = new Float32Array(2 * 3 * 3)
-    await post(bad)
-
-    const reply = workerScope.posted[workerScope.posted.length - 1]
-    expect(reply.type).toBe('load-error')
-    if (reply.type !== 'load-error') return
-    expect(reply.message).toContain('dimension')
-    // NOT fatal: no fatal message was posted and nothing halted.
-    expect(workerScope.posted.some((m) => m.type === 'fatal')).toBe(false)
-
-    // The rejection left the simulation untouched: the next advance
-    // continues from the pre-load t (0.015 + 1*0.005). No frame shipped
-    // for the rejected load itself — the load-error was the only reply.
-    await post({ type: 'advance', substeps: 1 })
-    expect(frames()).toHaveLength(framesBefore + 1)
-    expect(frames()[frames().length - 1].t).toBeCloseTo(0.02, 10)
-  })
-})

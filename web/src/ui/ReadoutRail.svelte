@@ -30,19 +30,6 @@
    * hardcoded 20, so a future extent change keeps the chart on-scale.
    */
 
-  // Entry points owned by the caller (Task 8 wires App's logic here): Save
-  // posts serialize-state, Load receives the picked File directly (App's
-  // importStateFile decodes it). PNG export is NOT here — the M2 spec keeps
-  // it available in BOTH modes, so it lives in the always-mounted
-  // PlaybackBar (fix round R1 removed the rail's duplicate).
-  let {
-    onSaveState,
-    onImportFile,
-  }: {
-    onSaveState: () => void
-    onImportFile: (file: File) => void
-  } = $props()
-
   // Local mirror of the language store (same pattern as ToolRail): the
   // derived label block re-translates the moment `setLang` fires. The
   // subscription lives in an $effect cleanup so a rail unmount (mode flip)
@@ -59,7 +46,6 @@
     return {
       railReadouts: t('rail.readouts'),
       railView: t('rail.view'),
-      railExport: t('rail.export'),
       barLabel: t('obs.barLabel'),
       xMean: t('obs.xMean'),
       yMean: t('obs.yMean'),
@@ -76,8 +62,6 @@
       phaseColor: t('view.phaseColor'),
       contrast: t('view.contrast'),
       measureMomentum: t('measure.momentumTool'),
-      exportJson: t('export.json'),
-      importJson: t('import.json'),
     }
   })
 
@@ -285,22 +269,6 @@
       seed: Math.floor(Math.random() * 2 ** 48),
     })
   }
-
-  // ------------------------------------------------------------------ export
-
-  // The hidden file input behind the Load button (same contract as App's).
-  let fileInput = $state<HTMLInputElement | undefined>(undefined)
-
-  /** Hands the picked File to the caller and resets the input, so picking
-   * the SAME file again still fires a change event. No file: silent. */
-  function onImportChange(event: Event): void {
-    const input = event.currentTarget
-    const file =
-      input instanceof HTMLInputElement ? (input.files?.[0] ?? undefined) : undefined
-    if (input instanceof HTMLInputElement) input.value = ''
-    if (file === undefined) return
-    onImportFile(file)
-  }
 </script>
 
 <div class="readoutrail">
@@ -412,29 +380,6 @@
         bind:value={simStore.contrast}
       />
     </label>
-  </section>
-
-  <hr class="hairline" />
-
-  <!-- XUẤT (Save / Load only — PNG export rides the both-modes PlaybackBar) -->
-  <section class="section">
-    <div class="section-label">{labels.railExport}</div>
-    <div class="outs">
-      <button type="button" data-testid="export-json" onclick={() => onSaveState()}>
-        {labels.exportJson}
-      </button>
-      <button type="button" data-testid="import-json" onclick={() => fileInput?.click()}>
-        {labels.importJson}
-      </button>
-    </div>
-    <input
-      data-testid="import-json-input"
-      type="file"
-      accept=".json,application/json"
-      hidden
-      bind:this={fileInput}
-      onchange={onImportChange}
-    />
   </section>
 </div>
 
@@ -607,19 +552,5 @@
   .contrast input {
     width: 100%;
     accent-color: var(--accent);
-  }
-
-  /* Export block (mockup .ws-outs): two equal entry points (Save / Load). */
-  .outs {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 7px;
-  }
-
-  .outs button {
-    padding: 8px 2px;
-    border-radius: 8px;
-    font-size: 10.5px;
-    color: var(--text-2);
   }
 </style>

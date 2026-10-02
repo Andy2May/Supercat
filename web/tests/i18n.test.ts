@@ -120,8 +120,6 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(en['rail.readouts']).toBe('READOUTS')
     expect(vi['rail.view']).toBe('HIỂN THỊ')
     expect(en['rail.view']).toBe('VIEW')
-    expect(vi['rail.export']).toBe('XUẤT')
-    expect(en['rail.export']).toBe('EXPORT')
   })
 
   it('scene label carries the {name} template', () => {

@@ -6,8 +6,6 @@
   import { hasWebGl2 } from './sim/webglDetect.js'
   import { modeStore } from './sim/modeStore.svelte.js'
   import { effectiveView, simStore } from './sim/simStore.svelte.js'
-  import { decodeState, encodeState, StateFileError } from './sim/stateFile.js'
-  import { downloadBlob, supercatFilename } from './ui/download.js'
   import ErrorBanner from './ui/ErrorBanner.svelte'
   import Landing from './ui/Landing.svelte'
   import NarrationPanel from './ui/NarrationPanel.svelte'
@@ -37,32 +35,6 @@
   const momentumCaption = $derived.by(() => {
     active // dependency: re-translate when the language changes
     return t('view.momentumCaption')
-  })
-  // Load-error banner (Task 17 fix round 1): the localized headline is
-  // composed at render time (the stored detail keeps the worker's raw
-  // wasm text — mirroring the fatal banner — so only the headline
-  // re-translates on a language flip), and the dismiss control's
-  // accessible name is localized (the visible glyph stays "×").
-  const loadFailedHeadline = $derived.by(() => {
-    active
-    return t('loadFailed')
-  })
-  const dismissLabel = $derived.by(() => {
-    active
-    return t('loadFailed.dismiss')
-  })
-  // 512² save-size notice (final review, spec §5.7 + risk row "khi
-  // mở/lưu"): the transient banner's text and its dismiss control's
-  // accessible name (the visible glyph stays "×", mirroring the load-error
-  // banner). One direction-neutral message serves BOTH the Save download
-  // and a heavy Load — the warning is about file weight, not direction.
-  const saveSizeNoteText = $derived.by(() => {
-    active
-    return t('export.sizeNote')
-  })
-  const saveSizeDismissLabel = $derived.by(() => {
-    active
-    return t('export.sizeNote.dismiss')
   })
 
   // WebGL2 gate, probed once: without it the renderer cannot draw, so the
@@ -142,104 +114,10 @@
       : t('app.renderFailed')
   })
 
-  // ---- JSON state save/load (Task 17, advanced mode) --------------------
-  /** True while the large-grid save-size note is up (final review, spec
-   * §5.7 + risk table): transient — auto-dismisses via the timer below, or
-   * early through the dismiss button. Independent of loadError/fatal so it
-   * can coexist with them. */
-  let saveSizeNote = $state(false)
-  let saveSizeTimer: number | undefined
-
-  /** Shows the save-size note and (re)arms its 8 s auto-dismiss. */
-  function showSaveSizeNote(): void {
-    saveSizeNote = true
-    window.clearTimeout(saveSizeTimer)
-    saveSizeTimer = window.setTimeout(() => {
-      saveSizeNote = false
-      saveSizeTimer = undefined
-    }, 8_000)
-  }
-
-  /** The dismiss button: same end state as the auto-dismiss. */
-  function dismissSaveSizeNote(): void {
-    saveSizeNote = false
-    window.clearTimeout(saveSizeTimer)
-    saveSizeTimer = undefined
-  }
-
-  // The auto-dismiss timer is plain (not reactive); clear it on unmount so
-  // a dead App never fires the callback (same hygiene as the cleanups
-  // above).
-  $effect(() => {
-    return () => window.clearTimeout(saveSizeTimer)
-  })
-
-  /** Save: only posts the request — the reply lands in the onState
-   * subscription below, which encodes and downloads the file. */
-  function saveState(): void {
-    simStore.send({ type: 'serialize-state' })
-  }
-
-  // The download half of Save: the worker's `state` reply (transferred
-  // arrays) goes through encodeState into a timestamped JSON file.
-  $effect(() => {
-    const off = simStore.onState((state) => {
-      // A 512² state JSON is ~4 MB (spec §5.7: "cảnh báo nếu 512²") and
-      // would otherwise download silently — surface the size note BEFORE
-      // the download starts. It is a warning, never a confirmation: the
-      // download below always fires.
-      if (simStore.grid >= 512) showSaveSizeNote()
-      try {
-        downloadBlob(
-          new Blob([JSON.stringify(encodeState(state))], { type: 'application/json' }),
-          supercatFilename('state', 'json'),
-        )
-      } catch {
-        // encodeState refusing non-finite data cannot happen for a state
-        // the propagator is still stepping (its norm guard fires first) —
-        // and a failed save must never take the app down. Swallow.
-      }
-    })
-    return off
-  })
-
-  /** Load-failure DETAIL: the codec's classified reason, localized. The
-   * banner headline (`loadFailed`) is composed at render time so the whole
-   * message re-translates on a language flip; worker-side rejections keep
-   * their raw wasm text as the detail (same deal as the fatal banner). */
-  function loadErrorDetail(error: unknown): string {
-    if (error instanceof StateFileError) {
-      return t(`loadFailed.${error.reason}`)
-    }
-    // JSON.parse / read failures: no classification, but still a broken
-    // file.
-    return t('loadFailed.corrupt')
-  }
-
-  /** Load: read -> parse -> decode -> hand to the worker via the store
-   * (which owns the cross-grid bookkeeping). Any throw on the way is a
-   * NON-fatal loadError banner — the running simulation is untouched.
-   * Takes the File directly: the ReadoutRail's hidden input (and its
-   * same-file-again reset) owns the picking. */
-  async function importStateFile(file: File): Promise<void> {
-    try {
-      const raw = decodeState(JSON.parse(await file.text()))
-      // The codec validates the file against its OWN grid; THIS app is
-      // square-grid only (every texture upload is sized from a single
-      // store.grid), so a hand-crafted nx≠ny file is rejected here with
-      // the same shape class the codec uses.
-      if (raw.nx !== raw.ny) {
-        throw new StateFileError('shape', `state file: non-square grid ${raw.nx}x${raw.ny}`)
-      }
-      // 512² warning, LOAD direction (spec risk row "khi mở/lưu"): the
-      // decoded arrays imply a several-MB file — the same note Save shows,
-      // and equally non-blocking: the load below proceeds regardless of it.
-      if (raw.nx >= 512) showSaveSizeNote()
-      simStore.loadState(raw)
-    } catch (error) {
-      simStore.loadError = loadErrorDetail(error)
-    }
-  }
+  // ---- JSON state save/load: REMOVED (2026-10-02 feature trim) ----------
+  // Export PNG / Save state / Load state were cut per the trim ruling; the
+  // wasm/core serialize APIs stay (library surface), the web plumbing is
+  // gone. This stub comment marks where the Task-17 block lived.
 </script>
 
 {#if route.view === 'landing'}
@@ -279,48 +157,13 @@
         </div>
         {#if modeStore.mode === 'advanced'}
           <aside class="rail-right">
-            <ReadoutRail onSaveState={saveState} onImportFile={importStateFile} />
+            <ReadoutRail />
           </aside>
         {/if}
       </div>
     {/if}
     {#if simStore.fatal !== undefined}
       <ErrorBanner message={simStore.fatal} />
-    {:else if simStore.loadError !== undefined}
-      <!-- Non-fatal load error (Task 17): a rejected state file. Amber, not
-           red — the simulation keeps running; dismiss or load another file
-           (a successful load clears it). Localized headline + raw detail,
-           the same shape as the fatal banner. -->
-      <div class="load-error" role="alert" data-testid="load-error">
-        <span>
-          <strong>{loadFailedHeadline}</strong>
-          {simStore.loadError}
-        </span>
-        <button
-          data-testid="load-error-dismiss"
-          aria-label={dismissLabel}
-          onclick={() => (simStore.loadError = undefined)}
-        >
-          ×
-        </button>
-      </div>
-    {/if}
-    {#if saveSizeNote}
-      <!-- Large-grid size note (final review, spec §5.7 + risk row "khi
-           mở/lưu"): shown by Save (download already fired) and by Load
-           (which proceeds regardless) — a 512² state file can weigh
-           several MB either way. Informational (role=status, not alert),
-           transient (auto-dismiss), never blocking. -->
-      <div class="save-note" role="status" data-testid="save-size-note">
-        <span>{saveSizeNoteText}</span>
-        <button
-          data-testid="save-size-note-dismiss"
-          aria-label={saveSizeDismissLabel}
-          onclick={dismissSaveSizeNote}
-        >
-          ×
-        </button>
-      </div>
     {/if}
     {#if simStore.perfMode}
       <div class="hud" data-testid="perf-hud" aria-hidden="true">
@@ -440,43 +283,9 @@
     overflow-y: auto;
   }
 
-  /* Bottom-edge banners (fatal / load-error / save-note): pinned under the
-     bench at the frame's bottom. Fixed tints that read on the dark ground
-     — dark-only base, so no scheme branch is needed (same deal as
-     app.css's .error). */
-  .load-error {
-    flex: none;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 1rem;
-    margin: 0 1rem 0.75rem;
-    padding: 0.6rem 1rem;
-    border-radius: 0.5rem;
-    text-align: left;
-    color: #fbbf24;
-    background: color-mix(in srgb, #fbbf24 14%, transparent);
-    border: 1px solid #fbbf24;
-  }
+  /* Bottom-edge fatal banner: pinned under the bench at the frame's bottom
+     (ErrorBanner owns its look). */
 
-  /* Save-size note: the load-error banner's layout, but an INFORMATIONAL
-     blue tint — nothing went wrong, the file is just heavy. */
-  .save-note {
-    flex: none;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 1rem;
-    margin: 0 1rem 0.75rem;
-    padding: 0.6rem 1rem;
-    border-radius: 0.5rem;
-    text-align: left;
-    color: #93c5fd;
-    background: color-mix(in srgb, #93c5fd 14%, transparent);
-    border: 1px solid #93c5fd;
-  }
 
   /* ---- responsive folds (spec §6.3) -------------------------------------- */
 

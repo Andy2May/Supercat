@@ -19,12 +19,10 @@ import type {
   MainToWorker,
   MeasuredOutcome,
   ObservablesFrame,
-  StateMessage,
   WorkerToMain,
 } from './protocol.js'
 import { potentialMessage, type PresetConfig } from '../presets/index.js'
 import { ringPush } from './sparkline.js'
-import type { RawState } from './stateFile.js'
 
 /** Perf HUD sample: fps (1 s EMA), substeps of the last advance, and the
  * post-advance -> frame-arrival latency in ms. */
@@ -131,14 +129,6 @@ export class SimStore {
   /** Set by a worker `fatal`; cleared by the next `init`. */
   fatal = $state<string | undefined>(undefined)
   /**
-   * NON-fatal load error (Task 17): set when a JSON state file fails to
-   * decode (main thread) or fails wasm's deserialize validation (worker
-   * `load-error`). Unlike `fatal` it never stops the simulation — the
-   * banner is informational. Cleared by `init` (covers preset switches)
-   * and optimistically by App the moment a fresh file passes decoding.
-   */
-  loadError = $state<string | undefined>(undefined)
-  /**
    * Latest measurement outcome (Task 14): set (a fresh object each time —
    * identical coordinates still re-trigger the marker/toast effect) when a
    * frame carrying `measured` lands, read by SimCanvas to spawn the ring
@@ -193,35 +183,8 @@ export class SimStore {
    */
   epoch = 0
 
-  /**
-   * PNG export queue (Task 16): plain counter, NOT reactive — consumed by
-   * the render loop inside its frame callback. Every export-button click
-   * queues exactly one capture; the loop takes one per drawn frame. A
-   * boolean flag would collapse two clicks landing inside the same
-   * inter-frame gap (< 16 ms) into a single file — the counter keeps the
-   * one-click-one-file contract.
-   */
-  capturePending = 0
-
   private worker: Worker | undefined
   private readonly frameListeners = new Set<(frame: FrameMessage) => void>()
-  /**
-   * `state`-reply subscribers (Task 17): App registers one to encode the
-   * serialized payload and trigger the JSON download. Same pattern as
-   * `frameListeners` — a Set + unsubscribe closure, so the download path
-   * survives any number of mount/unmount cycles.
-   */
-  private readonly stateListeners = new Set<(state: StateMessage) => void>()
-  /**
-   * Grid to RESTORE if the in-flight cross-grid state load is rejected
-   * (Task 17 fix round 1): `loadState` switches `grid` to the file's grid
-   * up front (the render loop sizes every upload from it), so a rejection
-   * must put the session grid back — otherwise the still-running old-grid
-   * sim would have every frame dropped by the render loop's grid guard
-   * and the canvas would freeze forever. Cleared by the load's
-   * confirmation frame (sized for the NEW grid) or by `init`.
-   */
-  private pendingGridRestore: number | undefined
 
   constructor() {
     const params = readParams()
@@ -247,8 +210,6 @@ export class SimStore {
   init(preset: PresetConfig): void {
     if (this.worker !== undefined) return
     this.fatal = undefined
-    this.loadError = undefined
-    this.pendingGridRestore = undefined
     this.lastMeasurement = undefined
     this.potentialMax = 0
     this.t = 0
@@ -334,53 +295,6 @@ export class SimStore {
   }
 
   /**
-   * Queues a PNG snapshot of the canvas (Task 16). The capture itself
-   * runs in the render loop's next frame callback, synchronously after
-   * `draw()` — the only point where the (preserveDrawingBuffer:false)
-   * backbuffer is guaranteed readable. No worker message involved: this
-   * is a main-thread render concern.
-   */
-  requestCapture(): void {
-    this.capturePending++
-  }
-
-  /**
-   * Hands a decoded state file to the worker (Task 17) and owns the grid
-   * bookkeeping a CROSS-GRID load needs: `grid` switches to the file's
-   * grid right here (the render loop sizes every texture upload from it
-   * and drops straggler old-grid frames), with the previous grid
-   * remembered in `pendingGridRestore` and restored if the worker's
-   * answer is a `load-error` — a rejected construct/deserialize must
-   * leave the session exactly as it was, or the still-running old-grid
-   * sim would never draw again.
-   */
-  loadState(raw: RawState): void {
-    this.loadError = undefined // optimistic; a rejection re-sets it
-    if (raw.nx !== this.grid) {
-      this.pendingGridRestore = this.grid
-      this.grid = raw.nx
-    } else {
-      this.pendingGridRestore = undefined
-    }
-    this.send(
-      {
-        type: 'deserialize-state',
-        nx: raw.nx,
-        ny: raw.ny,
-        extentX: raw.extentX,
-        extentY: raw.extentY,
-        dt: raw.dt,
-        m: raw.m,
-        hbar: raw.hbar,
-        t: raw.t,
-        potential: raw.potential,
-        psi: raw.psi,
-      },
-      [raw.potential.buffer, raw.psi.buffer],
-    )
-  }
-
-  /**
    * Posts to the worker; `transfer` (the recycle channel's returned frame
    * buffer) moves backing stores zero-copy instead of structured-cloning
    * them.
@@ -397,19 +311,6 @@ export class SimStore {
     }
   }
 
-  /**
-   * Subscribes to `state` replies (Task 17, the answer to `serialize-state`
-   * — a send the App side triggers with its Save button); same contract as
-   * `onFrame`. The payload's arrays were transferred to this thread, so
-   * each subscriber must treat them as read-only single-shot data.
-   */
-  onState(cb: (state: StateMessage) => void): () => void {
-    this.stateListeners.add(cb)
-    return () => {
-      this.stateListeners.delete(cb)
-    }
-  }
-
   /** Tears the worker down for good (component unmount). */
   destroy(): void {
     this.worker?.terminate()
@@ -423,38 +324,6 @@ export class SimStore {
       this.fatal = msg.message
       this.running = false
       return
-    }
-    if (msg.type === 'state') {
-      // The serialized scene (Task 17): handed to the save subscribers —
-      // App encodes it into the JSON download. Not frame-shaped; nothing
-      // else here applies.
-      for (const cb of this.stateListeners) cb(msg)
-      return
-    }
-    if (msg.type === 'load-error') {
-      // A rejected state file (Task 17): informational only — the worker
-      // kept the live simulation running. A cross-grid attempt had moved
-      // `grid` to the file's grid; put it back so the old sim's frames
-      // pass the render loop's grid guard again (fix round 1: without
-      // this, every frame was dropped and the canvas froze forever).
-      if (this.pendingGridRestore !== undefined) {
-        this.grid = this.pendingGridRestore
-        this.pendingGridRestore = undefined
-      }
-      this.loadError = msg.message
-      return
-    }
-    // The confirmation frame of a pending cross-grid load: sized for the
-    // NEW grid (which `loadState` already installed in `this.grid`), so
-    // the attempt landed — the rollback marker is spent. A straggler
-    // old-grid frame can never match this size (that's the guard's own
-    // criterion), and worker messages keep arrival order, so this cannot
-    // fire early.
-    if (
-      this.pendingGridRestore !== undefined &&
-      msg.densityPhase.length === 2 * this.grid * this.grid
-    ) {
-      this.pendingGridRestore = undefined
     }
     this.t = msg.t
     this.norm = msg.norm

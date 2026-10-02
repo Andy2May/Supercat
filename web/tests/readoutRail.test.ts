@@ -75,10 +75,7 @@ const RAW: ObservablesFrame = {
 }
 
 function props() {
-  return {
-    onSaveState: vi.fn(),
-    onImportFile: vi.fn(),
-  }
+  return {}
 }
 
 /**
@@ -142,16 +139,15 @@ describe('means chart range (F1 fold-in)', () => {
 // ---------------------------------------------------------- section layout
 
 describe('ReadoutRail section layout', () => {
-  it('renders three sections headed by the rail.* micro-labels, hairline-separated', () => {
+  it('renders two sections headed by the rail.* micro-labels, hairline-separated', () => {
     const { container } = render(ReadoutRail, { props: props() })
 
     expect(screen.getByText(enDict['rail.readouts'])).toBeTruthy()
     expect(screen.getByText(enDict['rail.view'])).toBeTruthy()
-    expect(screen.getByText(enDict['rail.export'])).toBeTruthy()
     expect(
       container.querySelectorAll('hr.hairline'),
-      'two hairlines between three sections',
-    ).toHaveLength(2)
+      'one hairline between two sections',
+    ).toHaveLength(1)
   })
 })
 
@@ -373,74 +369,6 @@ describe('ReadoutRail contrast slider', () => {
   })
 })
 
-// ------------------------------------------------------------------ export
-
-describe('ReadoutRail export block', () => {
-  it('does not render the PNG export button — the PlaybackBar owns it (no duplicate testid)', () => {
-    render(ReadoutRail, { props: props() })
-
-    expect(screen.queryByTestId('export-png')).toBeNull()
-  })
-
-  it('clicking Save fires onSaveState only', async () => {
-    const p = props()
-    render(ReadoutRail, { props: p })
-
-    await fireEvent.click(screen.getByTestId('export-json'))
-
-    expect(p.onSaveState).toHaveBeenCalledTimes(1)
-    expect(p.onImportFile).not.toHaveBeenCalled()
-  })
-
-  it('clicking Load clicks the hidden file input (which accepts JSON)', async () => {
-    render(ReadoutRail, { props: props() })
-
-    const input = screen.getByTestId('import-json-input') as HTMLInputElement
-    expect(input.type).toBe('file')
-    expect(input.accept).toBe('.json,application/json')
-    expect(input.hidden).toBe(true)
-
-    const clickSpy = vi.spyOn(input, 'click')
-    await fireEvent.click(screen.getByTestId('import-json'))
-    expect(clickSpy).toHaveBeenCalledTimes(1)
-  })
-
-  it('a file change hands the picked File to onImportFile and resets the input', async () => {
-    const p = props()
-    render(ReadoutRail, { props: p })
-
-    const input = screen.getByTestId('import-json-input') as HTMLInputElement
-    const file = new File(['{}'], 'state.json', { type: 'application/json' })
-    Object.defineProperty(input, 'files', { value: [file] })
-
-    await fireEvent.change(input)
-
-    expect(p.onImportFile).toHaveBeenCalledTimes(1)
-    expect(p.onImportFile).toHaveBeenCalledWith(file)
-    // Reset so picking the SAME file again still fires a change event.
-    expect(input.value).toBe('')
-  })
-
-  it('a change with no file is a silent no-op', async () => {
-    const p = props()
-    render(ReadoutRail, { props: p })
-
-    const input = screen.getByTestId('import-json-input') as HTMLInputElement
-    Object.defineProperty(input, 'files', { value: [] })
-
-    await fireEvent.change(input)
-
-    expect(p.onImportFile).not.toHaveBeenCalled()
-  })
-
-  it('labels the two buttons with the export/import keys', () => {
-    render(ReadoutRail, { props: props() })
-
-    expect(screen.getByTestId('export-json').textContent).toContain(enDict['export.json'])
-    expect(screen.getByTestId('import-json').textContent).toContain(enDict['import.json'])
-  })
-})
-
 // --------------------------------------------------------------------- i18n
 
 describe('ReadoutRail translations', () => {
@@ -451,13 +379,12 @@ describe('ReadoutRail translations', () => {
     setLang('vi')
     await tick()
 
-    for (const key of ['rail.readouts', 'rail.view', 'rail.export']) {
+    for (const key of ['rail.readouts', 'rail.view']) {
       expect(screen.getByText(viDict[key]), key).toBeTruthy()
       expect(screen.queryByText(enDict[key]), key).toBeNull()
     }
     expect(screen.getByTestId('view-position').textContent).toContain(viDict['view.position'])
     expect(screen.getByTestId('phase-toggle').textContent).toContain(viDict['view.phaseColor'])
-    expect(screen.getByTestId('import-json').textContent).toContain(viDict['import.json'])
     expect(screen.getByText(viDict['view.contrast'])).toBeTruthy()
     expect(screen.getByTestId('energy-jump-note').textContent).toContain(
       viDict['obs.energyJumpNote'],
