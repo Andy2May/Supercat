@@ -53,30 +53,75 @@
   let root = $state<HTMLSpanElement | undefined>(undefined)
   let tipEl = $state<HTMLSpanElement | undefined>(undefined)
 
-  /** Viewport padding kept clear on either side when clamping. */
+  /** Padding kept clear on every side of the clipping box when clamping. */
   const CLAMP_PAD = 8
 
   /**
-   * Horizontal viewport clamp (T18, deferred T15 minor): the centered tip
-   * overflows the right edge when the term sits near it (both ViewToggle
-   * terms do). Runs on hover/focus ENTER, before the reveal rule applies:
-   * the tip is display:none by default (a permanently laid-out tip near the
-   * edge would create viewport scrollbars), so it is materialized
-   * invisibly for one synchronous measurement — everything happens inside
-   * the event handler, before the browser paints, so the transient state
-   * never flickers. The clamp is a transform shift, keeping the anchored
-   * look; any previous clamp is reset first so the measurement reads the
-   * natural position.
+   * The tightest box the tip must fit inside: the nearest scroll/hidden
+   * ancestor (the right rail is overflow:auto, so the VIEWPORT is not the
+   * binding constraint — a viewport-only clamp left the tip cut by the
+   * rail's own edges). Falls back to the viewport when no ancestor clips.
+   */
+  function clipBox(el: HTMLElement): { top: number; bottom: number; left: number; right: number } {
+    let node = el.parentElement
+    while (node !== null && node !== document.body) {
+      const cs = getComputedStyle(node)
+      if (/(auto|hidden|scroll|clip)/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        const r = node.getBoundingClientRect()
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+      }
+      node = node.parentElement
+    }
+    return { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+  }
+
+  /**
+   * Positioning clamp (T18 + 2026-10-02 fix): the centered tip is measured
+   * invisibly on hover/focus ENTER, then (a) FLIPPED below the term when it
+   * would poke above the clipping box's top edge (terms near the rail's
+   * top had their tips cut off by the rail) and there is room below, and
+   * (b) shifted horizontally to stay inside the same box (terms near the
+   * rail's edges had wide tips cut on either side — the old viewport-only
+   * clamp could not see that). Everything happens inside the event handler
+   * before the browser paints, so the transient measurement never
+   * flickers. The reveal itself stays pure CSS (app.css).
    */
   function clampTip(): void {
     const tip = tipEl
-    if (tip === undefined) return
+    const term = root
+    if (tip === undefined || term === undefined) return
     tip.style.transform = ''
+    tip.style.maxWidth = ''
+    tip.classList.remove('below')
     tip.style.display = 'block'
     tip.style.visibility = 'hidden'
-    const rect = tip.getBoundingClientRect()
-    const overRight = rect.right - (window.innerWidth - CLAMP_PAD)
-    const overLeft = CLAMP_PAD - rect.left
+    const box = clipBox(tip)
+    const boxWidth = box.right - box.left - 2 * CLAMP_PAD
+    // A rail narrower than the tip's 260px (+ padding) budget: shrink the
+    // tip to the box instead of letting either side hang out. max-width
+    // binds the CONTENT box (no global border-box here), so the card's own
+    // padding + border widths come off the budget first.
+    const cs = getComputedStyle(tip)
+    const chrome =
+      parseFloat(cs.paddingLeft) +
+      parseFloat(cs.paddingRight) +
+      parseFloat(cs.borderLeftWidth) +
+      parseFloat(cs.borderRightWidth)
+    if (tip.offsetWidth > boxWidth) {
+      tip.style.maxWidth = `${Math.floor(boxWidth - chrome)}px`
+    }
+    let rect = tip.getBoundingClientRect()
+    // Not enough headroom above the box's edge: flip below the term — but
+    // only when the flipped position actually fits, otherwise the
+    // above-position (clamped horizontally) stays the better trade.
+    const fitsBelow =
+      term.getBoundingClientRect().bottom + rect.height + 6 <= box.bottom - CLAMP_PAD
+    if (rect.top < box.top + CLAMP_PAD && fitsBelow) {
+      tip.classList.add('below')
+      rect = tip.getBoundingClientRect()
+    }
+    const overRight = rect.right - (box.right - CLAMP_PAD)
+    const overLeft = box.left + CLAMP_PAD - rect.left
     if (overRight > 0) {
       tip.style.transform = `translateX(calc(-50% - ${Math.ceil(overRight)}px))`
     } else if (overLeft > 0) {

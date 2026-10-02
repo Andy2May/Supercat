@@ -208,6 +208,14 @@ canvas {
   display: block;
 }
 
+/* Flipped placement (Term.svelte clampTip): a term near its clipping
+   box's top edge (the right rail's first readouts) has no headroom above,
+   so the tip opens BELOW the term instead. */
+.term .tip.below {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
 /* A Term hosted inside a <button> (the two ViewToggle terms): keyboard
    focus on the BUTTON reveals the tip too (Task 18, deferred T15 minor —
    the span's own Tab stop remains the explicit focus trigger; this stop now
