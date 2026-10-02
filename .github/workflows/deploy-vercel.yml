@@ -46,11 +46,16 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm run build:wasm
       - run: npm ci
-      - run: npm run build
-      # Deploy the built directory only: no cloud build on Vercel. The CLI
-      # scopes through the ORG/PROJECT env vars (no .vercel dir in CI).
-      - name: Deploy dist to Vercel
+      # Prebuilt recipe (the plain "deploy dist" form still runs the
+      # project's cloud build, which 127s with no node_modules): pull writes
+      # .vercel from the ORG/PROJECT envs, build runs the project's own
+      # "vite build" HERE on the runner, deploy --prebuilt ships the
+      # assembled .vercel/output with no cloud build at all.
+      - name: Deploy prebuilt to Vercel
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx vercel@latest deploy dist --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel@latest pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel@latest build --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel@latest deploy --prebuilt --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
