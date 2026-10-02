@@ -24,6 +24,7 @@
       groupToday: t('uses.groupToday'),
       groupTomorrow: t('uses.groupTomorrow'),
       physicsLabel: t('uses.physicsLabel'),
+      appLabel: t('uses.appLabel'),
       closeLabel: t('uses.close'),
     }
   })
@@ -135,7 +136,7 @@
   {#each todayCards as card (card.id)}
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
-      <p class="easy">{card.easy}</p>
+      <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
       <p class="physics"><span class="plabel">{chrome.physicsLabel}</span>{card.physics}</p>
       {#if card.watch !== undefined}
         <a
@@ -152,7 +153,7 @@
   {#each tomorrowCards as card (card.id)}
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
-      <p class="easy">{card.easy}</p>
+      <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
       <p class="physics"><span class="plabel">{chrome.physicsLabel}</span>{card.physics}</p>
       {#if card.watch !== undefined}
         <a
@@ -277,8 +278,9 @@
     color: var(--text-2);
   }
 
-  /* The second tier: a mono line for the reader who wants the actual
-     physics, prefixed with the micro label so it reads as a citation. */
+  /* Both tiers carry a mono micro label (Ứng dụng:/Vật lý:, user revision
+     2026-10-02): the label names the tier so the easy sentence and the
+     physics line read as a pair. */
   .card .physics {
     margin: 6px 0 0;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;

@@ -36,11 +36,11 @@ test('uses overlay: top-bar chip opens, Esc closes; groups and cards render', as
 
   const overlay = page.getByTestId('uses-overlay')
   await expect(overlay).toBeVisible()
-  await expect(overlay).toContainText('What this equation does for you')
+  await expect(overlay).toContainText('What Does This Equation Do for You?')
   await expect(overlay).toContainText('IN USE TODAY')
-  await expect(overlay).toContainText('TOMORROW')
-  await expect(page.getByTestId('uses-card-flash')).toContainText('Flash memory')
-  await expect(page.getByTestId('uses-card-qcompute')).toContainText('Quantum computers')
+  await expect(overlay).toContainText('FUTURE TECH')
+  await expect(page.getByTestId('uses-card-flash')).toContainText('Flash Memory')
+  await expect(page.getByTestId('uses-card-qcompute')).toContainText('Quantum Computing')
 
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('uses-overlay')).toHaveCount(0)

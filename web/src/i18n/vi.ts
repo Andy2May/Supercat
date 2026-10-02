@@ -154,52 +154,53 @@ export const vi: Record<string, string> = {
   // verbatim from the spec's section 5 tables.
   'uses.open': 'Ứng dụng',
   'uses.hook': 'Phương trình này ngoài kia →',
-  'uses.title': 'Phương trình này làm gì cho bạn',
+  'uses.title': 'Phương trình này làm gì cho bạn?',
   'uses.intro':
-    'Phương trình Schrödinger không nằm mãi trong phòng thí nghiệm. Nó chạy trong túi bạn, giữ GPS đúng giờ, và đang dựng những cỗ máy của ngày mai.',
+    'Phương trình Schrödinger không chỉ nằm trên bảng đen. Nó đang chạy âm thầm trong túi bạn, giữ cho GPS chính xác từng mét và đặt nền móng cho những công nghệ của tương lai.',
   'uses.groupToday': 'ĐANG DÙNG HÔM NAY',
-  'uses.groupTomorrow': 'TƯƠNG LAI',
-  'uses.physicsLabel': 'VẬT LÝ',
+  'uses.groupTomorrow': 'CÔNG NGHỆ TƯƠNG LAI',
+  'uses.appLabel': 'Ứng dụng:',
+  'uses.physicsLabel': 'Vật lý:',
   'uses.watch': 'Xem thử: {name} →',
   'uses.close': 'Đóng',
-  'uses.flash.title': 'Bộ nhớ flash',
+  'uses.flash.title': 'Bộ nhớ Flash (SSD, Thẻ nhớ, Điện thoại)',
   'uses.flash.easy':
-    'Mỗi tấm ảnh bạn lưu trên điện thoại, SSD hay thẻ nhớ đều được ghi bằng xuyên hầm: electron lọt qua lớp oxit cách điện, đỗ lên cổng nổi và nằm đó nhiều năm.',
+    'Mỗi bức ảnh hay tệp tin bạn lưu trên thiết bị đều nhờ vào hiệu ứng xuyên hầm. Các electron "chui qua" lớp cách điện oxit cực mỏng để đi vào cổng nổi (floating gate) và nằm yên ở đó suốt nhiều năm.',
   'uses.flash.physics':
-    'Fowler-Nordheim: dòng ghi đi qua đúng cái đuôi mờ sau rào chắn, ~ e^(−2κd).',
-  'uses.stm.title': 'Kính hiển vi quét tunneling',
+    'Dòng Fowler-Nordheim: electron vượt rào chắn nhờ xác suất hàm sóng không bằng 0 ở bên kia rào, I ∝ e^(−2κd).',
+  'uses.stm.title': 'Kính hiển vi quét xuyên hầm (STM)',
   'uses.stm.easy':
-    'STM vẽ bề mặt từng nguyên tử một. Dòng tunneling giữa mũi dò và bề mặt giảm dốc theo khoảng cách: chỉ dịch 0,1 nm là tín hiệu đổi chừng mười lần.',
+    'Thiết bị giúp chúng ta "nhìn" và vẽ lại bề mặt của từng nguyên tử đơn lẻ. Dòng điện xuyên hầm giữa đầu kim dò và bề mặt cực kỳ nhạy: chỉ cần dịch chuyển 0,1 nm, dòng điện đã thay đổi cả chục lần.',
   'uses.stm.physics':
-    'I ∝ e^(−2κz): độ nhạy theo hàm mũ biến thước đo khoảng cách thành kính soi nguyên tử.',
-  'uses.chips.title': 'Chip, LED, laser',
+    'Độ nhạy hàm mũ (I ∝ e^(−2κz)) biến sự biến thiên của dòng điện thành thước đo khoảng cách chính xác ở quy mô nguyên tử.',
+  'uses.chips.title': 'Chip silicon, LED & Laser',
   'uses.chips.easy':
-    'Giải phương trình cho electron trong mạng tinh thể ra các dải năng lượng xen khoảng cấm. Transistor đóng mở nhờ thiết kế dải, màu LED là một khoảng cấm được chọn, laser khuếch đại đúng một bước chuyển được chọn.',
+    'Giải phương trình Schrödinger cho electron trong mạng tinh thể sẽ cho ta cấu trúc dải năng lượng. Bán dẫn đóng/mở được là nhờ thiết kế dải này; màu đèn LED phụ thuộc vào khoảng cấm được chọn, và Laser phát ra ánh sáng nhờ kích hoạt đúng bước chuyển năng lượng mong muốn.',
   'uses.chips.physics':
-    'Định lý Bloch: V(x) tuần hoàn cho cấu trúc dải; khoảng cấm định năng lượng photon, ħω = E_gap.',
-  'uses.gps.title': 'Đồng hồ nguyên tử và GPS',
+    'Định lý Bloch cho hệ tuần hoàn xác định cấu trúc dải năng lượng. Độ rộng vùng cấm quy định năng lượng photon phát ra: ħω = E_gap.',
+  'uses.gps.title': 'Đồng hồ nguyên tử & Hệ thống GPS',
   'uses.gps.easy':
-    'Chính đơn vị giây được định nghĩa bằng một bước nhảy lượng tử giữa hai mức năng lượng của nguyên tử cesi. Vệ tinh GPS mang theo những đồng hồ đó; thiếu chúng, vị trí của bạn sẽ trôi hàng cây số mỗi ngày.',
+    'Đơn vị "1 giây" chuẩn mực của thế giới được định nghĩa bằng sự chuyển dịch lượng tử của nguyên tử Cesium. Vệ tinh GPS phải mang theo những chiếc đồng hồ này; thiếu chúng, bản đồ trên điện thoại của bạn sẽ lệch hàng kilômét mỗi ngày.',
   'uses.gps.physics':
-    '1 giây = 9 192 631 770 chu kỳ của bước chuyển siêu tinh tế giữa hai mức nền của Cs-133.',
+    '1 giây chính là thời gian thực hiện đúng 9.192.631.770 chu kỳ bức xạ giữa 2 mức năng lượng siêu tinh tế của nguyên tử Cs-133.',
   'uses.chemistry.title': 'Hóa học tính toán',
   'uses.chemistry.easy':
-    'Phần lớn hóa học tính toán là giải gần đúng chính phương trình này cho electron trong phân tử: sàng lọc ứng viên thuốc và thiết kế vật liệu trước khi phòng thí nghiệm bắt đầu.',
+    'Thay vì thử nghiệm mù trong phòng thí nghiệm, các nhà khoa học giải phương trình Schrödinger cho các electron trong phân tử để mô phỏng cấu trúc, qua đó mô phỏng thuốc mới và thiết kế vật liệu tiên tiến ngay trên máy tính.',
   'uses.chemistry.physics':
-    'Lý thuyết phi hàm mật độ DFT (Nobel Hóa học 1998) làm lời giải gần đủ rẻ để chạy đại trà.',
-  'uses.sun.title': 'Mặt Trời và phóng xạ',
+    'Lý thuyết Phi hàm Mật độ (DFT), phát minh đoạt giải Nobel Hóa học 1998, giúp tối ưu chi phí tính toán để bài toán này có thể chạy đại trà.',
+  'uses.sun.title': 'Năng lượng Mặt Trời & Phóng xạ',
   'uses.sun.easy':
-    'Mặt Trời sáng vì proton xuyên hầm qua lực đẩy điện cùng dấu để hợp hạch; lõi Mặt Trời chưa đủ nóng để vượt rào theo vật lý cổ điển. Hạt alpha thoát khỏi hạt nhân không bền cũng bằng con đường đó.',
+    'Mặt Trời phát sáng được vì các proton có thể "xuyên hầm" qua lực đẩy tĩnh điện để hợp hạch (nhiệt độ lõi Mặt Trời thực tế không đủ nóng để vượt rào theo vật lý cổ điển). Tương tự, các hạt alpha thoát khỏi hạt nhân phóng xạ cũng bằng con đường này.',
   'uses.sun.physics':
-    'Hệ số Gamow: tốc độ hợp hạch và phân rã alpha nằm trong e^(−2κd), nhạy theo hàm mũ với bề rộng và độ cao rào.',
+    'Hệ số Gamow: tốc độ hợp hạch hay phân rã phụ thuộc theo hàm mũ vào độ rộng và độ cao của rào thế năng, e^(−2κd).',
   'uses.qcompute.title': 'Máy tính lượng tử',
   'uses.qcompute.easy':
-    'Qubit mang một hàm sóng, và mỗi cổng lượng tử là một bước tiến hóa unita: máy tính lượng tử vận hành theo đúng phương trình này như định luật chuyển động của nó. Kết quả được đọc bằng đúng quy tắc Born mà sandbox này dùng để đo.',
+    'Mỗi Qubit đại diện cho một hàm sóng, và mỗi cổng logic lượng tử là một bước biến đổi bài bản (biến đổi Unita) của hàm sóng đó. Máy tính lượng tử vận hành dựa trên chính phương trình Schrödinger như một định luật chuyển động cốt lõi.',
   'uses.qcompute.physics':
-    'Chồng chập cộng giao thoa: khe đôi được mở rộng thành mạch.',
-  'uses.qsensing.title': 'Truyền tin và cảm biến lượng tử',
+    'Tận dụng nguyên lý chồng chập và giao thoa lượng tử: mở rộng thí nghiệm khe đôi thành các mạch xử lý thông tin siêu tốc.',
+  'uses.qsensing.title': 'Truyền thông & Cảm biến lượng tử',
   'uses.qsensing.easy':
-    'Phân phối khóa lượng tử bắt được người nghe lén vì phép đo làm xáo trộn trạng thái. Cảm biến sóng vật chất biến giao thoa thành phép đo trọng trường và từ trường vượt giới hạn cổ điển.',
+    'Mạng phân phối khóa lượng tử (QKD) giúp phát hiện kẻ nghe lén tức thì vì hành động đo đạc sẽ làm sụp đổ trạng thái lượng tử. Các cảm biến sóng vật chất dùng hiện tượng giao thoa để đo trọng trường và từ trường với độ chính xác tuyệt đối.',
   'uses.qsensing.physics':
-    'An toàn đến từ tiên đề về phép đo; độ nhạy đến từ giao thoa giữa các đường chồng chập.',
+    'Bảo mật dựa trên Tiên đề phép đo lượng tử; độ nhạy cảm biến dựa trên hiện tượng giao thoa giữa các trạng thái chồng chập.',
 }

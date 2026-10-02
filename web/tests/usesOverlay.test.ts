@@ -41,6 +41,7 @@ describe('UsesOverlay structure', () => {
 
     for (const card of USES_CARDS) {
       const el = screen.getByTestId(`uses-card-${card.id}`)
+      expect(el.textContent).toContain(enDict['uses.appLabel'])
       expect(el.textContent).toContain(enDict[`uses.${card.id}.title`])
       expect(el.textContent).toContain(enDict[`uses.${card.id}.easy`])
       expect(el.textContent).toContain(enDict[`uses.${card.id}.physics`])

@@ -154,52 +154,51 @@ export const en: Record<string, string> = {
   // verbatim from the spec's section 5 tables.
   'uses.open': 'Uses',
   'uses.hook': 'This equation out in the world →',
-  'uses.title': 'What this equation does for you',
+  'uses.title': 'What Does This Equation Do for You?',
   'uses.intro':
-    "Schrödinger's equation is not locked in a lab. It runs in your pocket, keeps GPS on time, and is busy building tomorrow's machines.",
+    "The Schrödinger equation isn't trapped in a lab. It runs silently in your pocket, keeps GPS accurate to the second, and powers the technologies of tomorrow.",
   'uses.groupToday': 'IN USE TODAY',
-  'uses.groupTomorrow': 'TOMORROW',
-  'uses.physicsLabel': 'PHYSICS',
+  'uses.groupTomorrow': 'FUTURE TECH',
+  'uses.appLabel': 'Application:',
+  'uses.physicsLabel': 'Physics:',
   'uses.watch': 'See it: {name} →',
   'uses.close': 'Close',
-  'uses.flash.title': 'Flash memory',
+  'uses.flash.title': 'Flash Memory (SSDs, USBs, Smartphones)',
   'uses.flash.easy':
-    'Every photo you save on a phone, SSD or memory card is written by tunneling: electrons slip through an insulating oxide layer onto a floating gate, and stay there for years.',
-  'uses.flash.physics':
-    'Fowler-Nordheim tunneling: the write current rides the same tail you see behind the barrier, ~ e^(−2κd).',
-  'uses.stm.title': 'Scanning tunneling microscope',
+    'Every photo or file saved on your phone relies on quantum tunneling. Electrons "tunnel" through a thin oxide insulating barrier into a floating gate, where they stay trapped for years without power.',
+  'uses.flash.physics': 'Fowler-Nordheim Tunneling: I ∝ e^(−2κd).',
+  'uses.stm.title': 'Scanning Tunneling Microscope (STM)',
   'uses.stm.easy':
-    'The STM maps surfaces atom by atom. The tunneling current between its tip and the surface decays so steeply with distance that a shift of 0.1 nm changes the signal roughly tenfold.',
-  'uses.stm.physics':
-    'I ∝ e^(−2κz): exponential sensitivity turns a distance probe into an atom viewer.',
-  'uses.chips.title': 'Chips, LEDs, lasers',
+    'Allows scientists to map surfaces atom by atom. The tunneling current between the needle tip and the surface is extremely sensitive: shifting by just 0.1 nm changes the current tenfold.',
+  'uses.stm.physics': 'Exponential Sensitivity: I ∝ e^(−2κz).',
+  'uses.chips.title': 'Silicon Chips, LEDs & Lasers',
   'uses.chips.easy':
-    "Solving the equation for electrons in a crystal lattice yields energy bands with forbidden gaps. Transistors switch by band design, an LED's color is a chosen gap, a laser amplifies a chosen transition.",
+    'Solving the Schrödinger equation for electrons in a crystal lattice reveals band structures. Transistors switch using engineered bandgaps; LED colors are tailored energy gaps, and lasers amplify light at precise quantum transitions.',
   'uses.chips.physics':
-    'Bloch theorem: a periodic V(x) produces band structure; the gap sets the photon energy, ħω = E_gap.',
-  'uses.gps.title': 'Atomic clocks and GPS',
+    "Bloch's Theorem defines periodic band structures; bandgap width sets photon energy: ħω = E_gap.",
+  'uses.gps.title': 'Atomic Clocks & GPS',
   'uses.gps.easy':
-    'The second itself is defined by a quantum jump between two energy levels of the cesium atom. GPS satellites carry such clocks; without them your position would drift by kilometers each day.',
+    'The standard "1 second" is defined by a quantum transition in Cesium atoms. GPS satellites carry these atomic clocks; without them, your location mapping would drift by kilometers every day.',
   'uses.gps.physics':
-    '1 s = 9 192 631 770 cycles of the Cs-133 hyperfine ground-state transition.',
-  'uses.chemistry.title': 'Computational chemistry',
+    '1 second = 9,192,631,770 radiation cycles between two hyperfine ground state energy levels of Cesium-133.',
+  'uses.chemistry.title': 'Computational Chemistry',
   'uses.chemistry.easy':
-    'Most of computational chemistry is this equation solved approximately for electrons in molecules: screening drug candidates and designing materials before any lab work begins.',
+    'Instead of trial-and-error in labs, scientists approximate this equation for molecular electrons to model drug candidates and design novel materials entirely on supercomputers.',
   'uses.chemistry.physics':
-    'Density functional theory (Nobel Prize in Chemistry 1998) makes approximate solutions cheap enough to run at scale.',
-  'uses.sun.title': 'The sun and radioactivity',
+    'Density Functional Theory (DFT), 1998 Nobel Prize in Chemistry, made approximate quantum solutions computationally viable.',
+  'uses.sun.title': 'Solar Power & Alpha Decay',
   'uses.sun.easy':
-    'The sun shines because protons tunnel through their mutual electric repulsion to fuse; the core is not hot enough to cross that barrier classically. Alpha particles escape unstable nuclei the same way.',
+    'The Sun shines because protons tunnel through electrostatic repulsion to fuse (the core is not hot enough for classical fusion). Similarly, alpha particles escape unstable nuclei via the same quantum pathway.',
   'uses.sun.physics':
-    'Gamow factor: fusion and alpha-decay rates lie inside e^(−2κd), exponentially sensitive to barrier width and height.',
-  'uses.qcompute.title': 'Quantum computers',
+    'Gamow Factor: fusion and decay rates scale exponentially with barrier thickness and height, e^(−2κd).',
+  'uses.qcompute.title': 'Quantum Computing',
   'uses.qcompute.easy':
-    'A qubit carries a wavefunction, and every gate is unitary evolution: a quantum computer runs this equation as its law of motion. Results are read out with the same Born rule this sandbox uses to measure.',
+    'Each qubit represents a wavefunction, and quantum logic gates perform unitary operations on it. A quantum computer operates with the Schrödinger equation as its fundamental law of motion.',
   'uses.qcompute.physics':
-    'Superposition plus interference: the double slit, scaled up into circuits.',
-  'uses.qsensing.title': 'Quantum communication and sensing',
+    'Superposition and Interference: scaling the double-slit concept into complex quantum circuits.',
+  'uses.qsensing.title': 'Quantum Sensing & Communications',
   'uses.qsensing.easy':
-    'Quantum key distribution catches eavesdroppers because measuring disturbs the state. Matter-wave sensors turn interference into measurements of gravity and magnetic fields beyond classical limits.',
+    'Quantum Key Distribution (QKD) detects eavesdroppers instantly because measurement collapses the state. Matter-wave sensors leverage quantum interference to measure gravity and magnetic fields with unmatchable accuracy.',
   'uses.qsensing.physics':
-    'Security from the measurement postulate; sensitivity from interference between superposed paths.',
+    'Security stems from Measurement Axioms; sensitivity derives from Phase Interference.',
 }
