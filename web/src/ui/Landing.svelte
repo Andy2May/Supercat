@@ -127,6 +127,12 @@
   <!-- Subtle grid + vignette over whichever backdrop is showing (mockup
        .lg-grid/.lg-vig): reads the live canvas as a stage. -->
   <div class="veil" aria-hidden="true"></div>
+  <!-- Legibility scrim: a fixed dark field under the left column so the hero
+       text/photo stay readable over ANY colormap state of the live canvas
+       (inferno swings black -> white as the packet spreads). Separate from
+       .veil on purpose — the veil's center-punch mask would hole the scrim
+       right where the hero sits. -->
+  <div class="scrim" aria-hidden="true"></div>
 
   <header class="nav" data-testid="landing-nav">
     <div class="mark">
@@ -237,7 +243,7 @@
   }
 
   /* Grid + vignette veil over the live canvas (mockup .lg-grid/.lg-vig):
-     keeps the hero's text contrast whatever the sim renders. */
+     decorative depth only — text contrast is the scrim's job below. */
   .veil {
     position: absolute;
     inset: 0;
@@ -248,6 +254,22 @@
       radial-gradient(ellipse 90% 90% at 38% 50%, transparent 30%, rgba(9, 12, 17, 0.72) 100%);
     -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 30%, black 100%);
     mask-image: radial-gradient(ellipse at 50% 45%, transparent 30%, black 100%);
+  }
+
+  /* Left-anchored legibility scrim: full-dark under the hero column, fading
+     out before mid-screen so the simulation's focal zone stays uncovered.
+     #090C11 is the veil vignette's ink — same family, not a new color. */
+  .scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      rgba(9, 12, 17, 0.88) 0%,
+      rgba(9, 12, 17, 0.6) 34%,
+      rgba(9, 12, 17, 0.15) 58%,
+      transparent 72%
+    );
   }
 
   /* ---- glass nav (mockup .lg-nav) --------------------------------------- */
@@ -452,14 +474,16 @@
   }
 
   /* The scheming cat beside its equation (Supercat rebrand): the meme photo
-     as a small rounded sticker — tall 4:5 crop, hairline border so it reads
-     as a deliberate card against the backdrop rather than a stray photo. */
+     as a small rounded sticker. Light hairline + soft dark drop shadow so
+     the card separates on BOTH extremes of the backdrop — bright fringes
+     (shadow does the work) and empty black (the light border does). */
   .schrodinger .cat {
     height: 84px;
     width: auto;
     flex: none;
     border-radius: 8px;
-    border: 1px solid var(--line-strong);
+    border: 1px solid rgba(232, 236, 241, 0.35);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
     display: block;
   }
 
@@ -594,6 +618,17 @@
       gap: 1.5rem;
       padding: 5.5rem 1.25rem 2rem;
       min-height: 100dvh;
+    }
+
+    /* The hero stacks below the floating nav, so the scrim guards from the
+       top down instead of from the left. */
+    .scrim {
+      background: linear-gradient(
+        180deg,
+        rgba(9, 12, 17, 0.86) 0%,
+        rgba(9, 12, 17, 0.55) 42%,
+        transparent 72%
+      );
     }
 
     .hero {
