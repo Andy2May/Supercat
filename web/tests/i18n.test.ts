@@ -121,14 +121,21 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     expect(vi['rail.view']).toBe('HIỂN THỊ')
     expect(en['rail.view']).toBe('VIEW')
     // Field colormap legend (on-canvas chip): inferno ramp endpoint words
-    // (relative scale — auto-exposure normalizes every frame) + the phase
-    // variant's brightness note. −π/+π and |ψ|² are mono symbols, not keys.
+    // (relative scale — auto-exposure normalizes every frame) + caption and
+    // the phase variant's brightness note. −π/+π stay mono symbols, not
+    // keys; the captions are WORDS (user ruling 2026-10-02: "ghi hẳn xác
+    // suất", not the |ψ|² symbol — the chip is for people who don't know
+    // psi yet).
     expect(vi['legend.low']).toBe('thấp')
     expect(en['legend.low']).toBe('low')
     expect(vi['legend.high']).toBe('cao')
     expect(en['legend.high']).toBe('high')
-    expect(vi['legend.phaseNote']).toBe('độ sáng = mật độ |ψ|²')
-    expect(en['legend.phaseNote']).toBe('brightness = density |ψ|²')
+    expect(vi['legend.densityCaption']).toBe('Xác suất')
+    expect(en['legend.densityCaption']).toBe('Probability')
+    expect(vi['legend.momentumCaption']).toBe('Xác suất động lượng')
+    expect(en['legend.momentumCaption']).toBe('Momentum probability')
+    expect(vi['legend.phaseNote']).toBe('độ sáng = xác suất')
+    expect(en['legend.phaseNote']).toBe('brightness = probability')
   })
 
   it('scene label carries the {name} template', () => {

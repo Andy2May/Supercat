@@ -9,9 +9,13 @@ import { expect, test } from '@playwright/test'
  * present in BOTH experience modes — explore is where the colors need
  * naming most, and explore has no rail to host a legend.
  *
- * Language-independent assertions only, per repo convention: the low/high
- * labels are translated copy pinned in i18n.test.ts; the captions and
- * −π/+π are mono symbols shared by both dictionaries.
+ * The captions are translated words (user ruling 2026-10-02: say
+ * "probability", not |ψ|²) — pinned in both dictionaries by i18n.test.ts;
+ * here they are asserted in ENGLISH because Playwright's Chromium boots
+ * en-US and the app derives its language from navigator.language (same
+ * deterministic locale every run). '−π'/'+π' are language-independent
+ * mono. ('Probability' with a capital P is not a substring of the momentum
+ * caption 'Momentum probability', so the two discriminate cleanly.)
  */
 
 /** Attaches the no-error collectors every scenario asserts at the end. */
@@ -42,13 +46,14 @@ test('colormap legend: never on landing, density in explore, follows view in adv
   await expect(legend).toHaveCount(0)
 
   // Explore boots the density ramp with no view controls in sight: the
-  // legend must be there on its own, caption |ψ|² (NOT the k-space caption
-  // — the strings share no substring). Free-packet keeps the V legend
-  // hidden (V ≡ 0), so the colormap chip stands alone bottom-right.
+  // legend must be there on its own, caption Probability (NOT the momentum
+  // caption — capital P discriminates, see header). Free-packet keeps the
+  // V legend hidden (V ≡ 0), so the colormap chip stands alone
+  // bottom-right.
   await page.goto('/#/sim/free-packet')
   await expect(legend).toBeVisible({ timeout: 10_000 })
-  await expect(legend).toContainText('|ψ|²')
-  await expect(legend).not.toContainText('|ψ(k)|²')
+  await expect(legend).toContainText('Probability')
+  await expect(legend).not.toContainText('Momentum probability')
   await expect(legend).not.toContainText('−π')
   await expect(page.getByTestId('v-legend')).toBeHidden()
   // The strip is a real gradient chip, not a flat placeholder.
@@ -73,24 +78,23 @@ test('colormap legend: never on landing, density in explore, follows view in adv
   // would be the exact lie this legend exists to prevent.
   await page.getByTestId('mode-toggle').click()
   await expect(page.getByTestId('phase-toggle')).toBeHidden()
-  await expect(legend).toContainText('|ψ|²')
+  await expect(legend).toContainText('Probability')
   await expect(legend).not.toContainText('−π')
 
   // Back in advanced the flag resumes; the momentum view swaps the caption
-  // to |ψ(k)|². ('|ψ|²' is not a substring of '|ψ(k)|²' — after ψ comes (
-  // — so the two containText checks discriminate cleanly.)
+  // to the momentum-space wording.
   await page.getByTestId('mode-toggle').click()
   await page.getByTestId('phase-toggle').click()
   await expect(legend).toContainText('−π')
   await page.getByTestId('view-momentum').click()
   await expect(page.getByTestId('momentum-caption')).toBeVisible()
-  await expect(legend).toContainText('|ψ(k)|²')
-  await expect(legend).not.toContainText('|ψ|²')
+  await expect(legend).toContainText('Momentum probability')
+  await expect(legend).not.toContainText('Probability')
 
   // Plain position (the segment cell clears the stored flag): density
   // variant again, wheel gone — the full round trip.
   await page.getByTestId('view-position').click()
-  await expect(legend).toContainText('|ψ|²')
+  await expect(legend).toContainText('Probability')
   await expect(legend).not.toContainText('−π')
 
   expect(consoleErrors).toEqual([])

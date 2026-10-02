@@ -109,10 +109,12 @@
       : 'density'
   })
 
-  /** Translated endpoint words + the phase note (mono symbols are inline). */
+  /** Translated caption/endpoint words + the phase note (−π/+π stay mono). */
   const colLabels = $derived.by(() => {
     active // dependency: re-translate when the language changes
     return {
+      densityCaption: t('legend.densityCaption'),
+      momentumCaption: t('legend.momentumCaption'),
       low: t('legend.low'),
       high: t('legend.high'),
       phaseNote: t('legend.phaseNote'),
@@ -597,12 +599,14 @@
   {/if}
   {#if colVariant !== 'none'}
     <!-- Field colormap legend: names what the canvas colors mean, in the
-         V legend's chip grammar at the stage's bottom-right. Density and
-         momentum share the inferno ramp with endpoint words (the scale is
-         relative — auto-exposure normalizes each frame, so words, not
-         numbers); the phase variant labels the hue wheel's branch-cut ends
-         (both read red at −π/+π) and keeps the brightness = density
-         reading. Strip gradients come from the shader's own constants. -->
+         V legend's chip grammar at the stage's bottom-right. Captions say
+         the plain word (xác suất / probability — user ruling 2026-10-02,
+         not the |ψ|² symbol); density and momentum share the inferno ramp
+         with endpoint words (the scale is relative — auto-exposure
+         normalizes each frame, so words, not numbers); the phase variant
+         labels the hue wheel's branch-cut ends (both read red at −π/+π)
+         and keeps the brightness = probability reading. Strip gradients
+         come from the shader's own constants. -->
     <div class="col-legend" data-testid="col-legend">
       {#if colVariant === 'phase'}
         <span class="row">
@@ -612,7 +616,7 @@
         </span>
         <span class="note">{colLabels.phaseNote}</span>
       {:else}
-        <span class="cap mono">{colVariant === 'momentum' ? '|ψ(k)|²' : '|ψ|²'}</span>
+        <span class="cap">{colVariant === 'momentum' ? colLabels.momentumCaption : colLabels.densityCaption}</span>
         <span class="row">
           <span>{colLabels.low}</span>
           <span class="strip" data-testid="col-strip" style:background={INFERNO_GRADIENT_CSS}></span>
@@ -751,6 +755,7 @@
   }
 
   .col-legend .cap {
+    font-size: 0.7rem;
     opacity: 0.9;
   }
 

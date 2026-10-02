@@ -34,13 +34,17 @@ export const vi: Record<string, string> = {
   'legend.barrier': 'Rào',
   'legend.well': 'Giếng',
   'legend.v0': 'max|V| ≈ {v}',
-  // Field colormap legend (on-canvas chip, bottom-right): inferno ramp
-  // endpoint words — the scale is RELATIVE (auto-exposure normalizes every
-  // frame to its peak), so words, not numbers — and the phase variant's
-  // note that brightness still carries the density under the hue wheel.
+  // Field colormap legend (on-canvas chip, bottom-right): captions say the
+  // plain word (user ruling 2026-10-02: "ghi hẳn xác suất", not |ψ|² — the
+  // chip is for people who haven't met psi yet) + inferno ramp endpoint
+  // words (relative scale — auto-exposure normalizes every frame to its
+  // peak, so words, not numbers) + the phase variant's note that
+  // brightness still carries the density under the hue wheel.
+  'legend.densityCaption': 'Xác suất',
+  'legend.momentumCaption': 'Xác suất động lượng',
   'legend.low': 'thấp',
   'legend.high': 'cao',
-  'legend.phaseNote': 'độ sáng = mật độ |ψ|²',
+  'legend.phaseNote': 'độ sáng = xác suất',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
   // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.

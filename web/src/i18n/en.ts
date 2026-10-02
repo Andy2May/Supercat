@@ -34,13 +34,17 @@ export const en: Record<string, string> = {
   'legend.barrier': 'Barrier',
   'legend.well': 'Well',
   'legend.v0': 'max|V| ≈ {v}',
-  // Field colormap legend (on-canvas chip, bottom-right): inferno ramp
-  // endpoint words — the scale is RELATIVE (auto-exposure normalizes every
-  // frame to its peak), so words, not numbers — and the phase variant's
-  // note that brightness still carries the density under the hue wheel.
+  // Field colormap legend (on-canvas chip, bottom-right): captions say the
+  // plain word (user ruling 2026-10-02: say "probability", not |ψ|² — the
+  // chip is for people who haven't met psi yet) + inferno ramp endpoint
+  // words (relative scale — auto-exposure normalizes every frame to its
+  // peak, so words, not numbers) + the phase variant's note that
+  // brightness still carries the density under the hue wheel.
+  'legend.densityCaption': 'Probability',
+  'legend.momentumCaption': 'Momentum probability',
   'legend.low': 'low',
   'legend.high': 'high',
-  'legend.phaseNote': 'brightness = density |ψ|²',
+  'legend.phaseNote': 'brightness = probability',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
   // (physical coordinates / kx,ky wavenumbers) filled in SimCanvas.
