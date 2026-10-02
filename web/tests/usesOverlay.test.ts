@@ -46,7 +46,7 @@ describe('UsesOverlay structure', () => {
       expect(el.textContent).toContain(enDict[`uses.${card.id}.easy`])
       expect(el.textContent).toContain(enDict[`uses.${card.id}.physics`])
     }
-    expect(container.textContent).toContain(enDict['uses.physicsLabel'])
+    expect(container.textContent).not.toContain(enDict['uses.physicsLabel'])
   })
 })
 

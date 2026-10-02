@@ -160,7 +160,6 @@ export const en: Record<string, string> = {
   'uses.groupToday': 'IN USE TODAY',
   'uses.groupTomorrow': 'FUTURE TECH',
   'uses.appLabel': 'Application:',
-  'uses.physicsLabel': 'Physics:',
   'uses.watch': 'See it: {name} →',
   'uses.close': 'Close',
   'uses.flash.title': 'Flash Memory (SSDs, USBs, Smartphones)',

@@ -23,7 +23,6 @@
       intro: t('uses.intro'),
       groupToday: t('uses.groupToday'),
       groupTomorrow: t('uses.groupTomorrow'),
-      physicsLabel: t('uses.physicsLabel'),
       appLabel: t('uses.appLabel'),
       closeLabel: t('uses.close'),
     }
@@ -137,7 +136,7 @@
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
       <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
-      <p class="physics"><span class="plabel">{chrome.physicsLabel}</span>{card.physics}</p>
+      <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
         <a
           class="watch"
@@ -154,7 +153,7 @@
     <article class="card" data-testid={`uses-card-${card.id}`}>
       <h3>{card.title}</h3>
       <p class="easy"><span class="plabel">{chrome.appLabel}</span>{card.easy}</p>
-      <p class="physics"><span class="plabel">{chrome.physicsLabel}</span>{card.physics}</p>
+      <p class="physics">{card.physics}</p>
       {#if card.watch !== undefined}
         <a
           class="watch"
@@ -278,9 +277,10 @@
     color: var(--text-2);
   }
 
-  /* Both tiers carry a mono micro label (Ứng dụng:/Vật lý:, user revision
-     2026-10-02): the label names the tier so the easy sentence and the
-     physics line read as a pair. */
+  /* The easy tier carries the Ứng dụng: label; the physics tier goes
+     unlabeled (user ruling 2026-10-02: "Vật lý:" read stiff): the mono,
+     dimmer line opens with its own mechanism name (Fowler-Nordheim, Bloch,
+     Gamow), so typography alone separates the two tiers. */
   .card .physics {
     margin: 6px 0 0;
     font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;

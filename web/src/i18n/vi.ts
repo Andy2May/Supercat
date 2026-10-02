@@ -160,7 +160,6 @@ export const vi: Record<string, string> = {
   'uses.groupToday': 'ĐANG DÙNG HÔM NAY',
   'uses.groupTomorrow': 'CÔNG NGHỆ TƯƠNG LAI',
   'uses.appLabel': 'Ứng dụng:',
-  'uses.physicsLabel': 'Vật lý:',
   'uses.watch': 'Xem thử: {name} →',
   'uses.close': 'Đóng',
   'uses.flash.title': 'Bộ nhớ Flash (SSD, Thẻ nhớ, Điện thoại)',
