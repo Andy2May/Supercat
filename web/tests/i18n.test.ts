@@ -125,15 +125,22 @@ describe('redesign keys (redesign Task 3, Appendix A draft copy)', () => {
     // the phase variant's brightness note. −π/+π stay mono symbols, not
     // keys; the captions are WORDS (user ruling 2026-10-02: "ghi hẳn xác
     // suất", not the |ψ|² symbol — the chip is for people who don't know
-    // psi yet).
-    expect(vi['legend.low']).toBe('thấp')
-    expect(en['legend.low']).toBe('low')
-    expect(vi['legend.high']).toBe('cao')
-    expect(en['legend.high']).toBe('high')
+    // psi yet). Endpoint words CAPITALIZED (same ruling: đồng bộ with
+    // Xác suất / Rào / Giếng).
+    expect(vi['legend.low']).toBe('Thấp')
+    expect(en['legend.low']).toBe('Low')
+    expect(vi['legend.high']).toBe('Cao')
+    expect(en['legend.high']).toBe('High')
     expect(vi['legend.densityCaption']).toBe('Xác suất')
     expect(en['legend.densityCaption']).toBe('Probability')
     expect(vi['legend.momentumCaption']).toBe('Xác suất động lượng')
     expect(en['legend.momentumCaption']).toBe('Momentum probability')
+    // V-legend shape notes (user ruling 2026-10-02: Rào/Giếng must explain
+    // what they are and what they DO to the sim — one plain sentence each).
+    expect(vi['legend.barrierNote']).toBe('Tường năng lượng — sóng yếu hơn bị bật lại')
+    expect(en['legend.barrierNote']).toBe('Energy wall — weaker waves bounce back')
+    expect(vi['legend.wellNote']).toBe('Hố năng lượng — hút sóng vào và giữ lại')
+    expect(en['legend.wellNote']).toBe('Energy dip — pulls the wave in and traps it')
     expect(vi['legend.phaseNote']).toBe('độ sáng = xác suất')
     expect(en['legend.phaseNote']).toBe('brightness = probability')
   })

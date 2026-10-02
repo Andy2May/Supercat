@@ -75,7 +75,9 @@
     active // dependency: re-translate when the language changes
     return {
       barrier: t('legend.barrier'),
+      barrierNote: t('legend.barrierNote'),
       well: t('legend.well'),
+      wellNote: t('legend.wellNote'),
       v0: t('legend.v0', { v: fmtV0(simStore.potentialMax) }),
     }
   })
@@ -582,18 +584,26 @@
   {#if legendVisible}
     <!-- Spec 7.1: the M1 review's "user mistook the orange wall for a UI
          element" — the chips name the overlay colors and the max|V| scale
-         anchors them. Pointer-transparent (never a pointer target),
-         bottom-left away from the top-center toast and the below-canvas
-         playback bar. -->
+         anchors them; each name also carries a one-line note on what the
+         shape does to the wave (user ruling 2026-10-02 — no tooltip can
+         live here, the chip is pointer-transparent).
+         Pointer-transparent (never a pointer target), bottom-left away
+         from the top-center toast and the below-canvas playback bar. -->
     <div class="v-legend" data-testid="v-legend">
-      <span class="row">
-        <span class="chip" style:background={V_LEGEND_HEX.barrier}></span>
-        {legend.barrier}
-      </span>
-      <span class="row">
-        <span class="chip" style:background={V_LEGEND_HEX.well}></span>
-        {legend.well}
-      </span>
+      <div class="entry">
+        <span class="row">
+          <span class="chip" style:background={V_LEGEND_HEX.barrier}></span>
+          {legend.barrier}
+        </span>
+        <span class="desc">{legend.barrierNote}</span>
+      </div>
+      <div class="entry">
+        <span class="row">
+          <span class="chip" style:background={V_LEGEND_HEX.well}></span>
+          {legend.well}
+        </span>
+        <span class="desc">{legend.wellNote}</span>
+      </div>
       <span class="v0">{legend.v0}</span>
     </div>
   {/if}
@@ -706,6 +716,23 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+  }
+
+  /* One shape = name row + explanation line. The note is indented to the
+     name's text edge (chip width + row gap) so the chip column reads as a
+     list. The chip is pointer-transparent — the explanation must be plain
+     in-place text, not a tooltip. */
+  .v-legend .entry {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .v-legend .desc {
+    padding-left: 1.1rem; /* 0.7rem chip + 0.4rem row gap */
+    font-size: 0.68rem;
+    line-height: 1.4;
+    opacity: 0.82;
   }
 
   .v-legend .chip {

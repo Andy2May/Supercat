@@ -30,9 +30,14 @@ export const en: Record<string, string> = {
   // V-overlay legend (Task 18, spec 7.1): chip labels over the canvas naming
   // the potential overlay's colors, plus the live scale template ('{v}' is
   // the max |V| — not a single named V₀: hand-painted scenes mix barrier and
-  // well heights). Explore-friendly wording — no glossary jargon.
+  // well heights). Explore-friendly wording — no glossary jargon. The note
+  // lines (user ruling 2026-10-02) say what each shape IS and what it DOES
+  // to the wave — the chip is pointer-transparent, so no tooltip can carry
+  // this; it must be readable in place.
   'legend.barrier': 'Barrier',
+  'legend.barrierNote': 'Energy wall — weaker waves bounce back',
   'legend.well': 'Well',
+  'legend.wellNote': 'Energy dip — pulls the wave in and traps it',
   'legend.v0': 'max|V| ≈ {v}',
   // Field colormap legend (on-canvas chip, bottom-right): captions say the
   // plain word (user ruling 2026-10-02: say "probability", not |ψ|² — the
@@ -42,8 +47,8 @@ export const en: Record<string, string> = {
   // brightness still carries the density under the hue wheel.
   'legend.densityCaption': 'Probability',
   'legend.momentumCaption': 'Momentum probability',
-  'legend.low': 'low',
-  'legend.high': 'high',
+  'legend.low': 'Low',
+  'legend.high': 'High',
   'legend.phaseNote': 'brightness = probability',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders

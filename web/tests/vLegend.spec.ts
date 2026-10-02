@@ -39,6 +39,12 @@ test('V legend: double-slit shows the scale (max|V| ≈ 30), free-packet hides i
   // The wall pins the scale at 30; "max|V|" is language-independent.
   await expect(legend).toContainText('max|V|')
   await expect(legend).toContainText('30')
+  // Shape notes (user ruling 2026-10-02): each chip name carries a plain
+  // one-line explanation of what the shape is and does to the wave.
+  // English wording — deterministic en-US locale, same rationale as
+  // colLegend.spec.ts.
+  await expect(legend).toContainText('Energy wall')
+  await expect(legend).toContainText('Energy dip')
 
   // Free-packet boots with V ≡ 0 (the worker ships the zero potential on
   // its first frame too): prove the scene is alive, then pin the absence.

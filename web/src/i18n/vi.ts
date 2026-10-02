@@ -30,9 +30,14 @@ export const vi: Record<string, string> = {
   // V-overlay legend (Task 18, spec 7.1): chip labels over the canvas naming
   // the potential overlay's colors, plus the live scale template ('{v}' is
   // the max |V| — not a single named V₀: hand-painted scenes mix barrier and
-  // well heights). Explore-friendly wording — no glossary jargon.
+  // well heights). Explore-friendly wording — no glossary jargon. The note
+  // lines (user ruling 2026-10-02) say what each shape IS and what it DOES
+  // to the wave — the chip is pointer-transparent, so no tooltip can carry
+  // this; it must be readable in place.
   'legend.barrier': 'Rào',
+  'legend.barrierNote': 'Tường năng lượng — sóng yếu hơn bị bật lại',
   'legend.well': 'Giếng',
+  'legend.wellNote': 'Hố năng lượng — hút sóng vào và giữ lại',
   'legend.v0': 'max|V| ≈ {v}',
   // Field colormap legend (on-canvas chip, bottom-right): captions say the
   // plain word (user ruling 2026-10-02: "ghi hẳn xác suất", not |ψ|² — the
@@ -42,8 +47,8 @@ export const vi: Record<string, string> = {
   // brightness still carries the density under the hue wheel.
   'legend.densityCaption': 'Xác suất',
   'legend.momentumCaption': 'Xác suất động lượng',
-  'legend.low': 'thấp',
-  'legend.high': 'cao',
+  'legend.low': 'Thấp',
+  'legend.high': 'Cao',
   'legend.phaseNote': 'độ sáng = xác suất',
   // Measurement (Task 14): toolbar trigger + momentum-view button + the
   // outcome toast. The result templates carry '{x}'/'{y}' placeholders
