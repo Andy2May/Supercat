@@ -67,3 +67,23 @@ test('uses overlay: briefing hook opens it; see-it navigates to the preset', asy
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
 })
+
+test('uses overlay never reopens unasked after Back/Forward out of the sim', async ({ page }) => {
+  const { consoleErrors, pageErrors } = expectNoErrors(page)
+  // Land on the landing first so Back has somewhere to go.
+  await page.goto('/#/')
+  await page.goto('/#/sim/double-slit')
+  await page.getByTestId('uses-open').click()
+  await expect(page.getByTestId('uses-overlay')).toBeVisible()
+
+  // Browser Back leaves the sim with the modal open: the overlay unmounts,
+  // and the open flag must not outlive the sim view (spec 6.5).
+  await page.goBack()
+  await expect(page.getByTestId('landing-hero')).toBeVisible()
+
+  // A later sim entry starts clean: no dialog pops open over the scene.
+  await page.goto('/#/sim/tunneling')
+  await expect(page.getByTestId('uses-overlay')).toHaveCount(0)
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+})

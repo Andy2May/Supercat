@@ -22,7 +22,7 @@ export class UsesStore {
   }
 
   /** Read once by the overlay's destroy hook; null before any open, and
-   * possibly stale (the opener may have unmounted) — callers must guard. */
+   * possibly stale (the opener may have unmounted; callers must guard). */
   get opener(): HTMLElement | null {
     return this.#opener
   }

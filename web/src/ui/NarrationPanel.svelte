@@ -6,7 +6,7 @@
   // Whose narration to show. App.svelte keys this component on the preset
   // id, so every entry into a preset remounts it: the open state re-runs its
   // viewport rule below and nothing is remembered between visits
-  // (deliberate — Task 9).
+  // (deliberate; Task 9).
   let { id }: { id: PresetId } = $props()
 
   // Local mirror of the language store (same pattern as ToolRail): the

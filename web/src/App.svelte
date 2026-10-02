@@ -97,11 +97,18 @@
   // Momentum-view snapback (Task 12): k-space is advanced-only (Task 7
   // gating), so a flip to explore reconciles the stored view through the
   // pure `effectiveView` predicate. `setView` is a no-op when the view
-  // already matches — the off flag ships exactly once per snapback, and
-  // this effect never fires a message while already in position view.
+  // already matches — the off flag ships exactly once per snapback, and this
+  // effect never fires a message while already in position view.
   $effect(() => {
     const target = effectiveView(modeStore.mode, simStore.view)
     if (target !== simStore.view) simStore.setView(target)
+  })
+
+  // The uses overlay never outlives the sim view (spec 6.5): leaving for the
+  // landing unmounts it, and clearing the flag here means a later sim entry
+  // (a Back/Forward round-trip) never reopens the dialog unasked.
+  $effect(() => {
+    if (route.view !== 'sim') usesStore.close()
   })
 
   // Set when renderer startup throws (SimCanvas hands the error over);

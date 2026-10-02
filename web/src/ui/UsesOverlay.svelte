@@ -265,7 +265,7 @@
 
   .card h3 {
     margin: 8px 0 0;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-1);
   }
